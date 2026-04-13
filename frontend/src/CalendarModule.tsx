@@ -604,6 +604,7 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
             </div>
           )}
 
+        </div>
       </div>
 
       <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 w-full bg-[#1b1d21] border border-stone-700/40 rounded-3xl p-6 shadow-2xl">
@@ -810,7 +811,6 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
             </form>
           </div>
         </aside>
-      </div>
     </div>
   );
 }
