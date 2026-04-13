@@ -1,0 +1,18 @@
+# Proyecto Inteligencia del Ser (Kabbalah Space)
+
+Stack:
+- Frontend: React, Tailwind CSS
+- Backend: Python, FastAPI
+- BD: PostgreSQL
+- IA: LLM (Gemini/OpenAI)
+
+Reglas de Trabajo:
+- Modular y secuencial. Separación de responsabilidades. (Clean Architecture)
+
+Módulos:
+1. El Espejo Cognitivo: Árbol de la vida interactivo. Cuestionario de autoevaluación y texto libre. Backend AI devuelve segunda puntuación.
+2. Calendario Cabalístico: Gestor de tareas diario (CRUD). Cada evento mapeado a Sefirá.
+3. Motor de Análisis (Cerebro BI): Calcula fricción y polaridad. Recomendaciones.
+4. Dashboard Visual: Heatmaps, Gráficos radar Sefirot, Series de tiempo.
+5. Tesauro Guemátrico: NLP Hebreo a pesos numéricos, frecuencias y asociaciones.
+6. Core Backend: Tablas relacionales y endpoints.
