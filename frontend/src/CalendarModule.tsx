@@ -488,8 +488,8 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
   }, [startTime, endTime]);
 
   return (
-    <div className="w-full flex flex-col 2xl:flex-row xl:flex-row lg:flex-row gap-6 items-start">
-      <div className={`flex-1 w-full min-w-0 bg-[#1b1d21] border border-stone-700/40 rounded-3xl p-5 md:p-6 shadow-2xl transition-all duration-300 relative ${isPanelOpen ? "z-[60]" : "z-10"}`}>
+    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+      <div className={`lg:col-span-8 xl:col-span-8 2xl:col-span-9 w-full min-w-0 bg-[#1b1d21] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl transition-all duration-300 relative ${isPanelOpen ? "z-[60]" : "z-10"}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div>
             <h2 className={`font-serif text-3xl tracking-tight ${glowText}`}>Calendario Cabalístico</h2>
@@ -606,7 +606,7 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
 
       </div>
 
-      <div className="w-full lg:w-[320px] xl:w-[350px] shrink-0 bg-[#1b1d21] border border-stone-700/40 rounded-3xl p-6 shadow-2xl">
+      <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 w-full bg-[#1b1d21] border border-stone-700/40 rounded-3xl p-6 shadow-2xl">
         <h3 className={`font-serif text-2xl mb-4 ${glowText}`}>Árbol Energético Semanal</h3>
         <p className="text-stone-400 text-sm mb-6">El tamaño de cada sefirá crece según cuántas actividades están asociadas a esa dimensión.</p>
 
