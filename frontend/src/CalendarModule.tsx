@@ -611,8 +611,8 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
         <h3 className={`font-serif text-2xl mb-4 ${glowText}`}>Árbol Energético Semanal</h3>
         <p className="text-stone-400 text-sm mb-6">El tamaño de cada sefirá crece según cuántas actividades están asociadas a esa dimensión.</p>
 
-        <div className="flex flex-col xl:flex-row items-center xl:items-start gap-4">
-          <div className="relative w-full h-[560px] max-w-[360px] mx-auto shrink-0">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-full h-[470px] max-w-[360px] mx-auto shrink-0">
           <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-70" viewBox="0 0 400 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             {CONNECTIONS.map((connection) => {
               const n1 = sefirot.find((item) => item.id === connection.n1);
@@ -624,9 +624,9 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
                 <line
                   key={`${connection.n1}-${connection.n2}`}
                   x1={`${(n1.x / 400) * 100}%`}
-                  y1={`${(n1.y / 800) * 100}%`}
+                  y1={`${(n1.y / 700) * 100}%`}
                   x2={`${(n2.x / 400) * 100}%`}
-                  y2={`${(n2.y / 800) * 100}%`}
+                  y2={`${(n2.y / 700) * 100}%`}
                   stroke="rgba(253, 230, 138, 0.22)"
                   strokeWidth="3"
                   strokeLinecap="round"
@@ -662,13 +662,15 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
           })}
         </div>
 
-        <div className="flex-1 w-full space-y-2 max-h-[560px] overflow-auto pr-1">
-          {volume.map((item) => (
-            <div key={item.sefira_id} className="flex flex-col text-xs xl:text-sm border border-stone-800/50 rounded-lg px-3 py-2.5 bg-stone-950/40">
-              <span className="text-stone-300 font-medium mb-1">{item.sefira_nombre}</span>
-              <span className="text-amber-200/90">{item.actividades_total} act. / {item.horas_total} h</span>
-            </div>
-          ))}
+        <div className="w-full mt-2 overflow-x-auto pb-4 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:bg-stone-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="grid grid-rows-2 grid-flow-col gap-2.5 min-w-max pr-2">
+            {volume.map((item) => (
+              <div key={item.sefira_id} className="flex flex-col text-xs border border-stone-800/50 rounded-lg px-3 py-2 bg-stone-950/40 w-[140px] shadow-sm">
+                <span className="text-stone-300 font-medium mb-1 truncate">{item.sefira_nombre}</span>
+                <span className="text-amber-200/90 whitespace-nowrap">{item.actividades_total} act. / {item.horas_total} h</span>
+              </div>
+            ))}
+          </div>
         </div>
         </div>
       </div>
