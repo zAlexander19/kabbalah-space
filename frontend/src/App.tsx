@@ -161,13 +161,13 @@ export default function App() {
       </aside>
 
       <main className="lg:ml-72 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
-        <header className="w-full max-w-6xl mb-10 px-4 py-6 text-center transform animate-[1s_fade-in-up]">
+        <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-10 px-4 py-6 text-center transform animate-[1s_fade-in-up]">
             <h2 className={`font-serif text-4xl md:text-5xl font-light tracking-tight mb-4 ${glowText}`}>Calendario Cabalístico</h2>
             <p className="text-stone-400 text-sm md:text-base font-light tracking-wide max-w-2xl mx-auto leading-relaxed">
               La organizacion es parte del camino de rectificacion. organiza tu semana y organiza tus dimensiones
             </p>
           </header>
-          <section className="w-full max-w-6xl flex flex-col md:flex-row items-center md:items-start justify-center gap-10 xl:gap-16 relative">
+          <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 flex flex-col md:flex-row items-center md:items-start justify-center gap-10 xl:gap-8 relative">
              {activeView === 'admin' ? (
              <AdminPanel sefirot={SEFIROT} glowText={glowText} />
            ) : activeView === 'calendario' ? (
