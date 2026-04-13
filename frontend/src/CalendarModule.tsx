@@ -489,7 +489,7 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-      <div className={`lg:col-span-8 xl:col-span-8 2xl:col-span-9 w-full min-w-0 bg-[#1b1d21] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl transition-all duration-300 relative ${isPanelOpen ? "z-[60]" : "z-10"}`}>
+        <div className={`lg:col-span-7 xl:col-span-7 2xl:col-span-8 w-full min-w-0 bg-[#1b1d21] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl transition-all duration-300 relative ${isPanelOpen ? "z-[60]" : "z-10"}`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div>
             <h2 className={`font-serif text-3xl tracking-tight ${glowText}`}>Calendario Cabalístico</h2>
@@ -607,11 +607,12 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
         </div>
       </div>
 
-      <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 w-full bg-[#1b1d21] border border-stone-700/40 rounded-3xl p-6 shadow-2xl">
+      <div className="lg:col-span-5 xl:col-span-5 2xl:col-span-4 w-full bg-[#1b1d21] border border-stone-700/40 rounded-[2rem] p-6 shadow-2xl">
         <h3 className={`font-serif text-2xl mb-4 ${glowText}`}>Árbol Energético Semanal</h3>
         <p className="text-stone-400 text-sm mb-6">El tamaño de cada sefirá crece según cuántas actividades están asociadas a esa dimensión.</p>
 
-        <div className="relative w-full h-[560px] max-w-[360px] mx-auto">
+        <div className="flex flex-col xl:flex-row items-center xl:items-start gap-4">
+          <div className="relative w-full h-[560px] max-w-[360px] mx-auto shrink-0">
           <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-70" viewBox="0 0 400 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             {CONNECTIONS.map((connection) => {
               const n1 = sefirot.find((item) => item.id === connection.n1);
@@ -661,13 +662,14 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
           })}
         </div>
 
-        <div className="mt-8 space-y-2 max-h-[230px] overflow-auto pr-2">
+        <div className="flex-1 w-full space-y-2 max-h-[560px] overflow-auto pr-1">
           {volume.map((item) => (
-            <div key={item.sefira_id} className="flex items-center justify-between text-sm border border-stone-800/50 rounded-lg px-3 py-2 bg-stone-950/40">
-              <span className="text-stone-300">{item.sefira_nombre}</span>
-              <span className="text-amber-200">{item.actividades_total} act. / {item.horas_total} h</span>
+            <div key={item.sefira_id} className="flex flex-col text-xs xl:text-sm border border-stone-800/50 rounded-lg px-3 py-2.5 bg-stone-950/40">
+              <span className="text-stone-300 font-medium mb-1">{item.sefira_nombre}</span>
+              <span className="text-amber-200/90">{item.actividades_total} act. / {item.horas_total} h</span>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
