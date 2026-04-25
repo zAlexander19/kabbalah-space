@@ -239,12 +239,70 @@ async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db
     return nueva_res
 
 
+async def ensure_series_materialized(db: AsyncSession, end: datetime) -> None:
+    """For each open-ended series (no UNTIL/COUNT), materialize more instances
+    if the series' last instance ends before `end`."""
+    seeds = (await db.execute(
+        select(Actividad).where(
+            and_(Actividad.rrule.is_not(None), Actividad.serie_id.is_not(None))
+        )
+    )).scalars().all()
+
+    extended = False
+    for seed in seeds:
+        rule_str = seed.rrule or ""
+        if "UNTIL=" in rule_str or "COUNT=" in rule_str:
+            continue
+
+        last = (await db.execute(
+            select(Actividad).where(Actividad.serie_id == seed.serie_id)
+            .order_by(Actividad.inicio.desc()).limit(1)
+        )).scalars().first()
+        if not last or last.inicio >= end:
+            continue
+
+        sefirot_rows = (await db.execute(
+            select(ActividadSefira.sefira_id).where(ActividadSefira.actividad_id == seed.id)
+        )).scalars().all()
+
+        synthetic_payload = ActividadCreate(
+            titulo=seed.titulo,
+            descripcion=seed.descripcion,
+            inicio=seed.inicio,
+            fin=seed.fin,
+            sefirot_ids=list(sefirot_rows),
+            rrule=rule_str,
+        )
+
+        new_window_start = last.inicio + timedelta(seconds=1)
+        new_window_end = last.inicio + timedelta(days=MATERIALIZATION_CAP_DAYS)
+        if new_window_end < end:
+            new_window_end = end + timedelta(days=30)
+
+        instancias = await materialize_series(
+            db,
+            synthetic_payload,
+            seed.serie_id,
+            list(sefirot_rows),
+            range_start=new_window_start,
+            range_end=new_window_end,
+        )
+        if instancias:
+            extended = True
+
+    if extended:
+        await db.commit()
+
+
 @app.get("/actividades", response_model=list[ActividadOut])
 async def list_actividades(
     start: Optional[datetime] = None,
     end: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if start and end:
+        await ensure_series_materialized(db, normalize_datetime(end))
+
     query = select(Actividad).order_by(Actividad.inicio)
     if start and end:
         start_dt = normalize_datetime(start)
@@ -361,13 +419,26 @@ async def update_actividad(
 
 
 @app.delete("/actividades/{actividad_id}")
-async def delete_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Actividad).where(Actividad.id == actividad_id))
-    actividad = result.scalars().first()
+async def delete_actividad(
+    actividad_id: str,
+    scope: str = Query("one", pattern="^(one|series)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    actividad = (await db.execute(
+        select(Actividad).where(Actividad.id == actividad_id)
+    )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
-    await db.delete(actividad)
+    if scope == "series" and actividad.serie_id is not None:
+        siblings = (await db.execute(
+            select(Actividad.id).where(Actividad.serie_id == actividad.serie_id)
+        )).scalars().all()
+        await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(siblings)))
+        await db.execute(delete(Actividad).where(Actividad.serie_id == actividad.serie_id))
+    else:
+        await db.delete(actividad)
+
     await db.commit()
     return {"message": "Actividad eliminada"}
 
