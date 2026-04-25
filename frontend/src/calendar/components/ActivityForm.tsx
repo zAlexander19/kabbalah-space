@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { SefiraNode, Activity } from '../types';
 import { SEFIRA_COLORS, API_BASE } from '../tokens';
 
@@ -142,47 +141,34 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
         <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Intención y foco energético..." className="w-full min-h-[100px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 mt-2 transition-colors" />
       </div>
 
-      <motion.div animate={shake ? { x: [-3, 3, -2, 2, 0] } : { x: 0 }} transition={{ duration: 0.3 }} key={shake}>
+      <div className={shake ? 'cal-shake' : ''} key={shake}>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Sefirot</label>
         <div className="mt-3 flex flex-wrap gap-2">
           {sefirot.map(s => {
             const active = selected.includes(s.id);
             const color = SEFIRA_COLORS[s.id] ?? '#a3a3a3';
             return (
-              <motion.button
+              <button
                 key={s.id}
                 type="button"
                 onClick={() => toggle(s.id)}
-                whileTap={{ scale: 1.08 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider border transition"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider border transition active:scale-[1.08]"
                 style={{
                   borderColor: active ? color : 'rgba(120,120,120,0.4)',
                   background: active ? `${color}26` : 'rgba(38,42,50,0.8)',
                   color: active ? '#f5f5f5' : '#b7bac1',
+                  transitionDuration: '0.18s',
                 }}
               >
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
                 {s.name}
-              </motion.button>
+              </button>
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            key={error}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-red-400 text-xs"
-          >
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {error && <p className="text-red-400 text-xs cal-fade-in">{error}</p>}
 
       <div className="flex flex-col gap-3 pt-2">
         <div className="flex gap-2">
@@ -223,11 +209,10 @@ function LoadingDots() {
   return (
     <span className="inline-flex gap-1">
       {[0, 1, 2].map(i => (
-        <motion.span
+        <span
           key={i}
-          className="w-1.5 h-1.5 rounded-full bg-stone-900"
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
+          className="w-1.5 h-1.5 rounded-full bg-stone-900 cal-loading-dot"
+          style={{ animationDelay: `${i * 0.15}s` }}
         />
       ))}
     </span>

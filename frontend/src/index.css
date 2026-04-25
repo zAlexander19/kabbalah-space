@@ -147,3 +147,24 @@ body {
   .cal-breath-fast { animation: none; }
 }
 
+@keyframes calShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-3px); }
+  40%      { transform: translateX(3px); }
+  60%      { transform: translateX(-2px); }
+  80%      { transform: translateX(2px); }
+}
+.cal-shake { animation: calShake 0.3s ease-in-out; }
+
+@keyframes calFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cal-fade-in { animation: calFadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes calLoadingDot {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+.cal-loading-dot { animation: calLoadingDot 0.9s ease-in-out infinite; }
+
