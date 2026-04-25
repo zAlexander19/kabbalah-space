@@ -265,11 +265,24 @@ async def get_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
     return await serialize_actividad(db, actividad)
 
 
-@app.post("/actividades", response_model=ActividadOut)
+@app.post("/actividades", response_model=list[ActividadOut])
 async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(get_db)):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
+
+    if payload.rrule:
+        try:
+            rrulestr(payload.rrule, dtstart=normalize_datetime(payload.inicio))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=422, detail=f"RRULE inválido: {exc}")
+
+        serie_id = str(uuid.uuid4())
+        instancias = await materialize_series(db, payload, serie_id, payload.sefirot_ids)
+        if not instancias:
+            raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
+        await db.commit()
+        return [await serialize_actividad(db, a) for a in instancias]
 
     actividad = Actividad(
         titulo=payload.titulo.strip(),
@@ -286,7 +299,7 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
 
     await db.commit()
     await db.refresh(actividad)
-    return await serialize_actividad(db, actividad)
+    return [await serialize_actividad(db, actividad)]
 
 
 @app.put("/actividades/{actividad_id}", response_model=ActividadOut)
