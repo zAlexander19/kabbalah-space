@@ -198,6 +198,9 @@ body {
   border-radius: 8px;
   border: none;
   padding: 2px 6px;
+  min-height: 24px !important;
+  display: flex;
+  flex-direction: column;
 }
 
 .rbc-theme .rbc-day-slot .rbc-event-content {

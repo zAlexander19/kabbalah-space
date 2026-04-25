@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/123/.claude/**)",
+      "Bash(gh api *)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md -o /tmp/SKILL.md)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

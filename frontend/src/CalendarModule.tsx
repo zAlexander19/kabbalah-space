@@ -202,6 +202,7 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
   const [anchorDate, setAnchorDate] = useState(() => new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 10));
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
   const [mapFilter, setMapFilter] = useState<MapFilter>("semana");
+  const [filterSefira, setFilterSefira] = useState<string | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [volume, setVolume] = useState<VolumeItem[]>([]);
   const [_, setLoading] = useState(false);
@@ -258,7 +259,11 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
   }, [activities, calendarDate]);
 
   const calendarEvents = useMemo<CalendarEvent[]>(() => {
-    const realEvents: CalendarEvent[] = activities.map((activity) => ({
+    const filtered = filterSefira
+      ? activities.filter((a) => a.sefirot.some((s) => s.id === filterSefira))
+      : activities;
+
+    const realEvents: CalendarEvent[] = filtered.map((activity) => ({
       title: `${activity.titulo} · ${activity.sefirot.map((s) => s.nombre).join(", ")}`,
       start: new Date(activity.inicio),
       end: new Date(activity.fin),
@@ -290,7 +295,7 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
     }
 
     return realEvents;
-  }, [activities, calendarDate, isPanelOpen, date, startTime, endTime, title, selectedSefirot]);
+}, [activities, filterSefira, calendarDate, isPanelOpen, date, startTime, endTime, title, selectedSefirot]);
 
   const fetchActivities = async () => {
     const startDate = new Date(visibleStart);
@@ -639,12 +644,15 @@ export default function CalendarModule({ sefirot, glowText }: CalendarModuleProp
             const item = volumeMap[node.id];
             const activityCount = item?.actividades_total ?? 0;
             const scale = activityCount / maxActivityCount;
-            const size = 52 + scale * 38;
-            return (
-              <div
-                key={node.id}
-                className={`absolute rounded-full flex flex-col items-center justify-center text-center border border-white/30 shadow-[0_0_20px_rgba(0,0,0,0.35)] ${node.colorClass}`}
-                style={{
+            const size = 52 + scale * 38;              const isSelected = filterSefira === node.id;
+              const isOtherSelected = filterSefira !== null && !isSelected;
+
+              return (
+                <div
+                  key={node.id}
+                  onClick={() => setFilterSefira(prev => (prev === node.id ? null : node.id))}
+                  className={`absolute rounded-full flex flex-col items-center justify-center text-center border border-white/30 cursor-pointer transition-all hover:scale-105 z-10 shadow-[0_0_20px_rgba(0,0,0,0.35)] ${node.colorClass} ${isSelected ? 'ring-4 ring-amber-300 scale-[1.10]' : ''} ${isOtherSelected ? 'opacity-40' : 'opacity-90'}`}
+                  style={{
                   left: `${(node.x / 400) * 100}%`,
                   top: `${(node.y / 800) * 100}%`,
                   width: `${size}px`,
