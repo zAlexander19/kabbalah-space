@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { startOfMonth, startOfWeek, addDays, format, isSameMonth, isSameDay } from 'date-fns';
 import type { Activity } from '../types';
 import { ink } from '../tokens';
-import { breathRing } from '../motion/breath';
 import { staggerContainer } from '../motion/transitions';
 import CalendarEvent from '../components/CalendarEvent';
 
@@ -65,10 +64,8 @@ export default function MonthView({ date, activities, onDayClick, onEventClick }
             >
               <div className="flex items-center justify-end relative">
                 {isToday && (
-                  <motion.span
-                    variants={breathRing}
-                    animate="animate"
-                    className="absolute right-0 w-7 h-7 rounded-full"
+                  <span
+                    className="absolute right-0 w-7 h-7 rounded-full cal-breath-ring"
                     style={{ border: `1px solid ${ink.ember}` }}
                   />
                 )}

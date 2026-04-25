@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { SefiraNode, VolumeItem } from '../types';
 import { CONNECTIONS, SEFIRA_COLORS, ink } from '../tokens';
-import { breathScale, breathHalo, breathFast, randomBreathDelay } from '../motion/breath';
+import { randomBreathDelay } from '../motion/breath';
 
 type Props = {
   sefirot: SefiraNode[];
@@ -113,23 +113,21 @@ export default function SefirotTree({ sefirot, volume, filterId, onFilterToggle 
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
               {!reduced && (
-                <motion.circle
+                <circle
                   cx={node.x} cy={node.y} r={r + 6}
                   fill={color}
                   filter="url(#sefiraGlow)"
-                  variants={isActive ? breathFast : breathHalo}
-                  animate="animate"
-                  style={{ animationDelay: `${nodeDelays[node.id]}s` } as React.CSSProperties}
+                  className={isActive ? 'cal-breath-fast' : 'cal-breath-halo'}
+                  style={{ animationDelay: `${nodeDelays[node.id]}s`, transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
                 />
               )}
-              <motion.circle
+              <circle
                 cx={node.x} cy={node.y} r={r}
                 fill={color}
                 stroke="rgba(255,255,255,0.3)"
                 strokeWidth={1}
-                variants={reduced ? undefined : breathScale}
-                animate={reduced ? undefined : 'animate'}
-                style={{ transformOrigin: `${node.x}px ${node.y}px` }}
+                className={reduced ? undefined : 'cal-breath-scale'}
+                style={{ animationDelay: `${nodeDelays[node.id]}s`, transformBox: 'fill-box', transformOrigin: 'center' } as React.CSSProperties}
               />
               <text
                 x={node.x} y={node.y - 4}
