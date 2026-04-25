@@ -1,12 +1,14 @@
 import asyncio
 import random
+import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException
+from dateutil.rrule import rrulestr
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import and_
+from sqlalchemy import and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -66,6 +68,7 @@ class ActividadCreate(BaseModel):
     inicio: datetime
     fin: datetime
     sefirot_ids: list[str]
+    rrule: Optional[str] = None
 
 
 class ActividadSefiraOut(BaseModel):
@@ -81,6 +84,8 @@ class ActividadOut(BaseModel):
     fin: datetime
     estado: str
     sefirot: list[ActividadSefiraOut]
+    serie_id: Optional[str] = None
+    rrule: Optional[str] = None
 
 
 class VolumenSefiraOut(BaseModel):
@@ -123,7 +128,58 @@ async def serialize_actividad(db: AsyncSession, actividad: Actividad) -> Activid
         fin=actividad.fin,
         estado=actividad.estado,
         sefirot=sefirot,
+        serie_id=actividad.serie_id,
+        rrule=actividad.rrule,
     )
+
+MATERIALIZATION_CAP_DAYS = 365
+
+
+async def materialize_series(
+    db: AsyncSession,
+    payload: ActividadCreate,
+    serie_id: str,
+    sefirot_ids: list[str],
+    range_start: Optional[datetime] = None,
+    range_end: Optional[datetime] = None,
+) -> list[Actividad]:
+    """Generate and persist instances of a recurring series."""
+    if not payload.rrule:
+        raise HTTPException(status_code=422, detail="rrule requerido para materializar")
+
+    duration = payload.fin - payload.inicio
+    base_start = normalize_datetime(payload.inicio)
+    window_start = range_start or base_start
+    window_end = range_end or (base_start + timedelta(days=MATERIALIZATION_CAP_DAYS))
+
+    rule = rrulestr(payload.rrule, dtstart=base_start)
+    occurrences = list(rule.between(window_start, window_end, inc=True))
+
+    titulo = payload.titulo.strip()
+    descripcion = (payload.descripcion or "").strip() or None
+
+    created: list[Actividad] = []
+    for idx, occ_start in enumerate(occurrences):
+        actividad = Actividad(
+            titulo=titulo,
+            descripcion=descripcion,
+            inicio=occ_start,
+            fin=occ_start + duration,
+            estado="pendiente",
+            serie_id=serie_id,
+            rrule=payload.rrule if (idx == 0 and range_start is None) else None,
+        )
+        db.add(actividad)
+        created.append(actividad)
+
+    await db.flush()
+
+    for instancia in created:
+        for sefira_id in sefirot_ids:
+            db.add(ActividadSefira(actividad_id=instancia.id, sefira_id=sefira_id))
+
+    return created
+
 
 class EvaluationRequest(BaseModel):
     sefira: str
