@@ -31,8 +31,9 @@ export const eventChip: Variants = {
 
 export const panelSpring: Transition = {
   type: 'spring',
-  damping: 28,
-  stiffness: 220,
+  damping: 32,
+  stiffness: 340,
+  mass: 0.8,
 };
 
-export const panelExit: Transition = M.flowing;
+export const panelExit: Transition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] };
