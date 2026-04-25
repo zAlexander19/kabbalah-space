@@ -111,6 +111,10 @@ class Actividad(Base):
 
     fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    serie_id = Column(String(36), nullable=True, index=True)
+
+    rrule = Column(String(500), nullable=True)
+
 
 class ActividadSefira(Base):
 
