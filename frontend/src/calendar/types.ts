@@ -21,6 +21,8 @@ export type Activity = {
   fin: string;
   estado: string;
   sefirot: ActivitySefira[];
+  serie_id?: string | null;
+  rrule?: string | null;
 };
 
 export type VolumeItem = {
