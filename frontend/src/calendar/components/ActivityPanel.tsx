@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { SefiraNode, Activity } from '../types';
@@ -15,6 +16,24 @@ type Props = {
 };
 
 export default function ActivityPanel({ open, sefirot, editing, initialSlot, onClose, onSaved, onDeleted }: Props) {
+  const [mountForm, setMountForm] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setMountForm(false);
+      return;
+    }
+    const f1 = requestAnimationFrame(() => {
+      const f2 = requestAnimationFrame(() => setMountForm(true));
+      (window as unknown as { __panelFormFrame?: number }).__panelFormFrame = f2;
+    });
+    return () => {
+      cancelAnimationFrame(f1);
+      const f2 = (window as unknown as { __panelFormFrame?: number }).__panelFormFrame;
+      if (f2) cancelAnimationFrame(f2);
+    };
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -54,14 +73,18 @@ export default function ActivityPanel({ open, sefirot, editing, initialSlot, onC
               </motion.button>
             </div>
 
-            <ActivityForm
-              sefirot={sefirot}
-              editing={editing}
-              initialSlot={initialSlot}
-              onSaved={onSaved}
-              onCancel={onClose}
-              onDeleted={onDeleted}
-            />
+            {mountForm ? (
+              <ActivityForm
+                sefirot={sefirot}
+                editing={editing}
+                initialSlot={initialSlot}
+                onSaved={onSaved}
+                onCancel={onClose}
+                onDeleted={onDeleted}
+              />
+            ) : (
+              <div className="flex-1" />
+            )}
           </motion.aside>
         </>
       )}
