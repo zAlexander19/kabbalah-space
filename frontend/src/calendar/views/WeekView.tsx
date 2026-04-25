@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { startOfWeek, addDays, format, isSameDay, getDay } from 'date-fns';
+import { startOfWeek, addDays, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Activity } from '../types';
 import { ink } from '../tokens';
@@ -105,18 +105,11 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick }
         style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}
       >
         {days.map((day, dayIdx) => {
-          const isSat = getDay(day) === 6;
           const isToday = isSameDay(day, now);
           const dayKey = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDay[dayKey] ?? [];
           return (
             <div key={dayKey} className="relative border-l border-stone-800/40">
-              {isSat && (
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ background: 'linear-gradient(180deg, rgba(233,195,73,0.05) 0%, rgba(233,195,73,0) 100%)' }}
-                />
-              )}
               {HOURS.map(h => (
                 <div
                   key={h}
