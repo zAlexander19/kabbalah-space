@@ -4,7 +4,6 @@ import { startOfWeek, addDays, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Activity } from '../types';
 import { ink } from '../tokens';
-import { breathRing } from '../motion/breath';
 import { staggerContainer } from '../motion/transitions';
 import CalendarEvent from '../components/CalendarEvent';
 
@@ -74,10 +73,8 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick }
             <span className={`text-[10px] uppercase tracking-[0.12em] ${isToday ? 'text-amber-300 font-bold' : 'text-stone-400'}`}>{dayShort}</span>
             <div className="relative mt-1 flex items-center justify-center">
               {isToday && (
-                <motion.span
-                  variants={breathRing}
-                  animate="animate"
-                  className="absolute inset-0 rounded-full"
+                <span
+                  className="absolute inset-0 rounded-full cal-breath-ring"
                   style={{ border: `1px solid ${ink.ember}` }}
                 />
               )}

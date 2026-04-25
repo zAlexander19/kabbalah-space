@@ -29,11 +29,6 @@ export const eventChip: Variants = {
   exit:    { opacity: 0, scale: 0.97, transition: M.swift },
 };
 
-export const panelSpring: Transition = {
-  type: 'spring',
-  damping: 32,
-  stiffness: 340,
-  mass: 0.8,
-};
+export const panelSpring: Transition = { duration: 0.32, ease: [0.16, 1, 0.3, 1] };
 
-export const panelExit: Transition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] };
+export const panelExit: Transition = { duration: 0.22, ease: [0.4, 0, 0.6, 1] };

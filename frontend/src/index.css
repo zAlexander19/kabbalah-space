@@ -107,3 +107,43 @@ body {
   scrollbar-color: rgba(160, 165, 175, 0.2) transparent;
 }
 
+/* Breath animations — compositor-thread (transform/opacity only) */
+@keyframes calBreathScale {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
+}
+@keyframes calBreathHalo {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.7; }
+}
+@keyframes calBreathRing {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+@keyframes calBreathFast {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.cal-breath-scale {
+  animation: calBreathScale 8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cal-breath-halo {
+  animation: calBreathHalo 8s ease-in-out infinite;
+}
+.cal-breath-ring {
+  animation: calBreathRing 8s ease-in-out infinite;
+}
+.cal-breath-fast {
+  animation: calBreathFast 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-breath-scale,
+  .cal-breath-halo,
+  .cal-breath-ring,
+  .cal-breath-fast { animation: none; }
+}
+

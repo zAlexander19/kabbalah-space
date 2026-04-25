@@ -34,6 +34,7 @@ export default function ActivityPanel({ open, sefirot, editing, initialSlot, onC
             animate={{ x: 0 }}
             exit={{ x: '100%', transition: panelExit }}
             transition={panelSpring}
+            style={{ willChange: 'transform' }}
             className="fixed right-0 top-0 z-[70] h-full w-full max-w-[460px] bg-[#15181d] border-l border-stone-700/45 shadow-[0_24px_80px_rgba(0,0,0,0.6)] flex flex-col"
           >
             <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(233,195,73,0.15)' }}>

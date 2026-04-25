@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { VolumeItem } from '../types';
 import { SEFIRA_COLORS } from '../tokens';
-import { breathFast } from '../motion/breath';
 import { staggerContainer, fadeUp } from '../motion/transitions';
 
 type Props = {
@@ -40,11 +39,9 @@ export default function SefirotLegend({ volume, filterId, onFilterToggle }: Prop
             onClick={() => onFilterToggle(item.sefira_id)}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${isActive ? 'bg-stone-800/60 border-amber-300/30' : 'bg-stone-950/30 border-stone-800/50 hover:bg-stone-900/60'}`}
           >
-            <motion.span
-              className="w-2.5 h-2.5 rounded-full shrink-0"
+            <span
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${isActive ? 'cal-breath-fast' : ''}`}
               style={{ background: color }}
-              variants={isActive ? breathFast : undefined}
-              animate={isActive ? 'animate' : undefined}
             />
             <span className="text-xs text-stone-200 font-medium flex-1 text-left truncate">{item.sefira_nombre}</span>
             <div className="flex-1 max-w-[80px] h-1 rounded-full bg-stone-800 overflow-hidden">
