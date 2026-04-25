@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AdminPanel from "./AdminPanel";
-import CalendarModule from "./CalendarModule";
+import CalendarModule from "./calendar";
 
 // Sefirot configurations and absolute pixel positions
 const SEFIROT = [
