@@ -302,34 +302,62 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
     return [await serialize_actividad(db, actividad)]
 
 
-@app.put("/actividades/{actividad_id}", response_model=ActividadOut)
-async def update_actividad(actividad_id: str, payload: ActividadCreate, db: AsyncSession = Depends(get_db)):
+@app.put("/actividades/{actividad_id}", response_model=list[ActividadOut])
+async def update_actividad(
+    actividad_id: str,
+    payload: ActividadCreate,
+    scope: str = Query("one", pattern="^(one|series)$"),
+    db: AsyncSession = Depends(get_db),
+):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
 
-    result = await db.execute(select(Actividad).where(Actividad.id == actividad_id))
-    actividad = result.scalars().first()
+    actividad = (await db.execute(
+        select(Actividad).where(Actividad.id == actividad_id)
+    )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
-    actividad.titulo = payload.titulo.strip()
-    actividad.descripcion = (payload.descripcion or "").strip() or None
-    actividad.inicio = normalize_datetime(payload.inicio)
-    actividad.fin = normalize_datetime(payload.fin)
+    if scope == "one" or actividad.serie_id is None:
+        actividad.titulo = payload.titulo.strip()
+        actividad.descripcion = (payload.descripcion or "").strip() or None
+        actividad.inicio = normalize_datetime(payload.inicio)
+        actividad.fin = normalize_datetime(payload.fin)
 
-    current_tags = await db.execute(
-        select(ActividadSefira).where(ActividadSefira.actividad_id == actividad_id)
-    )
-    for tag in current_tags.scalars().all():
-        await db.delete(tag)
+        current_tags = await db.execute(
+            select(ActividadSefira).where(ActividadSefira.actividad_id == actividad_id)
+        )
+        for tag in current_tags.scalars().all():
+            await db.delete(tag)
 
-    for sefira_id in payload.sefirot_ids:
-        db.add(ActividadSefira(actividad_id=actividad.id, sefira_id=sefira_id))
+        for sefira_id in payload.sefirot_ids:
+            db.add(ActividadSefira(actividad_id=actividad.id, sefira_id=sefira_id))
 
+        await db.commit()
+        await db.refresh(actividad)
+        return [await serialize_actividad(db, actividad)]
+
+    serie_id = actividad.serie_id
+    rrule_to_use = payload.rrule or actividad.rrule
+    if not rrule_to_use:
+        raise HTTPException(status_code=422, detail="No se pudo determinar el RRULE de la serie")
+
+    siblings = (await db.execute(
+        select(Actividad).where(Actividad.serie_id == serie_id)
+    )).scalars().all()
+    sibling_ids = [a.id for a in siblings]
+
+    await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
+    await db.execute(delete(Actividad).where(Actividad.serie_id == serie_id))
+    await db.flush()
+
+    series_payload = payload.model_copy(update={"rrule": rrule_to_use})
+    instancias = await materialize_series(db, series_payload, serie_id, payload.sefirot_ids)
+    if not instancias:
+        raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
     await db.commit()
-    await db.refresh(actividad)
-    return await serialize_actividad(db, actividad)
+    return [await serialize_actividad(db, a) for a in instancias]
 
 
 @app.delete("/actividades/{actividad_id}")
