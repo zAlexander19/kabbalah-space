@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { SefiraNode } from './SefirotInteractiveTree';
 import { CONNECTIONS, SEFIRA_COLORS } from '../../shared/tokens';
@@ -20,7 +20,38 @@ function distFromCenter(node: SefiraNode): number {
 
 const MAX_DIST = 400;
 
+const PARTICLE_COUNT = 42;
+const PARTICLE_COLORS = ['#fef9c3', '#fde68a', '#fbbf24', '#f59e0b', '#fef3c7'];
+
+type Particle = {
+  targetX: number;
+  targetY: number;
+  size: number;
+  color: string;
+  delay: number;
+  duration: number;
+};
+
+function buildParticles(): Particle[] {
+  // Distribución uniforme en círculo + jitter pseudo-determinista por índice
+  return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+    const baseAngle = (i / PARTICLE_COUNT) * Math.PI * 2;
+    const jitter = (((i * 37) % 23) / 23 - 0.5) * 0.4;
+    const angle = baseAngle + jitter;
+    const distance = 180 + ((i * 47) % 240);
+    const targetX = CENTER_X + Math.cos(angle) * distance;
+    const targetY = CENTER_Y + Math.sin(angle) * distance;
+    const size = 1.2 + ((i * 23) % 7) * 0.35;
+    const color = PARTICLE_COLORS[i % PARTICLE_COLORS.length];
+    const delay = 0.55 + ((i * 13) % 35) / 100;
+    const duration = 1.0 + ((i * 17) % 40) / 60;
+    return { targetX, targetY, size, color, delay, duration };
+  });
+}
+
 export default function EspejoIntro({ sefirot, onComplete }: Props) {
+  const particles = useMemo(buildParticles, []);
+
   useEffect(() => {
     const t = window.setTimeout(onComplete, TOTAL_DURATION_MS);
     return () => window.clearTimeout(t);
@@ -82,6 +113,22 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
           }}
           style={{ transformOrigin: `${CENTER_X}px ${CENTER_Y}px`, transformBox: 'fill-box' }}
         />
+
+        {/* Partículas: stardust irradiando desde el centro */}
+        {particles.map((p, i) => (
+          <motion.circle
+            key={`particle-${i}`}
+            r={p.size}
+            fill={p.color}
+            initial={{ cx: CENTER_X, cy: CENTER_Y, opacity: 0 }}
+            animate={{ cx: p.targetX, cy: p.targetY, opacity: [0, 1, 1, 0] }}
+            transition={{
+              cx: { duration: p.duration, delay: p.delay, ease: [0.16, 1, 0.3, 1] },
+              cy: { duration: p.duration, delay: p.delay, ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: p.duration, delay: p.delay, times: [0, 0.08, 0.55, 1] },
+            }}
+          />
+        ))}
 
         {/* Conexiones: se dibujan después de que aparecen ambos extremos */}
         {CONNECTIONS.map((c, idx) => {
