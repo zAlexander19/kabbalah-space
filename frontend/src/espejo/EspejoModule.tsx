@@ -57,7 +57,7 @@ export default function EspejoModule({
   // mantiene la lógica original con scale transform.
   const TREE_W = 400;
   const TREE_H = 880;
-  const TREE_SCALE = 0.8;
+  const TREE_SCALE = 0.9;
   return (
     <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-center gap-10 xl:gap-8 relative">
       <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE, height: TREE_H * TREE_SCALE }}>
