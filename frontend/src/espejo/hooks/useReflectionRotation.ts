@@ -5,16 +5,19 @@ const PHASE_DURATION = 5300;
 
 export function useReflectionRotation(items: SefiraResumen[], active: boolean) {
   const sorted = useMemo(() => {
-    return items
-      .filter(s => s.score_ia_promedio !== null && s.ultima_reflexion_texto)
-      .sort((a, b) => {
-        const sa = a.score_ia_promedio ?? 0;
-        const sb = b.score_ia_promedio ?? 0;
-        if (sb !== sa) return sb - sa;
-        const ta = a.ultima_actividad ? new Date(a.ultima_actividad).getTime() : 0;
-        const tb = b.ultima_actividad ? new Date(b.ultima_actividad).getTime() : 0;
-        return tb - ta;
-      });
+    const withReflection = items.filter(s => s.score_ia_promedio !== null && s.ultima_reflexion_texto);
+    const empty = items.filter(s => !(s.score_ia_promedio !== null && s.ultima_reflexion_texto));
+
+    withReflection.sort((a, b) => {
+      const sa = a.score_ia_promedio ?? 0;
+      const sb = b.score_ia_promedio ?? 0;
+      if (sb !== sa) return sb - sa;
+      const ta = a.ultima_actividad ? new Date(a.ultima_actividad).getTime() : 0;
+      const tb = b.ultima_actividad ? new Date(b.ultima_actividad).getTime() : 0;
+      return tb - ta;
+    });
+
+    return [...withReflection, ...empty];
   }, [items]);
 
   const [index, setIndex] = useState(0);
