@@ -51,43 +51,55 @@ export default function EspejoModule({
     void reloadSefira();
   }
 
+  // El árbol internamente trabaja en un sistema 400×880 px. Lo escalamos al 80%
+  // para que el conjunto entero (árbol + intro + card rotativa) entre en el viewport
+  // sin que ningún hijo se desalinee. Outer toma las dimensiones escaladas; inner
+  // mantiene la lógica original con scale transform.
+  const TREE_W = 400;
+  const TREE_H = 880;
+  const TREE_SCALE = 0.8;
   return (
     <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-center gap-10 xl:gap-8 relative">
-      <div className="relative shrink-0">
-        <motion.div
-          animate={{ opacity: introPlaying ? 0 : 1 }}
-          transition={{ duration: 0.5, ease }}
+      <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE, height: TREE_H * TREE_SCALE }}>
+        <div
+          className="absolute top-0 left-0"
+          style={{ width: TREE_W, height: TREE_H, transform: `scale(${TREE_SCALE})`, transformOrigin: 'top left' }}
         >
-          <SefirotInteractiveTree
-            sefirot={sefirot}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
-        </motion.div>
+          <motion.div
+            animate={{ opacity: introPlaying ? 0 : 1 }}
+            transition={{ duration: 0.5, ease }}
+          >
+            <SefirotInteractiveTree
+              sefirot={sefirot}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          </motion.div>
 
-        {showRotatingCard && (
-          <RotatingReflectionPreview
-            sefirot={sefirot}
-            summary={summary}
-            active={selectedId === null}
-            onSelectSefira={setSelectedId}
-          />
-        )}
-
-        <AnimatePresence>
-          {introPlaying && onIntroComplete && (
-            <motion.div
-              key="espejo-intro-wrapper"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease }}
-              className="absolute inset-0"
-            >
-              <EspejoIntro sefirot={sefirot} onComplete={onIntroComplete} />
-            </motion.div>
+          {showRotatingCard && (
+            <RotatingReflectionPreview
+              sefirot={sefirot}
+              summary={summary}
+              active={selectedId === null}
+              onSelectSefira={setSelectedId}
+            />
           )}
-        </AnimatePresence>
+
+          <AnimatePresence>
+            {introPlaying && onIntroComplete && (
+              <motion.div
+                key="espejo-intro-wrapper"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease }}
+                className="absolute inset-0"
+              >
+                <EspejoIntro sefirot={sefirot} onComplete={onIntroComplete} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <motion.div
