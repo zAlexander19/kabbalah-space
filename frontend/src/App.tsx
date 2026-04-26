@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import AdminPanel from "./AdminPanel";
 import CalendarModule from "./calendar";
@@ -25,8 +25,27 @@ const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   admin:      { title: 'Panel de Administrador', subtitle: 'Gestión de preguntas guía por sefirá.' },
 };
 
+const INTRO_FLAG = 'espejo-intro-done';
+
+function shouldPlayIntro(): boolean {
+  if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') return false;
+  return window.sessionStorage.getItem(INTRO_FLAG) !== '1';
+}
+
+const ease = [0.16, 1, 0.3, 1] as const;
+
 export default function App() {
   const [activeView, setActiveView] = useState<ViewKey>('espejo');
+  const [pageRevealed, setPageRevealed] = useState<boolean>(() => !shouldPlayIntro());
+  const [introPlaying, setIntroPlaying] = useState<boolean>(() => shouldPlayIntro());
+
+  const handleIntroComplete = useCallback(() => {
+    setIntroPlaying(false);
+    setPageRevealed(true);
+    if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+      window.sessionStorage.setItem(INTRO_FLAG, '1');
+    }
+  }, []);
 
   const glassEffect = "bg-stone-950/40 backdrop-blur-2xl border border-stone-800/60 shadow-[0_8px_32px_rgba(0,0,0,0.4)]";
   const glowText = "text-amber-100/90 text-shadow-sm";
@@ -35,13 +54,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070709] text-stone-300 font-body flex relative overflow-hidden">
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      {/* Background cosmic gradients — also fade in with the page */}
+      <motion.div
+        className="fixed inset-0 z-0 pointer-events-none"
+        initial={{ opacity: pageRevealed ? 1 : 0 }}
+        animate={{ opacity: pageRevealed ? 1 : 0 }}
+        transition={{ duration: 0.8, delay: pageRevealed ? 0.1 : 0, ease }}
+      >
         <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-amber-900/10 rounded-full blur-[140px] mix-blend-screen opacity-50"></div>
         <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-[120px] mix-blend-screen opacity-50"></div>
         <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[1000px] h-[1000px] bg-emerald-900/5 rounded-full blur-[150px] mix-blend-screen"></div>
-      </div>
+      </motion.div>
 
-      <aside className={`fixed left-0 top-0 h-full w-72 border-r border-stone-800/40 z-40 hidden lg:flex flex-col p-6 transition-all duration-500 ${glassEffect}`}>
+      <motion.aside
+        initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -40 }}
+        animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -40 }}
+        transition={{ duration: 0.7, delay: pageRevealed ? 0.25 : 0, ease }}
+        className={`fixed left-0 top-0 h-full w-72 border-r border-stone-800/40 z-40 hidden lg:flex flex-col p-6 ${glassEffect}`}
+      >
         <div className="mt-6 mb-12 px-2">
           <div className="flex items-center gap-3 mb-10">
             <div className="w-8 h-8 rounded-md bg-stone-900/80 border border-stone-700/50 flex items-center justify-center shrink-0 shadow-inner">
@@ -80,14 +110,26 @@ export default function App() {
             ))}
           </nav>
         </div>
-      </aside>
+      </motion.aside>
 
       <main className="lg:ml-72 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
-        <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-10 px-4 py-6 text-center">
-          <h2 className={`font-serif text-4xl md:text-5xl font-light tracking-tight mb-4 ${glowText}`}>{current.title}</h2>
-          <p className="text-stone-400 text-sm md:text-base font-light tracking-wide max-w-2xl mx-auto leading-relaxed">
+        <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-10 px-4 py-6 text-center overflow-hidden">
+          <motion.h2
+            initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -80 }}
+            animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -80 }}
+            transition={{ duration: 0.85, delay: pageRevealed ? 0.45 : 0, ease }}
+            className={`font-serif text-4xl md:text-5xl font-light tracking-tight mb-4 ${glowText}`}
+          >
+            {current.title}
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -60 }}
+            animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -60 }}
+            transition={{ duration: 0.85, delay: pageRevealed ? 0.6 : 0, ease }}
+            className="text-stone-400 text-sm md:text-base font-light tracking-wide max-w-2xl mx-auto leading-relaxed"
+          >
             {current.subtitle}
-          </p>
+          </motion.p>
         </header>
 
         <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative">
@@ -97,11 +139,19 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.18, ease }}
             >
               {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
               {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
-              {activeView === 'espejo' && <EspejoModule sefirot={SEFIROT} glassEffect={glassEffect} />}
+              {activeView === 'espejo' && (
+                <EspejoModule
+                  sefirot={SEFIROT}
+                  glassEffect={glassEffect}
+                  introPlaying={introPlaying}
+                  pageRevealed={pageRevealed}
+                  onIntroComplete={handleIntroComplete}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </section>
