@@ -21,11 +21,14 @@ function cardPosition(node: SefiraNode): React.CSSProperties {
   const xPct = (node.x / 400) * 100;
   const yPct = (node.y / 800) * 100;
   if (node.x < 160) {
-    return { left: `calc(${xPct}% + 56px)`, top: `${yPct}%`, transform: 'translateY(-50%)' };
-  }
-  if (node.x > 240) {
+    // sefirá a la izquierda → card a la izquierda del orbe (afuera del árbol)
     return { right: `calc(${100 - xPct}% + 56px)`, top: `${yPct}%`, transform: 'translateY(-50%)' };
   }
+  if (node.x > 240) {
+    // sefirá a la derecha → card a la derecha del orbe (afuera del árbol)
+    return { left: `calc(${xPct}% + 56px)`, top: `${yPct}%`, transform: 'translateY(-50%)' };
+  }
+  // sefirá centrada → arriba o abajo según altura
   if (node.y < 400) {
     return { left: `${xPct}%`, top: `calc(${yPct}% + 56px)`, transform: 'translateX(-50%)' };
   }
@@ -58,6 +61,7 @@ export default function RotatingReflectionPreview({ sefirot, summary, active, on
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onClick={(e) => e.stopPropagation()}
         className="absolute z-30 bg-[#0e1014]/85 backdrop-blur-md rounded-lg shadow-md px-3 py-2.5 w-[220px]"
         style={{
           ...pos,
