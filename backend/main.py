@@ -274,6 +274,34 @@ class SefiraResumen(BaseModel):
     ultima_actividad: Optional[datetime] = None
     intensidad: float = 0.0
 
+
+class MesBucket(BaseModel):
+    mes: str
+    score_usuario: Optional[float] = None
+    score_ia: Optional[float] = None
+    reflexiones: int = 0
+    respuestas: int = 0
+
+
+class SefiraEvolucion(BaseModel):
+    sefira_id: str
+    sefira_nombre: str
+    meses: list[MesBucket]
+
+
+def _months_back(today: datetime, count: int) -> list[str]:
+    """Return YYYY-MM keys for the last `count` months, oldest first."""
+    keys: list[str] = []
+    year = today.year
+    month = today.month
+    for _ in range(count):
+        keys.append(f"{year:04d}-{month:02d}")
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+    return list(reversed(keys))
+
 @app.get("/respuestas/{sefira_id}", response_model=list[PreguntaConEstado])
 async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_db)):
     preguntas = (await db.execute(
@@ -384,6 +412,63 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
             ultima_reflexion_score=ultima.puntuacion_ia if ultima else None,
             ultima_actividad=ultima.fecha_registro if ultima else None,
             intensidad=intensidad,
+        ))
+    return out
+
+
+@app.get("/espejo/evolucion", response_model=list[SefiraEvolucion])
+async def espejo_evolucion(
+    meses: int = Query(12, ge=1, le=120),
+    db: AsyncSession = Depends(get_db),
+):
+    sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
+    today = datetime.utcnow()
+    mes_keys = _months_back(today, meses)
+
+    out: list[SefiraEvolucion] = []
+    for s in sefirot:
+        regs = (await db.execute(
+            select(RegistroDiario).where(RegistroDiario.sefira_id == s.id)
+        )).scalars().all()
+
+        respuestas_rows = (await db.execute(
+            select(RespuestaPregunta.fecha_registro)
+            .join(PreguntaSefira, PreguntaSefira.id == RespuestaPregunta.pregunta_id)
+            .where(PreguntaSefira.sefira_id == s.id)
+        )).scalars().all()
+
+        regs_por_mes: dict[str, list] = {}
+        for r in regs:
+            fecha = r.fecha_registro
+            if fecha.tzinfo is not None:
+                fecha = fecha.astimezone(timezone.utc).replace(tzinfo=None)
+            key = f"{fecha.year:04d}-{fecha.month:02d}"
+            regs_por_mes.setdefault(key, []).append(r)
+
+        respuestas_por_mes: dict[str, int] = {}
+        for fecha in respuestas_rows:
+            if fecha.tzinfo is not None:
+                fecha = fecha.astimezone(timezone.utc).replace(tzinfo=None)
+            key = f"{fecha.year:04d}-{fecha.month:02d}"
+            respuestas_por_mes[key] = respuestas_por_mes.get(key, 0) + 1
+
+        buckets: list[MesBucket] = []
+        for mes_key in mes_keys:
+            month_regs = regs_por_mes.get(mes_key, [])
+            usuarios = [r.puntuacion_usuario for r in month_regs if r.puntuacion_usuario is not None]
+            ias = [r.puntuacion_ia for r in month_regs if r.puntuacion_ia is not None]
+            buckets.append(MesBucket(
+                mes=mes_key,
+                score_usuario=round(sum(usuarios) / len(usuarios), 1) if usuarios else None,
+                score_ia=round(sum(ias) / len(ias), 1) if ias else None,
+                reflexiones=len(month_regs),
+                respuestas=respuestas_por_mes.get(mes_key, 0),
+            ))
+
+        out.append(SefiraEvolucion(
+            sefira_id=s.id,
+            sefira_nombre=s.nombre,
+            meses=buckets,
         ))
     return out
 
