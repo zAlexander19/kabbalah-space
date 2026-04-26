@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SefiraNode, Activity } from '../types';
 import { SEFIRA_COLORS, API_BASE } from '../tokens';
+import RecurrencePicker from './RecurrencePicker';
+
+type Scope = 'one' | 'series';
 
 type Props = {
   sefirot: SefiraNode[];
   editing: Activity | null;
   initialDate?: Date;
   initialSlot?: { start: Date; end: Date } | null;
+  scope?: Scope;
   onSaved: () => void;
   onCancel: () => void;
   onDeleted?: () => void;
+  onRequestDeleteScope?: () => void;
 };
 
 function ymd(d: Date): string {
@@ -24,13 +29,17 @@ function hm(d: Date): string {
   return `${hh}:${min}`;
 }
 
-export default function ActivityForm({ sefirot, editing, initialDate, initialSlot, onSaved, onCancel, onDeleted }: Props) {
+export default function ActivityForm({
+  sefirot, editing, initialDate, initialSlot, scope = 'one',
+  onSaved, onCancel, onDeleted, onRequestDeleteScope,
+}: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => ymd(initialDate ?? new Date()));
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [selected, setSelected] = useState<string[]>([]);
+  const [rrule, setRrule] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [shake, setShake] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -47,6 +56,7 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
       setStartTime(hm(s));
       setEndTime(hm(e));
       setSelected(editing.sefirot.map(x => x.id));
+      setRrule(editing.rrule ?? null);
     } else if (initialSlot) {
       setDate(ymd(initialSlot.start));
       setStartTime(hm(initialSlot.start));
@@ -54,6 +64,7 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
       setTitle('');
       setDescription('');
       setSelected([]);
+      setRrule(null);
     } else if (initialDate) {
       setDate(ymd(initialDate));
     }
@@ -77,8 +88,17 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
     try {
       const startIso = new Date(`${date}T${startTime}:00`).toISOString();
       const endIso   = new Date(`${date}T${endTime}:00`).toISOString();
-      const payload = { titulo: title, descripcion: description, inicio: startIso, fin: endIso, sefirot_ids: selected };
-      const url = editing ? `${API_BASE}/actividades/${editing.id}` : `${API_BASE}/actividades`;
+      const payload = {
+        titulo: title,
+        descripcion: description,
+        inicio: startIso,
+        fin: endIso,
+        sefirot_ids: selected,
+        rrule: rrule || undefined,
+      };
+      const url = editing
+        ? `${API_BASE}/actividades/${editing.id}?scope=${scope}`
+        : `${API_BASE}/actividades`;
       const method = editing ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) {
@@ -94,6 +114,10 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
 
   function handleDeleteClick() {
     if (!editing) return;
+    if (editing.serie_id && onRequestDeleteScope) {
+      onRequestDeleteScope();
+      return;
+    }
     if (!confirmDelete) {
       setConfirmDelete(true);
       if (confirmTimer.current) window.clearTimeout(confirmTimer.current);
@@ -105,7 +129,7 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
 
   async function doDelete() {
     if (!editing) return;
-    const res = await fetch(`${API_BASE}/actividades/${editing.id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/actividades/${editing.id}?scope=${scope}`, { method: 'DELETE' });
     if (!res.ok) {
       setError('No se pudo eliminar');
       return;
@@ -114,6 +138,12 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
   }
 
   const inputBase = "w-full bg-transparent border-0 border-b border-stone-700/50 focus:border-b-2 focus:border-amber-300/70 focus:outline-none text-sm text-stone-100 px-0 py-2 transition-colors";
+
+  const startDateForPicker = (() => {
+    const [yy, mm, dd] = date.split('-').map(n => parseInt(n, 10));
+    if (!yy || !mm || !dd) return new Date();
+    return new Date(yy, mm - 1, dd);
+  })();
 
   return (
     <form onSubmit={handleSubmit} className="flex-1 overflow-auto px-6 py-6 space-y-6">
@@ -135,6 +165,13 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
           </div>
         </div>
       </div>
+
+      <RecurrencePicker
+        value={rrule}
+        startDate={startDateForPicker}
+        disabled={!!editing && scope === 'one' && !!editing.serie_id}
+        onChange={setRrule}
+      />
 
       <div>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Descripción</label>
@@ -197,7 +234,7 @@ export default function ActivityForm({ sefirot, editing, initialDate, initialSlo
                 : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
             }`}
           >
-            {confirmDelete ? 'Click otra vez para confirmar' : 'Borrar actividad'}
+            {editing.serie_id ? 'Borrar actividad…' : (confirmDelete ? 'Click otra vez para confirmar' : 'Borrar actividad')}
           </button>
         )}
       </div>

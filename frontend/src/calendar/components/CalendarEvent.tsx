@@ -15,6 +15,11 @@ type Props = {
 export default function CalendarEvent({ activity, variant, style, onClick }: Props) {
   const color = SEFIRA_COLORS[activity.sefirot[0]?.id] ?? '#eab308';
   const sefirotLabel = activity.sefirot.map(s => s.nombre).join(', ');
+  const isRecurring = !!activity.serie_id;
+
+  const recurringBorder: React.CSSProperties = isRecurring
+    ? { boxShadow: `inset 4px 0 0 -2px ${color}99` }
+    : {};
 
   if (variant === 'week') {
     return (
@@ -31,6 +36,7 @@ export default function CalendarEvent({ activity, variant, style, onClick }: Pro
           ...style,
           background: `${color}33`,
           borderLeft: `2px solid ${color}`,
+          ...recurringBorder,
         }}
       >
         <div className="text-[11px] font-semibold text-stone-100 truncate">{activity.titulo}</div>
@@ -49,7 +55,7 @@ export default function CalendarEvent({ activity, variant, style, onClick }: Pro
       whileHover={{ x: 1 }}
       onClick={(e) => { e.stopPropagation(); onClick?.(activity); }}
       className="rounded-sm px-1.5 py-0.5 cursor-pointer overflow-hidden truncate text-[10px] text-stone-100"
-      style={{ background: `${color}33`, borderLeft: `2px solid ${color}` }}
+      style={{ background: `${color}33`, borderLeft: `2px solid ${color}`, ...recurringBorder }}
     >
       {activity.titulo}
     </motion.div>

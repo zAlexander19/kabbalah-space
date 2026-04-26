@@ -5,17 +5,23 @@ import type { SefiraNode, Activity } from '../types';
 import { panelSpring, panelExit } from '../motion/transitions';
 import ActivityForm from './ActivityForm';
 
+type Scope = 'one' | 'series';
+
 type Props = {
   open: boolean;
   sefirot: SefiraNode[];
   editing: Activity | null;
   initialSlot: { start: Date; end: Date } | null;
+  scope: Scope;
   onClose: () => void;
   onSaved: () => void;
   onDeleted: () => void;
+  onRequestDeleteScope?: () => void;
 };
 
-export default function ActivityPanel({ open, sefirot, editing, initialSlot, onClose, onSaved, onDeleted }: Props) {
+export default function ActivityPanel({
+  open, sefirot, editing, initialSlot, scope, onClose, onSaved, onDeleted, onRequestDeleteScope,
+}: Props) {
   const [mountForm, setMountForm] = useState(false);
 
   useEffect(() => {
@@ -33,6 +39,10 @@ export default function ActivityPanel({ open, sefirot, editing, initialSlot, onC
       if (f2) cancelAnimationFrame(f2);
     };
   }, [open]);
+
+  const headerTitle = editing
+    ? (scope === 'series' ? 'Editar toda la serie' : 'Editar actividad')
+    : 'Crear actividad';
 
   return (
     <AnimatePresence>
@@ -59,7 +69,7 @@ export default function ActivityPanel({ open, sefirot, editing, initialSlot, onC
             <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(233,195,73,0.15)' }}>
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400">Gestor de actividad</p>
-                <h4 className="font-serif text-2xl mt-1 text-amber-100/90">{editing ? 'Editar actividad' : 'Crear actividad'}</h4>
+                <h4 className="font-serif text-2xl mt-1 text-amber-100/90">{headerTitle}</h4>
               </div>
               <motion.button
                 type="button"
@@ -78,9 +88,11 @@ export default function ActivityPanel({ open, sefirot, editing, initialSlot, onC
                 sefirot={sefirot}
                 editing={editing}
                 initialSlot={initialSlot}
+                scope={scope}
                 onSaved={onSaved}
                 onCancel={onClose}
                 onDeleted={onDeleted}
+                onRequestDeleteScope={onRequestDeleteScope}
               />
             ) : (
               <div className="flex-1" />
