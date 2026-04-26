@@ -1,6 +1,4 @@
-import { useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import type { SefiraResumen } from '../types';
 import { CONNECTIONS, SEFIRA_COLORS, ink } from '../../shared/tokens';
 
 export type SefiraNode = {
@@ -13,22 +11,12 @@ export type SefiraNode = {
 
 type Props = {
   sefirot: SefiraNode[];
-  summary: SefiraResumen[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 };
 
-export default function SefirotInteractiveTree({ sefirot, summary, selectedId, onSelect }: Props) {
+export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }: Props) {
   const reduced = useReducedMotion();
-  const summaryMap = useMemo(() => {
-    const m: Record<string, SefiraResumen> = {};
-    for (const s of summary) m[s.sefira_id] = s;
-    return m;
-  }, [summary]);
-
-  function intensityOf(id: string): number {
-    return summaryMap[id]?.intensidad ?? 0;
-  }
 
   return (
     <div
@@ -99,26 +87,21 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
         `}</style>
 
         {sefirot.map(node => {
-          const intensity = intensityOf(node.id);
-          const haloR = 38 + intensity * 28;
           const color = SEFIRA_COLORS[node.id] ?? '#a3a3a3';
           return (
             <circle
               key={`halo-${node.id}`}
-              cx={node.x} cy={node.y} r={haloR}
+              cx={node.x} cy={node.y} r={42}
               fill={color}
               filter="url(#treeNodeGlow)"
-              opacity={0.18 + intensity * 0.32}
-              style={{ transition: 'opacity 600ms cubic-bezier(0.16,1,0.3,1), r 600ms cubic-bezier(0.16,1,0.3,1)' }}
+              opacity={0.22}
             />
           );
         })}
       </svg>
 
       {sefirot.map(node => {
-        const intensity = intensityOf(node.id);
         const isSelected = selectedId === node.id;
-        const orbOpacity = 0.4 + intensity * 0.6;
         const color = SEFIRA_COLORS[node.id] ?? '#a3a3a3';
         return (
           <div
@@ -128,12 +111,11 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
             style={{
               left: node.x,
               top: node.y,
-              opacity: orbOpacity,
               background: `radial-gradient(circle at 30% 30%, ${color}ff 0%, ${color}aa 60%, ${color}55 100%)`,
               border: '2px solid rgba(255,255,255,0.2)',
-              boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 ${10 + intensity * 30}px ${color}88`,
+              boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 18px ${color}66`,
               transform: isSelected ? 'scale(1.15)' : 'scale(1)',
-              transition: 'opacity 600ms, box-shadow 600ms, transform 300ms cubic-bezier(0.22,1,0.36,1)',
+              transition: 'box-shadow 600ms, transform 300ms cubic-bezier(0.22,1,0.36,1)',
             }}
             title={node.description}
           >

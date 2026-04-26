@@ -30,7 +30,6 @@ export default function EspejoModule({ sefirot, glassEffect }: Props) {
       <div className="relative shrink-0">
         <SefirotInteractiveTree
           sefirot={sefirot}
-          summary={summary}
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
