@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { CalendarView } from '../types';
-import { ink } from '../tokens';
+import { ink } from '../../shared/tokens';
 
 const VIEW_OPTIONS: { key: CalendarView; label: string }[] = [
   { key: 'semana', label: 'Semana' },

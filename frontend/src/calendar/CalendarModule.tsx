@@ -3,7 +3,7 @@ import { startOfMonth } from 'date-fns';
 import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
-import { API_BASE } from './tokens';
+import { API_BASE } from '../shared/tokens';
 import CalendarToolbar from './components/CalendarToolbar';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';

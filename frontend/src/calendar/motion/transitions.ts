@@ -1,5 +1,5 @@
 import type { Variants, Transition } from 'framer-motion';
-import { motion as M } from '../tokens';
+import { motion as M } from '../../shared/tokens';
 
 export const fadeUp: Variants = {
   initial: { opacity: 0, y: 8 },

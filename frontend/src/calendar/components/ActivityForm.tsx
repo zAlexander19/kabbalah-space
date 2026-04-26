@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SefiraNode, Activity } from '../types';
-import { SEFIRA_COLORS, API_BASE } from '../tokens';
+import { SEFIRA_COLORS, API_BASE } from '../../shared/tokens';
 import RecurrencePicker from './RecurrencePicker';
 
 type Scope = 'one' | 'series';

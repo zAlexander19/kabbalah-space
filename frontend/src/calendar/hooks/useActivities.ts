@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { API_BASE } from '../tokens';
+import { API_BASE } from '../../shared/tokens';
 import type { Activity, VolumeItem, DateRange } from '../types';
 
 function dateToYmd(d: Date): string {
