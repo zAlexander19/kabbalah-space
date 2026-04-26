@@ -6,16 +6,16 @@ import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
 
 const SEFIROT = [
-  { id: "keter",   name: "Kéter",   x: 200, y: 50,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
-  { id: "jojma",   name: "Jojmá",   x: 320, y: 150, colorClass: "", textClass: "", description: "La Sabiduría. El destello inicial de inspiración." },
-  { id: "bina",    name: "Biná",    x: 80,  y: 150, colorClass: "", textClass: "", description: "El Entendimiento. La vasija que da estructura." },
-  { id: "jesed",   name: "Jésed",   x: 320, y: 280, colorClass: "", textClass: "", description: "La Misericordia. Generosidad y amor incondicional." },
-  { id: "gevura",  name: "Gueburá", x: 80,  y: 280, colorClass: "", textClass: "", description: "La Severidad. Rigor y juicio." },
-  { id: "tiferet", name: "Tiféret", x: 200, y: 380, colorClass: "", textClass: "", description: "La Belleza. Equilibrio entre Misericordia y Severidad." },
-  { id: "netzaj",  name: "Nétsaj",  x: 320, y: 500, colorClass: "", textClass: "", description: "La Victoria. Perseverancia." },
-  { id: "hod",     name: "Hod",     x: 80,  y: 500, colorClass: "", textClass: "", description: "El Esplendor. Intelectualidad práctica." },
-  { id: "yesod",   name: "Yesod",   x: 200, y: 600, colorClass: "", textClass: "", description: "El Fundamento. La imaginación y el motor psíquico." },
-  { id: "maljut",  name: "Maljut",  x: 200, y: 720, colorClass: "", textClass: "", description: "El Reino. La acción física y el mundo material." },
+  { id: "keter",   name: "Kéter",   x: 200, y: 20,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
+  { id: "jojma",   name: "Jojmá",   x: 320, y: 120, colorClass: "", textClass: "", description: "La Sabiduría. El destello inicial de inspiración." },
+  { id: "bina",    name: "Biná",    x: 80,  y: 120, colorClass: "", textClass: "", description: "El Entendimiento. La vasija que da estructura." },
+  { id: "jesed",   name: "Jésed",   x: 320, y: 250, colorClass: "", textClass: "", description: "La Misericordia. Generosidad y amor incondicional." },
+  { id: "gevura",  name: "Gueburá", x: 80,  y: 250, colorClass: "", textClass: "", description: "La Severidad. Rigor y juicio." },
+  { id: "tiferet", name: "Tiféret", x: 200, y: 350, colorClass: "", textClass: "", description: "La Belleza. Equilibrio entre Misericordia y Severidad." },
+  { id: "netzaj",  name: "Nétsaj",  x: 320, y: 470, colorClass: "", textClass: "", description: "La Victoria. Perseverancia." },
+  { id: "hod",     name: "Hod",     x: 80,  y: 470, colorClass: "", textClass: "", description: "El Esplendor. Intelectualidad práctica." },
+  { id: "yesod",   name: "Yesod",   x: 200, y: 570, colorClass: "", textClass: "", description: "El Fundamento. La imaginación y el motor psíquico." },
+  { id: "maljut",  name: "Maljut",  x: 200, y: 690, colorClass: "", textClass: "", description: "El Reino. La acción física y el mundo material." },
 ];
 
 type ViewKey = 'espejo' | 'admin' | 'calendario';
