@@ -50,7 +50,7 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
             <g key={`${c.n1}-${c.n2}`} style={{ transition: 'opacity 0.6s cubic-bezier(0.16,1,0.3,1)' }} opacity={dimmed ? 0.12 : 1}>
               <line
                 x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="rgba(253,230,138,0.18)"
+                stroke="rgba(253,230,138,0.42)"
                 strokeWidth={2.5}
                 strokeLinecap="round"
               />
@@ -89,13 +89,20 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
         {sefirot.map(node => {
           const color = SEFIRA_COLORS[node.id] ?? '#a3a3a3';
           return (
-            <circle
-              key={`halo-${node.id}`}
-              cx={node.x} cy={node.y} r={42}
-              fill={color}
-              filter="url(#treeNodeGlow)"
-              opacity={0.22}
-            />
+            <g key={`halo-${node.id}`}>
+              <circle
+                cx={node.x} cy={node.y} r={48}
+                fill={color}
+                filter="url(#treeNodeGlow)"
+                opacity={0.32}
+              />
+              <circle
+                cx={node.x} cy={node.y} r={36}
+                fill={color}
+                filter="url(#treeNodeGlow)"
+                opacity={0.45}
+              />
+            </g>
           );
         })}
       </svg>
@@ -113,7 +120,7 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
               top: node.y,
               background: `radial-gradient(circle at 30% 30%, ${color}ff 0%, ${color}aa 60%, ${color}55 100%)`,
               border: '2px solid rgba(255,255,255,0.2)',
-              boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 18px ${color}66`,
+              boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 24px ${color}aa, 0 0 48px ${color}55`,
               transform: isSelected ? 'scale(1.15)' : 'scale(1)',
               transition: 'box-shadow 600ms, transform 300ms cubic-bezier(0.22,1,0.36,1)',
             }}
