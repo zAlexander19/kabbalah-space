@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEspejoSummary } from './hooks/useEspejoSummary';
 import { useSefiraData } from './hooks/useSefiraData';
@@ -29,6 +29,20 @@ export default function EspejoModule({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { preguntas, registros, reload: reloadSefira } = useSefiraData(selectedId);
 
+  // Defer mount of the rotating card by ~700ms after the intro completes.
+  // This prevents a stutter at the moment the intro starts unmounting:
+  // mounting RotatingReflectionPreview (with its hooks + motion components)
+  // in the same React render as the intro's exit animation produces a frame drop.
+  const [showRotatingCard, setShowRotatingCard] = useState(!introPlaying);
+  useEffect(() => {
+    if (introPlaying) {
+      setShowRotatingCard(false);
+      return;
+    }
+    const t = window.setTimeout(() => setShowRotatingCard(true), 700);
+    return () => window.clearTimeout(t);
+  }, [introPlaying]);
+
   const selectedNode = useMemo(() => sefirot.find(s => s.id === selectedId) ?? null, [sefirot, selectedId]);
   const selectedResumen = useMemo(() => summary.find(s => s.sefira_id === selectedId) ?? null, [summary, selectedId]);
 
@@ -51,7 +65,7 @@ export default function EspejoModule({
           />
         </motion.div>
 
-        {!introPlaying && (
+        {showRotatingCard && (
           <RotatingReflectionPreview
             sefirot={sefirot}
             summary={summary}
