@@ -11,29 +11,31 @@ type Props = {
 const CENTER_X = 200;
 const CENTER_Y = 380;
 
-// Timing (en segundos)
+// Timing (segundos)
 const SINGULARITY_START = 0.0;
 const BANG_DELAY = 0.5;
-const PARTICLE_BASE_DELAY = 0.6;
-const PARTICLE_DURATION = 0.75;
-const ORB_SETTLE_DURATION = 0.5;
-const TIFERET_PHASE_START = 1.85;
+const PARTICLE_DELAY = 0.65;
+const PARTICLE_DURATION = 0.18; // jump rápido — apenas perceptible como movimiento
+const ORB_DELAY = PARTICLE_DELAY + PARTICLE_DURATION - 0.03;
+const ORB_DURATION = 0.5;
+
+const TIFERET_PHASE_START = ORB_DELAY + ORB_DURATION + 0.05;
 const TIFERET_STAGGER = 0.10;
 const TIFERET_DRAW = 0.35;
+
 const OTHER_STAGGER = 0.05;
 const OTHER_DRAW = 0.30;
+
+const HIGHLIGHT_STAGGER = 0.07;
+const HIGHLIGHT_DURATION = 0.45;
+
 const FADE_OUT = 0.4;
 
-const MAX_DIST = 400;
-
-// Orden Sefirótico para las conexiones de Tiferet
+// Orden Sefirótico para las conexiones que parten de Tiferet
 const TIFERET_OUT_ORDER = ['keter', 'jojma', 'bina', 'jesed', 'gevura', 'netzaj', 'hod', 'yesod'];
 
-function distFromCenter(node: SefiraNode): number {
-  const dx = node.x - CENTER_X;
-  const dy = node.y - CENTER_Y;
-  return Math.sqrt(dx * dx + dy * dy);
-}
+// Orden Sefirótico completo para el highlight final (Keter → Maljut)
+const SEFIROTIC_ORDER = ['keter', 'jojma', 'bina', 'jesed', 'gevura', 'tiferet', 'netzaj', 'hod', 'yesod', 'maljut'];
 
 function isTiferetEdge(c: { n1: string; n2: string }): string | null {
   if (c.n1 === 'tiferet') return c.n2;
@@ -44,7 +46,7 @@ function isTiferetEdge(c: { n1: string; n2: string }): string | null {
 const TIFERET_PHASE_END = TIFERET_PHASE_START + (TIFERET_OUT_ORDER.length - 1) * TIFERET_STAGGER + TIFERET_DRAW;
 
 export default function EspejoIntro({ sefirot, onComplete }: Props) {
-  // Pre-compute delay + duration por conexión
+  // Pre-compute delay/duration por conexión
   const connectionAnims = useMemo(() => {
     const map = new Map<string, { delay: number; duration: number }>();
     let otherIdx = 0;
@@ -64,9 +66,14 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
     return { map, otherCount: otherIdx };
   }, []);
 
-  const totalDurationMs = useMemo(() => {
+  const { highlightStart, totalDurationMs } = useMemo(() => {
     const otherEnd = TIFERET_PHASE_END + (connectionAnims.otherCount - 1) * OTHER_STAGGER + OTHER_DRAW;
-    return Math.round((otherEnd + FADE_OUT) * 1000);
+    const hStart = otherEnd + 0.15;
+    const hEnd = hStart + (SEFIROTIC_ORDER.length - 1) * HIGHLIGHT_STAGGER + HIGHLIGHT_DURATION;
+    return {
+      highlightStart: hStart,
+      totalDurationMs: Math.round((hEnd + FADE_OUT) * 1000),
+    };
   }, [connectionAnims.otherCount]);
 
   useEffect(() => {
@@ -136,69 +143,55 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
           style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
         />
 
-        {/* Fase 3 — 10 partículas viajan del centro a la posición de cada sefirá */}
-        {/* Cuando llega → halo + orbe se materializan */}
-        {sefirot.map(node => {
-          const dist = distFromCenter(node);
-          const distRatio = dist / MAX_DIST;
-          // Ligera variación de delay según distancia (cercanas salen un pelín antes)
-          const particleDelay = PARTICLE_BASE_DELAY + distRatio * 0.15;
-          // Las cercanas viajan más rápido para llegar todas en una ventana similar
-          const particleDuration = PARTICLE_DURATION * (0.7 + distRatio * 0.3);
-          const orbDelay = particleDelay + particleDuration - 0.05;
-          return (
-            <g key={`intro-${node.id}`}>
-              {/* Partícula viajera */}
-              <motion.circle
-                r={2.8}
-                fill="#fef9c3"
-                filter="url(#introGlow)"
-                initial={{ cx: CENTER_X, cy: CENTER_Y, opacity: 0 }}
-                animate={{
-                  cx: node.x,
-                  cy: node.y,
-                  opacity: [0, 1, 1, 0],
-                }}
-                transition={{
-                  cx: { duration: particleDuration, delay: particleDelay, ease: [0.16, 1, 0.3, 1] },
-                  cy: { duration: particleDuration, delay: particleDelay, ease: [0.16, 1, 0.3, 1] },
-                  opacity: { duration: particleDuration, delay: particleDelay, times: [0, 0.08, 0.85, 1] },
-                }}
-              />
+        {/* Fase 3 — 10 partículas saltan rápido del centro a su posición */}
+        {sefirot.map(node => (
+          <motion.circle
+            key={`particle-${node.id}`}
+            r={2.5}
+            fill="#fef9c3"
+            filter="url(#introGlow)"
+            initial={{ cx: CENTER_X, cy: CENTER_Y, opacity: 0 }}
+            animate={{ cx: node.x, cy: node.y, opacity: [0, 1, 1, 0] }}
+            transition={{
+              cx: { duration: PARTICLE_DURATION, delay: PARTICLE_DELAY, ease: [0.16, 1, 0.3, 1] },
+              cy: { duration: PARTICLE_DURATION, delay: PARTICLE_DELAY, ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: PARTICLE_DURATION, delay: PARTICLE_DELAY, times: [0, 0.15, 0.75, 1] },
+            }}
+          />
+        ))}
 
-              {/* Halo del orbe (aparece cuando llega la partícula) */}
-              <motion.circle
-                cx={node.x} cy={node.y} r={42}
-                fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
-                filter="url(#introGlow)"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: [0, 0.45, 0.22], scale: [0, 1.25, 1] }}
-                transition={{
-                  opacity: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.4, 1] },
-                  scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
-                }}
-                style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
-              />
+        {/* Fase 4 — Orbes se materializan en su posición exacta */}
+        {sefirot.map(node => (
+          <g key={`orb-${node.id}`}>
+            <motion.circle
+              cx={node.x} cy={node.y} r={42}
+              fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
+              filter="url(#introGlow)"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 0.45, 0.22], scale: [0, 1.25, 1] }}
+              transition={{
+                opacity: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.4, 1] },
+                scale: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
+              }}
+              style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
+            />
+            <motion.circle
+              cx={node.x} cy={node.y} r={32}
+              fill={`url(#introOrb-${node.id})`}
+              stroke="rgba(255,255,255,0.2)"
+              strokeWidth={2}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.18, 1], opacity: 1 }}
+              transition={{
+                scale: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.25, delay: ORB_DELAY },
+              }}
+              style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
+            />
+          </g>
+        ))}
 
-              {/* Orbe principal */}
-              <motion.circle
-                cx={node.x} cy={node.y} r={32}
-                fill={`url(#introOrb-${node.id})`}
-                stroke="rgba(255,255,255,0.2)"
-                strokeWidth={2}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [0, 1.18, 1], opacity: 1 }}
-                transition={{
-                  scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
-                  opacity: { duration: 0.3, delay: orbDelay },
-                }}
-                style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
-              />
-            </g>
-          );
-        })}
-
-        {/* Fase 4 — Conexiones: Tiferet primero (orden Sefirótico), después el resto */}
+        {/* Fase 5 — Conexiones: Tiferet primero (orden Sefirótico), luego el resto */}
         {CONNECTIONS.map((c, idx) => {
           const a = sefirot.find(s => s.id === c.n1);
           const b = sefirot.find(s => s.id === c.n2);
@@ -219,6 +212,31 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
                 pathLength: { duration: anim.duration, delay: anim.delay, ease: [0.16, 1, 0.3, 1] },
                 opacity: { duration: 0.25, delay: anim.delay },
               }}
+            />
+          );
+        })}
+
+        {/* Fase 6 — Highlight: cada sefirá pulsa en orden Sefirótico sobre las líneas */}
+        {SEFIROTIC_ORDER.map((sefiraId, idx) => {
+          const node = sefirot.find(s => s.id === sefiraId);
+          if (!node) return null;
+          const color = SEFIRA_COLORS[sefiraId] ?? '#a3a3a3';
+          const delay = highlightStart + idx * HIGHLIGHT_STAGGER;
+          return (
+            <motion.circle
+              key={`highlight-${sefiraId}`}
+              cx={node.x} cy={node.y} r={36}
+              fill={color}
+              filter="url(#introGlow)"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: [0, 0.75, 0], scale: [0.85, 1.45, 1.45] }}
+              transition={{
+                duration: HIGHLIGHT_DURATION,
+                delay,
+                times: [0, 0.35, 1],
+                ease: [0.16, 1, 0.3, 1],
+              }}
+              style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
             />
           );
         })}
