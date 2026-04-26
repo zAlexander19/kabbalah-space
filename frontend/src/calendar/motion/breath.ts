@@ -1,5 +1,5 @@
 import type { Variants } from 'framer-motion';
-import { motion as M } from '../tokens';
+import { motion as M } from '../../shared/tokens';
 
 export const breathScale: Variants = {
   animate: {

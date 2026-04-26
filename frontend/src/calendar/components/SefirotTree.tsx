@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { SefiraNode, VolumeItem } from '../types';
-import { CONNECTIONS, SEFIRA_COLORS, ink } from '../tokens';
+import { CONNECTIONS, SEFIRA_COLORS, ink } from '../../shared/tokens';
 import { randomBreathDelay } from '../motion/breath';
 
 type Props = {

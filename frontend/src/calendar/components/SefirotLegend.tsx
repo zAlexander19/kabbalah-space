@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { VolumeItem } from '../types';
-import { SEFIRA_COLORS } from '../tokens';
+import { SEFIRA_COLORS } from '../../shared/tokens';
 import { staggerContainer, fadeUp } from '../motion/transitions';
 
 type Props = {

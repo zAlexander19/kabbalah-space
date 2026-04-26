@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { startOfMonth, startOfWeek, addDays, format, isSameMonth, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Activity } from '../types';
-import { ink } from '../tokens';
+import { ink } from '../../shared/tokens';
 import { staggerContainer, fadeUp } from '../motion/transitions';
 
 type Props = {

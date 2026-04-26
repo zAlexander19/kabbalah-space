@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { startOfWeek, addDays, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Activity } from '../types';
-import { ink } from '../tokens';
+import { ink } from '../../shared/tokens';
 import { staggerContainer } from '../motion/transitions';
 import CalendarEvent from '../components/CalendarEvent';
 

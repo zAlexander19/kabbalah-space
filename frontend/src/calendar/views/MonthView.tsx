@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { startOfMonth, startOfWeek, addDays, format, isSameMonth, isSameDay } from 'date-fns';
 import type { Activity } from '../types';
-import { ink } from '../tokens';
+import { ink } from '../../shared/tokens';
 import { staggerContainer } from '../motion/transitions';
 import CalendarEvent from '../components/CalendarEvent';
 

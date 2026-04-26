@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import type { Activity } from '../types';
-import { SEFIRA_COLORS } from '../tokens';
+import { SEFIRA_COLORS } from '../../shared/tokens';
 import { eventChip } from '../motion/transitions';
 
 type Variant = 'week' | 'month';
