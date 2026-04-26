@@ -15,7 +15,7 @@ type Props = {
   sefirot: SefiraNode[];
   summary: SefiraResumen[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
 };
 
 export default function SefirotInteractiveTree({ sefirot, summary, selectedId, onSelect }: Props) {
@@ -31,7 +31,10 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
   }
 
   return (
-    <div className="relative w-[400px] h-[800px] select-none">
+    <div
+      className="relative w-[400px] h-[800px] select-none"
+      onClick={() => onSelect(null)}
+    >
       <svg viewBox="0 0 400 800" className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="espejoLineShimmer" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -53,15 +56,15 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
           const b = sefirot.find(s => s.id === c.n2);
           if (!a || !b) return null;
           const dimmed = selectedId !== null && selectedId !== c.n1 && selectedId !== c.n2;
+          const midX = (a.x + b.x) / 2;
+          const midY = (a.y + b.y) / 2;
           return (
-            <g key={`${c.n1}-${c.n2}`}>
+            <g key={`${c.n1}-${c.n2}`} style={{ transition: 'opacity 0.6s cubic-bezier(0.16,1,0.3,1)' }} opacity={dimmed ? 0.12 : 1}>
               <line
                 x1={a.x} y1={a.y} x2={b.x} y2={b.y}
                 stroke="rgba(253,230,138,0.18)"
                 strokeWidth={2.5}
                 strokeLinecap="round"
-                opacity={dimmed ? 0.05 : 1}
-                style={{ transition: 'opacity 0.6s cubic-bezier(0.16,1,0.3,1)' }}
               />
               {!reduced && !dimmed && (
                 <line
@@ -75,6 +78,12 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
                     animationDelay: `${(idx * 0.4) % 6}s`,
                   }}
                 />
+              )}
+              {c.label && (
+                <>
+                  <rect x={midX - 11} y={midY - 11} width={22} height={22} fill="#070709" rx={11} opacity={0.85} />
+                  <text x={midX} y={midY} fill="#fef08a" textAnchor="middle" dominantBaseline="central" style={{ fontFamily: 'David, serif', fontSize: 14, opacity: 0.85 }}>{c.label}</text>
+                </>
               )}
             </g>
           );
@@ -114,7 +123,7 @@ export default function SefirotInteractiveTree({ sefirot, summary, selectedId, o
         return (
           <div
             key={node.id}
-            onClick={() => onSelect(node.id)}
+            onClick={(e) => { e.stopPropagation(); onSelect(node.id); }}
             className={`absolute w-16 h-16 sm:w-20 sm:h-20 -ml-8 -mt-8 sm:-ml-10 sm:-mt-10 rounded-full flex items-center justify-center cursor-pointer z-10 ${isSelected ? 'ring-4 ring-amber-300/70 ring-offset-4 ring-offset-[#070709]' : ''}`}
             style={{
               left: node.x,
