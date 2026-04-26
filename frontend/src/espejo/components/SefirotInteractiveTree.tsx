@@ -20,10 +20,10 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
 
   return (
     <div
-      className="relative w-[400px] h-[800px] select-none"
+      className="relative w-[400px] h-[880px] select-none"
       onClick={() => onSelect(null)}
     >
-      <svg viewBox="0 0 400 800" className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 -50 400 880" className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="espejoLineShimmer" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={ink.ember} stopOpacity="0" />
