@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from database import engine, Base, get_db
-from models import Sefira, PreguntaSefira, RespuestaPregunta, Actividad, ActividadSefira
+from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira
 
 app = FastAPI()
 
@@ -183,6 +183,7 @@ async def materialize_series(
 
 class EvaluationRequest(BaseModel):
     sefira: str
+    sefira_id: str
     text: str
     score: float
 
@@ -191,13 +192,24 @@ class EvaluationResponse(BaseModel):
     feedback: str
 
 @app.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate(request: EvaluationRequest):
+async def evaluate(request: EvaluationRequest, db: AsyncSession = Depends(get_db)):
     await asyncio.sleep(1)
-    analysis = min(10.0, max(1.0, request.score + random.choice([-1.5, -0.5, 0.0, 0.5, 1.5])))
-    return EvaluationResponse(
-        ai_score=analysis,
-        feedback=f"Análisis del Espejo Cognitivo para {request.sefira}:\nEl texto '[...]' denota una energia particular que requirio un ajuste aurico."
+    ai_score = min(10.0, max(1.0, request.score + random.choice([-1.5, -0.5, 0.0, 0.5, 1.5])))
+    feedback = (
+        f"Análisis del Espejo Cognitivo para {request.sefira}:\n"
+        f"El texto '[...]' denota una energia particular que requirio un ajuste aurico."
     )
+
+    registro = RegistroDiario(
+        sefira_id=request.sefira_id,
+        reflexion_texto=request.text,
+        puntuacion_usuario=int(round(request.score)),
+        puntuacion_ia=int(round(ai_score)),
+    )
+    db.add(registro)
+    await db.commit()
+
+    return EvaluationResponse(ai_score=ai_score, feedback=feedback)
 
 class PreguntaCreate(BaseModel):
     sefira_id: str
@@ -230,8 +242,172 @@ class RespuestaCreate(BaseModel):
     pregunta_id: str
     respuesta_texto: str
 
+
+class PreguntaConEstado(BaseModel):
+    pregunta_id: str
+    texto_pregunta: str
+    ultima_respuesta: Optional[str] = None
+    fecha_ultima: Optional[datetime] = None
+    siguiente_disponible: Optional[date] = None
+    bloqueada: bool = False
+    dias_restantes: Optional[int] = None
+
+
+class RegistroOut(BaseModel):
+    id: str
+    reflexion_texto: str
+    puntuacion_usuario: Optional[int] = None
+    puntuacion_ia: Optional[int] = None
+    fecha_registro: datetime
+
+
+class SefiraResumen(BaseModel):
+    sefira_id: str
+    sefira_nombre: str
+    preguntas_total: int
+    preguntas_frescas: int
+    preguntas_disponibles: int
+    score_ia_promedio: Optional[float] = None
+    score_ia_ultimos: list[int] = []
+    ultima_reflexion_texto: Optional[str] = None
+    ultima_reflexion_score: Optional[int] = None
+    ultima_actividad: Optional[datetime] = None
+    intensidad: float = 0.0
+
+@app.get("/respuestas/{sefira_id}", response_model=list[PreguntaConEstado])
+async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_db)):
+    preguntas = (await db.execute(
+        select(PreguntaSefira).where(PreguntaSefira.sefira_id == sefira_id)
+    )).scalars().all()
+
+    today = datetime.utcnow()
+    out: list[PreguntaConEstado] = []
+    for p in preguntas:
+        last = (await db.execute(
+            select(RespuestaPregunta)
+            .where(RespuestaPregunta.pregunta_id == p.id)
+            .order_by(RespuestaPregunta.fecha_registro.desc())
+            .limit(1)
+        )).scalars().first()
+
+        if last is None:
+            out.append(PreguntaConEstado(
+                pregunta_id=p.id, texto_pregunta=p.texto_pregunta,
+            ))
+            continue
+
+        last_dt = last.fecha_registro
+        if last_dt.tzinfo is not None:
+            last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        next_avail = last_dt + timedelta(days=30)
+        bloqueada = next_avail > today
+        dias = max(0, (next_avail.date() - today.date()).days) if bloqueada else None
+        out.append(PreguntaConEstado(
+            pregunta_id=p.id,
+            texto_pregunta=p.texto_pregunta,
+            ultima_respuesta=last.respuesta_texto,
+            fecha_ultima=last_dt,
+            siguiente_disponible=next_avail.date() if bloqueada else None,
+            bloqueada=bloqueada,
+            dias_restantes=dias,
+        ))
+    return out
+
+
+@app.get("/registros/{sefira_id}", response_model=list[RegistroOut])
+async def get_registros(sefira_id: str, db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(
+        select(RegistroDiario)
+        .where(RegistroDiario.sefira_id == sefira_id)
+        .order_by(RegistroDiario.fecha_registro.desc())
+    )).scalars().all()
+    return [
+        RegistroOut(
+            id=r.id, reflexion_texto=r.reflexion_texto,
+            puntuacion_usuario=r.puntuacion_usuario,
+            puntuacion_ia=r.puntuacion_ia, fecha_registro=r.fecha_registro,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/espejo/resumen", response_model=list[SefiraResumen])
+async def espejo_resumen(db: AsyncSession = Depends(get_db)):
+    sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
+    today = datetime.utcnow()
+    threshold = today - timedelta(days=30)
+
+    out: list[SefiraResumen] = []
+    for s in sefirot:
+        preguntas = (await db.execute(
+            select(PreguntaSefira.id).where(PreguntaSefira.sefira_id == s.id)
+        )).scalars().all()
+        total = len(preguntas)
+
+        frescas = 0
+        disponibles = 0
+        for pid in preguntas:
+            last = (await db.execute(
+                select(RespuestaPregunta.fecha_registro)
+                .where(RespuestaPregunta.pregunta_id == pid)
+                .order_by(RespuestaPregunta.fecha_registro.desc()).limit(1)
+            )).scalars().first()
+            if last is None:
+                disponibles += 1
+                continue
+            if last.tzinfo is not None:
+                last = last.astimezone(timezone.utc).replace(tzinfo=None)
+            if last >= threshold:
+                frescas += 1
+            else:
+                disponibles += 1
+
+        regs = (await db.execute(
+            select(RegistroDiario)
+            .where(RegistroDiario.sefira_id == s.id)
+            .order_by(RegistroDiario.fecha_registro.desc())
+        )).scalars().all()
+
+        ia_scores = [r.puntuacion_ia for r in regs if r.puntuacion_ia is not None]
+        score_promedio = round(sum(ia_scores) / len(ia_scores), 1) if ia_scores else None
+        ultimos = [r.puntuacion_ia for r in regs[:8] if r.puntuacion_ia is not None][::-1]
+
+        ultima = regs[0] if regs else None
+        intensidad = (frescas / total) if total > 0 else 0.0
+
+        out.append(SefiraResumen(
+            sefira_id=s.id, sefira_nombre=s.nombre,
+            preguntas_total=total, preguntas_frescas=frescas, preguntas_disponibles=disponibles,
+            score_ia_promedio=score_promedio,
+            score_ia_ultimos=ultimos,
+            ultima_reflexion_texto=ultima.reflexion_texto if ultima else None,
+            ultima_reflexion_score=ultima.puntuacion_ia if ultima else None,
+            ultima_actividad=ultima.fecha_registro if ultima else None,
+            intensidad=intensidad,
+        ))
+    return out
+
+
 @app.post("/respuestas")
 async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db)):
+    last = (await db.execute(
+        select(RespuestaPregunta)
+        .where(RespuestaPregunta.pregunta_id == rep.pregunta_id)
+        .order_by(RespuestaPregunta.fecha_registro.desc())
+        .limit(1)
+    )).scalars().first()
+
+    if last is not None:
+        last_dt = last.fecha_registro
+        if last_dt.tzinfo is not None:
+            last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        next_available = last_dt + timedelta(days=30)
+        if next_available > datetime.utcnow():
+            raise HTTPException(
+                status_code=409,
+                detail=f"Esta pregunta vuelve a estar disponible el {next_available.date().isoformat()}",
+            )
+
     nueva_res = RespuestaPregunta(pregunta_id=rep.pregunta_id, respuesta_texto=rep.respuesta_texto)
     db.add(nueva_res)
     await db.commit()
