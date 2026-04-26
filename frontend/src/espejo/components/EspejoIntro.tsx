@@ -101,7 +101,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
       <svg viewBox="0 0 400 800" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="introGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -153,33 +153,50 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
 
         {/* 3 + 4. Orbes: aparecen donde aterrizó cada partícula. Animamos r, no scale,
             así el círculo siempre crece desde (cx, cy) sin riesgo de transform-origin. */}
-        {sefirot.map(node => (
-          <g key={`orb-${node.id}`}>
-            <motion.circle
-              cx={node.x} cy={node.y}
-              fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
-              filter="url(#introGlow)"
-              initial={{ r: 0, opacity: 0 }}
-              animate={{ r: [0, 52, 42], opacity: [0, 0.45, 0.22] }}
-              transition={{
-                r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
-                opacity: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.4, 1] },
-              }}
-            />
-            <motion.circle
-              cx={node.x} cy={node.y}
-              fill={`url(#introOrb-${node.id})`}
-              stroke="rgba(255,255,255,0.2)"
-              strokeWidth={2}
-              initial={{ r: 0, opacity: 0 }}
-              animate={{ r: [0, 38, 32], opacity: 1 }}
-              transition={{
-                r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
-                opacity: { duration: 0.25, delay: ORB_DELAY },
-              }}
-            />
-          </g>
-        ))}
+        {sefirot.map(node => {
+          const color = SEFIRA_COLORS[node.id] ?? '#a3a3a3';
+          return (
+            <g key={`orb-${node.id}`}>
+              {/* Halo exterior — amplio y suave */}
+              <motion.circle
+                cx={node.x} cy={node.y}
+                fill={color}
+                filter="url(#introGlow)"
+                initial={{ r: 0, opacity: 0 }}
+                animate={{ r: [0, 56, 48], opacity: [0, 0.5, 0.32] }}
+                transition={{
+                  r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.4, 1] },
+                }}
+              />
+              {/* Halo interior — más brillante, replica el outer glow del orbe real */}
+              <motion.circle
+                cx={node.x} cy={node.y}
+                fill={color}
+                filter="url(#introGlow)"
+                initial={{ r: 0, opacity: 0 }}
+                animate={{ r: [0, 42, 36], opacity: [0, 0.6, 0.45] }}
+                transition={{
+                  r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.55, 1], ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.45, 1] },
+                }}
+              />
+              {/* Orbe principal */}
+              <motion.circle
+                cx={node.x} cy={node.y}
+                fill={`url(#introOrb-${node.id})`}
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth={2}
+                initial={{ r: 0, opacity: 0 }}
+                animate={{ r: [0, 38, 32], opacity: 1 }}
+                transition={{
+                  r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.25, delay: ORB_DELAY },
+                }}
+              />
+            </g>
+          );
+        })}
 
         {/* 5. Canales — Tiferet primero (Sefirótico), outer solapado */}
         {CONNECTIONS.map((c, idx) => {
@@ -193,7 +210,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
             <motion.line
               key={`intro-line-${idx}`}
               x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-              stroke="rgba(253,230,138,0.55)"
+              stroke="rgba(253,230,138,0.45)"
               strokeWidth={2.5}
               strokeLinecap="round"
               initial={{ pathLength: 0, opacity: 0 }}
