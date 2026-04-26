@@ -20,7 +20,7 @@ const SEFIROT = [
 type ViewKey = 'espejo' | 'admin' | 'calendario';
 
 const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
-  espejo:     { title: 'Espejo Cognitivo',       subtitle: 'Reflexión guiada por las dimensiones del alma.' },
+  espejo:     { title: 'Mi Árbol de la Vida',    subtitle: 'Reflexión guiada por las dimensiones del alma.' },
   calendario: { title: 'Calendario Cabalístico', subtitle: 'La organización es parte del camino de rectificación. Organiza tu semana y tus dimensiones.' },
   admin:      { title: 'Panel de Administrador', subtitle: 'Gestión de preguntas guía por sefirá.' },
 };
