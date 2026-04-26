@@ -121,18 +121,17 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
 
         {/* 1. Singularidad */}
         <motion.circle
-          cx={CENTER_X} cy={CENTER_Y} r={3}
+          cx={CENTER_X} cy={CENTER_Y}
           fill="#fef9c3"
           filter="url(#introGlow)"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: [0, 1.5, 4, 6, 0], opacity: [0, 1, 1, 1, 0] }}
+          initial={{ r: 0, opacity: 0 }}
+          animate={{ r: [0, 4, 12, 18, 0], opacity: [0, 1, 1, 1, 0] }}
           transition={{
             duration: SINGULARITY_DURATION,
             delay: SINGULARITY_START,
             times: [0, 0.2, 0.55, 0.8, 1],
             ease: [0.16, 1, 0.3, 1],
           }}
-          style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
         />
 
         {/* 2. Explosión: las 10 partículas salen disparadas del centro al lugar de cada sefirá */}
@@ -152,33 +151,32 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
           />
         ))}
 
-        {/* 3 + 4. Orbes: aparecen donde aterrizó cada partícula */}
+        {/* 3 + 4. Orbes: aparecen donde aterrizó cada partícula. Animamos r, no scale,
+            así el círculo siempre crece desde (cx, cy) sin riesgo de transform-origin. */}
         {sefirot.map(node => (
           <g key={`orb-${node.id}`}>
             <motion.circle
-              cx={node.x} cy={node.y} r={42}
+              cx={node.x} cy={node.y}
               fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
               filter="url(#introGlow)"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: [0, 0.45, 0.22], scale: [0, 1.25, 1] }}
+              initial={{ r: 0, opacity: 0 }}
+              animate={{ r: [0, 52, 42], opacity: [0, 0.45, 0.22] }}
               transition={{
+                r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
                 opacity: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.4, 1] },
-                scale: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
               }}
-              style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
             />
             <motion.circle
-              cx={node.x} cy={node.y} r={32}
+              cx={node.x} cy={node.y}
               fill={`url(#introOrb-${node.id})`}
               stroke="rgba(255,255,255,0.2)"
               strokeWidth={2}
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: [0, 1.18, 1], opacity: 1 }}
+              initial={{ r: 0, opacity: 0 }}
+              animate={{ r: [0, 38, 32], opacity: 1 }}
               transition={{
-                scale: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
+                r: { duration: ORB_DURATION, delay: ORB_DELAY, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
                 opacity: { duration: 0.25, delay: ORB_DELAY },
               }}
-              style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
             />
           </g>
         ))}
@@ -248,14 +246,13 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
           return (
             <motion.g
               key={`letter-${idx}`}
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{
                 duration: LETTERS_DURATION,
                 delay,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.22, 1, 0.36, 1],
               }}
-              style={{ transformOrigin: `${midX}px ${midY}px`, transformBox: 'fill-box' }}
             >
               <rect x={midX - 11} y={midY - 11} width={22} height={22} fill="#070709" rx={11} opacity={0.85} />
               <text
