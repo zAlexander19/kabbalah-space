@@ -10,7 +10,24 @@ type Props = {
 
 const CENTER_X = 200;
 const CENTER_Y = 380;
-const TOTAL_DURATION_MS = 2800;
+
+// Timing (en segundos)
+const SINGULARITY_START = 0.0;
+const BANG_DELAY = 0.5;
+const PARTICLE_BASE_DELAY = 0.6;
+const PARTICLE_DURATION = 0.75;
+const ORB_SETTLE_DURATION = 0.5;
+const TIFERET_PHASE_START = 1.85;
+const TIFERET_STAGGER = 0.10;
+const TIFERET_DRAW = 0.35;
+const OTHER_STAGGER = 0.05;
+const OTHER_DRAW = 0.30;
+const FADE_OUT = 0.4;
+
+const MAX_DIST = 400;
+
+// Orden Sefirótico para las conexiones de Tiferet
+const TIFERET_OUT_ORDER = ['keter', 'jojma', 'bina', 'jesed', 'gevura', 'netzaj', 'hod', 'yesod'];
 
 function distFromCenter(node: SefiraNode): number {
   const dx = node.x - CENTER_X;
@@ -18,44 +35,44 @@ function distFromCenter(node: SefiraNode): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-const MAX_DIST = 400;
-
-const PARTICLE_COUNT = 42;
-const PARTICLE_COLORS = ['#fef9c3', '#fde68a', '#fbbf24', '#f59e0b', '#fef3c7'];
-
-type Particle = {
-  targetX: number;
-  targetY: number;
-  size: number;
-  color: string;
-  delay: number;
-  duration: number;
-};
-
-function buildParticles(): Particle[] {
-  // Distribución uniforme en círculo + jitter pseudo-determinista por índice
-  return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    const baseAngle = (i / PARTICLE_COUNT) * Math.PI * 2;
-    const jitter = (((i * 37) % 23) / 23 - 0.5) * 0.4;
-    const angle = baseAngle + jitter;
-    const distance = 180 + ((i * 47) % 240);
-    const targetX = CENTER_X + Math.cos(angle) * distance;
-    const targetY = CENTER_Y + Math.sin(angle) * distance;
-    const size = 1.2 + ((i * 23) % 7) * 0.35;
-    const color = PARTICLE_COLORS[i % PARTICLE_COLORS.length];
-    const delay = 0.55 + ((i * 13) % 35) / 100;
-    const duration = 1.0 + ((i * 17) % 40) / 60;
-    return { targetX, targetY, size, color, delay, duration };
-  });
+function isTiferetEdge(c: { n1: string; n2: string }): string | null {
+  if (c.n1 === 'tiferet') return c.n2;
+  if (c.n2 === 'tiferet') return c.n1;
+  return null;
 }
 
+const TIFERET_PHASE_END = TIFERET_PHASE_START + (TIFERET_OUT_ORDER.length - 1) * TIFERET_STAGGER + TIFERET_DRAW;
+
 export default function EspejoIntro({ sefirot, onComplete }: Props) {
-  const particles = useMemo(buildParticles, []);
+  // Pre-compute delay + duration por conexión
+  const connectionAnims = useMemo(() => {
+    const map = new Map<string, { delay: number; duration: number }>();
+    let otherIdx = 0;
+    for (const c of CONNECTIONS) {
+      const key = `${c.n1}-${c.n2}`;
+      const otherEnd = isTiferetEdge(c);
+      if (otherEnd !== null) {
+        const idx = TIFERET_OUT_ORDER.indexOf(otherEnd);
+        const delay = TIFERET_PHASE_START + Math.max(0, idx) * TIFERET_STAGGER;
+        map.set(key, { delay, duration: TIFERET_DRAW });
+      } else {
+        const delay = TIFERET_PHASE_END + otherIdx * OTHER_STAGGER;
+        map.set(key, { delay, duration: OTHER_DRAW });
+        otherIdx++;
+      }
+    }
+    return { map, otherCount: otherIdx };
+  }, []);
+
+  const totalDurationMs = useMemo(() => {
+    const otherEnd = TIFERET_PHASE_END + (connectionAnims.otherCount - 1) * OTHER_STAGGER + OTHER_DRAW;
+    return Math.round((otherEnd + FADE_OUT) * 1000);
+  }, [connectionAnims.otherCount]);
 
   useEffect(() => {
-    const t = window.setTimeout(onComplete, TOTAL_DURATION_MS);
+    const t = window.setTimeout(onComplete, totalDurationMs);
     return () => window.clearTimeout(t);
-  }, [onComplete]);
+  }, [onComplete, totalDurationMs]);
 
   return (
     <div
@@ -90,55 +107,105 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
           })}
         </defs>
 
-        {/* Singularidad: punto luminoso pulsante en el centro */}
+        {/* Fase 1 — Singularidad */}
         <motion.circle
           cx={CENTER_X} cy={CENTER_Y} r={3}
           fill="#fef9c3"
           filter="url(#introGlow)"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 1, 4, 8, 0], opacity: [0, 1, 1, 1, 0] }}
-          transition={{ duration: 1.1, times: [0, 0.15, 0.45, 0.7, 1], ease: [0.16, 1, 0.3, 1] }}
+          transition={{
+            duration: 1.0,
+            delay: SINGULARITY_START,
+            times: [0, 0.15, 0.45, 0.7, 1],
+            ease: [0.16, 1, 0.3, 1],
+          }}
           style={{ transformOrigin: `${CENTER_X}px ${CENTER_Y}px`, transformBox: 'fill-box' }}
         />
 
-        {/* Big Bang: flash radial expansivo */}
+        {/* Fase 2 — Big Bang flash */}
         <motion.circle
           cx={CENTER_X} cy={CENTER_Y} r={2}
           fill="url(#bigBangFlash)"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 250], opacity: [0, 0.85, 0] }}
           transition={{
-            scale: { duration: 1.0, delay: 0.5, ease: [0.16, 1, 0.3, 1] },
-            opacity: { duration: 1.0, delay: 0.5, times: [0, 0.25, 1] },
+            scale: { duration: 1.0, delay: BANG_DELAY, ease: [0.16, 1, 0.3, 1] },
+            opacity: { duration: 1.0, delay: BANG_DELAY, times: [0, 0.25, 1] },
           }}
           style={{ transformOrigin: `${CENTER_X}px ${CENTER_Y}px`, transformBox: 'fill-box' }}
         />
 
-        {/* Partículas: stardust irradiando desde el centro */}
-        {particles.map((p, i) => (
-          <motion.circle
-            key={`particle-${i}`}
-            r={p.size}
-            fill={p.color}
-            initial={{ cx: CENTER_X, cy: CENTER_Y, opacity: 0 }}
-            animate={{ cx: p.targetX, cy: p.targetY, opacity: [0, 1, 1, 0] }}
-            transition={{
-              cx: { duration: p.duration, delay: p.delay, ease: [0.16, 1, 0.3, 1] },
-              cy: { duration: p.duration, delay: p.delay, ease: [0.16, 1, 0.3, 1] },
-              opacity: { duration: p.duration, delay: p.delay, times: [0, 0.08, 0.55, 1] },
-            }}
-          />
-        ))}
+        {/* Fase 3 — 10 partículas viajan del centro a la posición de cada sefirá */}
+        {/* Cuando llega → halo + orbe se materializan */}
+        {sefirot.map(node => {
+          const dist = distFromCenter(node);
+          const distRatio = dist / MAX_DIST;
+          // Ligera variación de delay según distancia (cercanas salen un pelín antes)
+          const particleDelay = PARTICLE_BASE_DELAY + distRatio * 0.15;
+          // Las cercanas viajan más rápido para llegar todas en una ventana similar
+          const particleDuration = PARTICLE_DURATION * (0.7 + distRatio * 0.3);
+          const orbDelay = particleDelay + particleDuration - 0.05;
+          return (
+            <g key={`intro-${node.id}`}>
+              {/* Partícula viajera */}
+              <motion.circle
+                r={2.8}
+                fill="#fef9c3"
+                filter="url(#introGlow)"
+                initial={{ cx: CENTER_X, cy: CENTER_Y, opacity: 0 }}
+                animate={{
+                  cx: node.x,
+                  cy: node.y,
+                  opacity: [0, 1, 1, 0],
+                }}
+                transition={{
+                  cx: { duration: particleDuration, delay: particleDelay, ease: [0.16, 1, 0.3, 1] },
+                  cy: { duration: particleDuration, delay: particleDelay, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: particleDuration, delay: particleDelay, times: [0, 0.08, 0.85, 1] },
+                }}
+              />
 
-        {/* Conexiones: se dibujan después de que aparecen ambos extremos */}
+              {/* Halo del orbe (aparece cuando llega la partícula) */}
+              <motion.circle
+                cx={node.x} cy={node.y} r={42}
+                fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
+                filter="url(#introGlow)"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: [0, 0.45, 0.22], scale: [0, 1.25, 1] }}
+                transition={{
+                  opacity: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.4, 1] },
+                  scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
+                }}
+                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
+              />
+
+              {/* Orbe principal */}
+              <motion.circle
+                cx={node.x} cy={node.y} r={32}
+                fill={`url(#introOrb-${node.id})`}
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth={2}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 1.18, 1], opacity: 1 }}
+                transition={{
+                  scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.3, delay: orbDelay },
+                }}
+                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
+              />
+            </g>
+          );
+        })}
+
+        {/* Fase 4 — Conexiones: Tiferet primero (orden Sefirótico), después el resto */}
         {CONNECTIONS.map((c, idx) => {
           const a = sefirot.find(s => s.id === c.n1);
           const b = sefirot.find(s => s.id === c.n2);
           if (!a || !b) return null;
-          const distA = distFromCenter(a);
-          const distB = distFromCenter(b);
-          const maxDelay = Math.max(distA, distB) / MAX_DIST * 0.7;
-          const lineDelay = 1.0 + maxDelay + 0.5;
+          const key = `${c.n1}-${c.n2}`;
+          const anim = connectionAnims.map.get(key);
+          if (!anim) return null;
           return (
             <motion.line
               key={`intro-line-${idx}`}
@@ -149,61 +216,10 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 1 }}
               transition={{
-                pathLength: { duration: 0.5, delay: lineDelay, ease: [0.16, 1, 0.3, 1] },
-                opacity: { duration: 0.3, delay: lineDelay },
+                pathLength: { duration: anim.duration, delay: anim.delay, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.25, delay: anim.delay },
               }}
             />
-          );
-        })}
-
-        {/* Sefirot: chispas desde el centro y orbes que se materializan */}
-        {sefirot.map(node => {
-          const dist = distFromCenter(node);
-          const sparkDelay = 1.0 + (dist / MAX_DIST) * 0.7;
-          const orbDelay = sparkDelay + 0.35;
-          return (
-            <g key={`intro-node-${node.id}`}>
-              {/* chispa: línea fina dorada del centro al destino */}
-              <motion.line
-                x1={CENTER_X} y1={CENTER_Y} x2={node.x} y2={node.y}
-                stroke="#fef9c3"
-                strokeWidth={1.2}
-                strokeLinecap="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: [0, 0.9, 0] }}
-                transition={{
-                  pathLength: { duration: 0.4, delay: sparkDelay, ease: [0.16, 1, 0.3, 1] },
-                  opacity: { duration: 0.45, delay: sparkDelay, times: [0, 0.5, 1] },
-                }}
-              />
-              {/* halo del orbe */}
-              <motion.circle
-                cx={node.x} cy={node.y} r={42}
-                fill={SEFIRA_COLORS[node.id] ?? '#a3a3a3'}
-                filter="url(#introGlow)"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: [0, 0.4, 0.22], scale: [0, 1.2, 1] }}
-                transition={{
-                  opacity: { duration: 0.6, delay: orbDelay, times: [0, 0.4, 1] },
-                  scale: { duration: 0.6, delay: orbDelay, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
-                }}
-                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
-              />
-              {/* orbe principal */}
-              <motion.circle
-                cx={node.x} cy={node.y} r={32}
-                fill={`url(#introOrb-${node.id})`}
-                stroke="rgba(255,255,255,0.2)"
-                strokeWidth={2}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [0, 1.18, 1], opacity: 1 }}
-                transition={{
-                  scale: { duration: 0.55, delay: orbDelay, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
-                  opacity: { duration: 0.3, delay: orbDelay },
-                }}
-                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
-              />
-            </g>
           );
         })}
       </svg>
