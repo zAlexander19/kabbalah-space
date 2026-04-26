@@ -9,7 +9,7 @@ type Props = {
 };
 
 const CENTER_X = 200;
-const CENTER_Y = 380;
+const CENTER_Y = 350;
 
 // Timing (segundos)
 const SINGULARITY_START = 0.0;
