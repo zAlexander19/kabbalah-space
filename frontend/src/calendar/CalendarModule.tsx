@@ -3,6 +3,7 @@ import { startOfMonth } from 'date-fns';
 import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
+import { API_BASE } from './tokens';
 import CalendarToolbar from './components/CalendarToolbar';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
@@ -11,6 +12,10 @@ import ViewMorph from './views/ViewMorph';
 import SefirotTree from './components/SefirotTree';
 import SefirotLegend from './components/SefirotLegend';
 import ActivityPanel from './components/ActivityPanel';
+import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
+
+type Scope = 'one' | 'series';
+type ScopePending = { activity: Activity; mode: 'edit' | 'delete' } | null;
 
 type Props = {
   sefirot: SefiraNode[];
@@ -25,6 +30,8 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
   const [pendingSlot, setPendingSlot] = useState<{ start: Date; end: Date } | null>(null);
+  const [scope, setScope] = useState<Scope>('one');
+  const [scopeDialog, setScopeDialog] = useState<ScopePending>(null);
 
   const filteredActivities = useMemo(() => {
     if (!filterId) return activities;
@@ -34,18 +41,19 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   function openCreate() {
     setEditing(null);
     setPendingSlot(null);
+    setScope('one');
     setPanelOpen(true);
   }
 
   function openSlot(start: Date, end: Date) {
     const overlap = activities.find(a => new Date(a.inicio) < end && new Date(a.fin) > start);
     if (overlap) {
-      setEditing(overlap);
-      setPendingSlot(null);
-    } else {
-      setEditing(null);
-      setPendingSlot({ start, end });
+      openEvent(overlap);
+      return;
     }
+    setEditing(null);
+    setPendingSlot({ start, end });
+    setScope('one');
     setPanelOpen(true);
   }
 
@@ -60,9 +68,42 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   function openEvent(a: Activity) {
+    if (a.serie_id) {
+      setScopeDialog({ activity: a, mode: 'edit' });
+      return;
+    }
     setEditing(a);
     setPendingSlot(null);
+    setScope('one');
     setPanelOpen(true);
+  }
+
+  function handleScopeChosen(chosenScope: Scope) {
+    if (!scopeDialog) return;
+    const { activity, mode } = scopeDialog;
+    setScopeDialog(null);
+    if (mode === 'edit') {
+      setEditing(activity);
+      setPendingSlot(null);
+      setScope(chosenScope);
+      setPanelOpen(true);
+    } else {
+      void deleteWithScope(activity.id, chosenScope);
+    }
+  }
+
+  async function deleteWithScope(id: string, chosenScope: Scope) {
+    const res = await fetch(`${API_BASE}/actividades/${id}?scope=${chosenScope}`, { method: 'DELETE' });
+    if (res.ok) {
+      setPanelOpen(false);
+      reload();
+    }
+  }
+
+  function requestDeleteScopeFromForm() {
+    if (!editing) return;
+    setPanelOpen(false);
+    setScopeDialog({ activity: editing, mode: 'delete' });
   }
 
   function toggleFilter(id: string) {
@@ -113,27 +154,13 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
           <ViewMorph view={view}>
             {view === 'semana' && (
-              <WeekView
-                date={anchor}
-                activities={filteredActivities}
-                onSlotClick={openSlot}
-                onEventClick={openEvent}
-              />
+              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} />
             )}
             {view === 'mes' && (
-              <MonthView
-                date={anchor}
-                activities={filteredActivities}
-                onDayClick={openDay}
-                onEventClick={openEvent}
-              />
+              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} />
             )}
             {view === 'anio' && (
-              <YearView
-                date={anchor}
-                activities={activities}
-                onMonthClick={openMonth}
-              />
+              <YearView date={anchor} activities={activities} onMonthClick={openMonth} />
             )}
           </ViewMorph>
 
@@ -150,18 +177,8 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         <h3 className={`font-serif text-2xl mb-2 ${glowText}`}>Árbol Energético Semanal</h3>
         <p className="text-stone-400 text-sm mb-6">Cada sefirá crece según las actividades que cargues en esa dimensión.</p>
 
-        <SefirotTree
-          sefirot={sefirot}
-          volume={volume}
-          filterId={filterId}
-          onFilterToggle={toggleFilter}
-        />
-
-        <SefirotLegend
-          volume={volume}
-          filterId={filterId}
-          onFilterToggle={toggleFilter}
-        />
+        <SefirotTree sefirot={sefirot} volume={volume} filterId={filterId} onFilterToggle={toggleFilter} />
+        <SefirotLegend volume={volume} filterId={filterId} onFilterToggle={toggleFilter} />
       </div>
 
       <ActivityPanel
@@ -169,9 +186,18 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         sefirot={sefirot}
         editing={editing}
         initialSlot={pendingSlot}
+        scope={scope}
         onClose={() => setPanelOpen(false)}
         onSaved={handleSaved}
         onDeleted={handleDeleted}
+        onRequestDeleteScope={requestDeleteScopeFromForm}
+      />
+
+      <RecurrenceScopeDialog
+        open={scopeDialog !== null}
+        mode={scopeDialog?.mode ?? 'edit'}
+        onChoose={handleScopeChosen}
+        onCancel={() => setScopeDialog(null)}
       />
     </div>
   );
