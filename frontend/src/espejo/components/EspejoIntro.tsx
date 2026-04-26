@@ -9,7 +9,7 @@ type Props = {
 };
 
 const CENTER_X = 200;
-const CENTER_Y = 350;
+const CENTER_Y = 380;
 
 // Timing (segundos)
 const SINGULARITY_START = 0.0;
@@ -98,7 +98,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
       onClick={onComplete}
       title="Saltar"
     >
-      <svg viewBox="0 0 400 800" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 -50 400 880" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="introGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="8" result="blur" />
