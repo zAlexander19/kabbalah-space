@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import AdminPanel from "./AdminPanel";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
+import EvolucionModule from "./evolucion";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -17,16 +18,18 @@ const SEFIROT = [
   { id: "maljut",  name: "Maljut",  x: 200, y: 750, colorClass: "", textClass: "", description: "El Reino. La acción física y el mundo material." },
 ];
 
-type ViewKey = 'espejo' | 'admin' | 'calendario';
+type ViewKey = 'espejo' | 'admin' | 'calendario' | 'evolucion';
 
 const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   espejo:     { title: 'Mi Árbol de la Vida',    subtitle: 'Reflexión guiada por las dimensiones del alma.' },
+  evolucion:  { title: 'Mi Evolución',            subtitle: 'El movimiento mensual de cada dimensión del alma.' },
   calendario: { title: 'Calendario Cabalístico', subtitle: 'La organización es parte del camino de rectificación. Organiza tu semana y tus dimensiones.' },
   admin:      { title: 'Panel de Administrador', subtitle: 'Gestión de preguntas guía por sefirá.' },
 };
 
 const NAV_ITEMS = [
   { key: 'espejo' as ViewKey,     icon: 'account_tree',           label: 'Mi Árbol de la Vida' },
+  { key: 'evolucion' as ViewKey,  icon: 'monitoring',              label: 'Mi Evolución' },
   { key: 'calendario' as ViewKey, icon: 'event_note',              label: 'Calendario Cabalístico' },
   { key: 'admin' as ViewKey,      icon: 'admin_panel_settings',    label: 'Panel de Administrador' },
 ];
@@ -167,6 +170,7 @@ export default function App() {
             >
               {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
               {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
+              {activeView === 'evolucion' && <EvolucionModule />}
               {activeView === 'espejo' && (
                 <EspejoModule
                   sefirot={SEFIROT}
