@@ -120,7 +120,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
             times: [0, 0.15, 0.45, 0.7, 1],
             ease: [0.16, 1, 0.3, 1],
           }}
-          style={{ transformOrigin: `${CENTER_X}px ${CENTER_Y}px`, transformBox: 'fill-box' }}
+          style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
         />
 
         {/* Fase 2 — Big Bang flash */}
@@ -133,7 +133,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
             scale: { duration: 1.0, delay: BANG_DELAY, ease: [0.16, 1, 0.3, 1] },
             opacity: { duration: 1.0, delay: BANG_DELAY, times: [0, 0.25, 1] },
           }}
-          style={{ transformOrigin: `${CENTER_X}px ${CENTER_Y}px`, transformBox: 'fill-box' }}
+          style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
         />
 
         {/* Fase 3 — 10 partículas viajan del centro a la posición de cada sefirá */}
@@ -177,7 +177,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
                   opacity: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.4, 1] },
                   scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.5, 1], ease: [0.16, 1, 0.3, 1] },
                 }}
-                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
+                style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
               />
 
               {/* Orbe principal */}
@@ -192,7 +192,7 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
                   scale: { duration: ORB_SETTLE_DURATION, delay: orbDelay, times: [0, 0.7, 1], ease: [0.16, 1, 0.3, 1] },
                   opacity: { duration: 0.3, delay: orbDelay },
                 }}
-                style={{ transformOrigin: `${node.x}px ${node.y}px`, transformBox: 'fill-box' }}
+                style={{ transformOrigin: 'center', transformBox: 'fill-box' }}
               />
             </g>
           );
