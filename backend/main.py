@@ -7,6 +7,7 @@ from typing import Optional
 from dateutil.rrule import rrulestr
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,14 +17,21 @@ from config import Settings, get_settings
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
 from auth import (
+    EmailCollisionError,
     Token,
     UserCreate,
     UserLogin,
     UserOut,
+    build_google_authorize_url,
     create_access_token,
+    create_state_token,
+    exchange_google_code,
+    fetch_google_userinfo,
+    find_or_create_google_user,
     get_current_user,
     hash_password,
     verify_password,
+    verify_state_token,
 )
 
 settings = get_settings()
@@ -82,6 +90,77 @@ async def login(
 @app.get("/auth/me", response_model=UserOut)
 async def me(user: Usuario = Depends(get_current_user)):
     return user
+
+
+# ---------------------------------------------------------------- GOOGLE OAUTH
+
+def _redirect_to_frontend(s: Settings, fragment: str) -> RedirectResponse:
+    """Send the user back to the SPA with a success/error fragment.
+    Fragments live behind '#' so they don't end up in server logs / referers.
+    """
+    return RedirectResponse(f"{s.frontend_url}/auth/return{fragment}", status_code=302)
+
+
+@app.get("/auth/google/authorize")
+async def google_authorize(s: Settings = Depends(get_settings)):
+    if not s.google_oauth_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth no configurado en este backend (falta GOOGLE_CLIENT_ID / SECRET en .env)",
+        )
+    state = create_state_token(s)
+    return RedirectResponse(build_google_authorize_url(s, state), status_code=302)
+
+
+@app.get("/auth/google/callback")
+async def google_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    s: Settings = Depends(get_settings),
+):
+    # User cancelled or Google returned an error
+    if error:
+        return _redirect_to_frontend(s, f"#error={error}")
+
+    if not code or not state:
+        return _redirect_to_frontend(s, "#error=missing_params")
+
+    if not verify_state_token(state, s):
+        return _redirect_to_frontend(s, "#error=invalid_state")
+
+    # Exchange code for tokens
+    try:
+        tokens = await exchange_google_code(code, s)
+    except Exception:
+        return _redirect_to_frontend(s, "#error=token_exchange_failed")
+
+    access_token = tokens.get("access_token")
+    if not access_token:
+        return _redirect_to_frontend(s, "#error=no_access_token")
+
+    # Fetch the Google user profile
+    try:
+        userinfo = await fetch_google_userinfo(access_token)
+    except Exception:
+        return _redirect_to_frontend(s, "#error=userinfo_failed")
+
+    google_sub = userinfo.get("sub")
+    google_email = userinfo.get("email")
+    google_name = userinfo.get("name") or ""
+    if not google_sub or not google_email:
+        return _redirect_to_frontend(s, "#error=incomplete_profile")
+
+    # Find or create the local user
+    try:
+        user = await find_or_create_google_user(db, google_sub, google_email, google_name)
+    except EmailCollisionError:
+        return _redirect_to_frontend(s, "#error=email_already_registered")
+
+    # Issue our own JWT and bounce the user back to the SPA
+    jwt_token = create_access_token(user.id, s)
+    return _redirect_to_frontend(s, f"#token={jwt_token}")
 
 
 @app.on_event("startup")

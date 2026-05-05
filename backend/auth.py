@@ -3,14 +3,17 @@
 Endpoints (POST /auth/register, POST /auth/login) live in main.py and use
 helpers from this module.
 """
+import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Optional, Union
+from urllib.parse import urlencode
 
 import bcrypt
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -108,4 +111,127 @@ async def get_current_user(
     user = (await db.execute(select(Usuario).where(Usuario.id == user_id))).scalars().first()
     if user is None:
         raise CREDENTIALS_ERROR
+    return user
+
+
+# =================================================================== OAUTH
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+GOOGLE_SCOPES = "openid email profile"
+STATE_TOKEN_TTL_MINUTES = 10
+
+
+# ---------- State token (CSRF protection) ----------
+
+def create_state_token(settings: Settings) -> str:
+    """Signed JWT used as the OAuth `state` parameter.
+
+    The signature ties the state to OUR backend (any tampering breaks it),
+    and the short TTL prevents replay if a redirect URL leaks.
+    """
+    payload = {
+        "nonce": secrets.token_urlsafe(16),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=STATE_TOKEN_TTL_MINUTES),
+        "purpose": "oauth_state",
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def verify_state_token(state: str, settings: Settings) -> bool:
+    try:
+        payload = jwt.decode(state, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        return payload.get("purpose") == "oauth_state"
+    except JWTError:
+        return False
+
+
+# ---------- Google API calls ----------
+
+def build_google_authorize_url(settings: Settings, state: str) -> str:
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_redirect_uri,
+        "response_type": "code",
+        "scope": GOOGLE_SCOPES,
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    }
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
+async def exchange_google_code(code: str, settings: Settings) -> dict:
+    """Exchange the OAuth `code` for tokens. Raises httpx.HTTPError on failure."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.google_redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def fetch_google_userinfo(access_token: str) -> dict:
+    """Returns the userinfo dict — at minimum sub, email, name (when scopes match)."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+# ---------- Find / create OAuth user ----------
+
+class EmailCollisionError(Exception):
+    """Raised when an OAuth provider returns an email that already exists with a
+    DIFFERENT provider — we don't auto-link accounts in MVP."""
+
+
+async def find_or_create_google_user(
+    db: AsyncSession,
+    google_sub: str,
+    email: str,
+    name: str,
+) -> Usuario:
+    """Look up by (provider='google', provider_id=sub). If not found, create
+    a new user. If the email exists under a different provider → raise
+    EmailCollisionError.
+    """
+    user = (await db.execute(
+        select(Usuario).where(
+            Usuario.provider == "google",
+            Usuario.provider_id == google_sub,
+        )
+    )).scalars().first()
+    if user:
+        return user
+
+    email_match = (await db.execute(
+        select(Usuario).where(Usuario.email == email)
+    )).scalars().first()
+    if email_match:
+        raise EmailCollisionError(
+            f"El email {email} ya está registrado con provider='{email_match.provider}'"
+        )
+
+    user = Usuario(
+        email=email,
+        nombre=name or email.split("@")[0],
+        provider="google",
+        provider_id=google_sub,
+        password_hash=None,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
     return user
