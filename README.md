@@ -49,17 +49,19 @@ Detalle de diseño de cada módulo en [`docs/superpowers/specs/`](docs/superpowe
 
 ---
 
-## Quickstart (5 comandos)
+## Quickstart
 
 ```bash
 # 1. Clonar
 git clone https://github.com/zAlexander19/kabbalah-space.git
 cd kabbalah-space
 
-# 2. Backend — venv + deps + correr
-cd backend && python -m venv venv && source venv/bin/activate \
-  && pip install fastapi "uvicorn[standard]" sqlalchemy aiosqlite python-dateutil pydantic \
-  && uvicorn main:app --reload
+# 2. Backend — venv + deps + .env + correr
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env       # ajustá los valores si querés (defaults son dev-friendly)
+uvicorn main:app --reload --port 8000
 
 # 3. (en otra terminal) Frontend — deps + dev server
 cd frontend && npm install && npm run dev
@@ -70,8 +72,7 @@ cd backend && source venv/bin/activate && python scripts/seed_preguntas.py
 # 5. Abrir http://localhost:5173
 ```
 
-> En Windows PowerShell, en lugar de `source venv/bin/activate` usar `venv\Scripts\Activate.ps1`.
-> No hay `requirements.txt` todavía — se agrega en el issue [#5](https://github.com/zAlexander19/kabbalah-space/issues/5).
+> **Windows PowerShell:** en lugar de `source venv/bin/activate` usar `venv\Scripts\Activate.ps1`. Y en lugar de `cp` usar `Copy-Item .env.example .env`.
 
 ---
 
