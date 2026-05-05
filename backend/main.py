@@ -14,7 +14,17 @@ from sqlalchemy.future import select
 
 from config import Settings, get_settings
 from database import engine, Base, get_db
-from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira
+from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
+from auth import (
+    Token,
+    UserCreate,
+    UserLogin,
+    UserOut,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 
 settings = get_settings()
 app = FastAPI()
@@ -31,6 +41,46 @@ app.add_middleware(
 @app.get("/health")
 async def health(s: Settings = Depends(get_settings)):
     return {"status": "ok", "llm_provider": s.llm_provider}
+
+
+# ---------------------------------------------------------------- AUTH
+
+@app.post("/auth/register", response_model=UserOut, status_code=201)
+async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
+    existing = (await db.execute(
+        select(Usuario).where(Usuario.email == payload.email)
+    )).scalars().first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese email")
+
+    user = Usuario(
+        email=payload.email,
+        nombre=payload.nombre.strip(),
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@app.post("/auth/login", response_model=Token)
+async def login(
+    payload: UserLogin,
+    db: AsyncSession = Depends(get_db),
+    s: Settings = Depends(get_settings),
+):
+    user = (await db.execute(
+        select(Usuario).where(Usuario.email == payload.email)
+    )).scalars().first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+    return Token(access_token=create_access_token(user.id, s))
+
+
+@app.get("/auth/me", response_model=UserOut)
+async def me(user: Usuario = Depends(get_current_user)):
+    return user
 
 
 @app.on_event("startup")

@@ -24,6 +24,8 @@ class Usuario(Base):
 
     email = Column(String(255), unique=True, nullable=False, index=True)
 
+    password_hash = Column(String(255), nullable=False)
+
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
 
 
