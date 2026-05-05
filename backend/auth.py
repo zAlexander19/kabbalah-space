@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     id: str
     email: EmailStr
     nombre: str
+    provider: str = "email"
 
 
 class Token(BaseModel):
@@ -51,7 +52,13 @@ def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain: str, hashed: str) -> bool:
+def verify_password(plain: str, hashed: str | None) -> bool:
+    """Returns False (instead of crashing) when hashed is None — i.e. when the
+    user authenticates via OAuth and has no local password set. Login attempts
+    with email/password against an OAuth account fall through to a clean 401.
+    """
+    if not hashed:
+        return False
     try:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     except (ValueError, TypeError):
