@@ -34,9 +34,19 @@ class Settings(BaseSettings):
     llm_provider: str = "stub"
     llm_api_key: str = ""
 
+    # ---------- Google OAuth (used by issue #24) ----------
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+    frontend_url: str = "http://localhost:5173"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def google_oauth_configured(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
 
 
 @lru_cache(maxsize=1)
