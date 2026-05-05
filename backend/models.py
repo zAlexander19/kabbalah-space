@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index
 
 from sqlalchemy.sql import func
 
@@ -24,9 +24,20 @@ class Usuario(Base):
 
     email = Column(String(255), unique=True, nullable=False, index=True)
 
-    password_hash = Column(String(255), nullable=False)
+    # Auth provider: "email" (password local) | "google" | future: apple, etc.
+    provider = Column(String(50), nullable=False, server_default="email")
+
+    # External id from the OAuth provider (e.g. Google's `sub`). NULL for provider="email".
+    provider_id = Column(String(255), nullable=True)
+
+    # NULL when the user authenticates via OAuth (no local password).
+    password_hash = Column(String(255), nullable=True)
 
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_usuarios_provider_provider_id", "provider", "provider_id"),
+    )
 
 
 
