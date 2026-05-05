@@ -45,7 +45,7 @@ Detalle de diseño de cada módulo en [`docs/superpowers/specs/`](docs/superpowe
 
 - **Python 3.11+**
 - **Node.js 20+** y **npm**
-- (Opcional) **Docker** para PostgreSQL local cuando se concrete el issue [#5](https://github.com/zAlexander19/kabbalah-space/issues/5)
+- (Opcional) **Docker** — solo si querés correr Postgres en lugar de SQLite
 
 ---
 
@@ -76,6 +76,61 @@ cd backend && source venv/bin/activate && python scripts/seed_preguntas.py
 
 ---
 
+## Base de datos & migraciones
+
+### SQLite (default, dev rápido)
+
+`backend/kabbalah.db` se crea solo al arrancar `uvicorn`. No requiere setup. La primera vez:
+
+```bash
+cd backend && source venv/bin/activate
+alembic upgrade head        # aplica todas las migraciones a la BD
+```
+
+### Postgres (vía Docker)
+
+Para desarrollo más cercano a producción, levantá el servicio del root:
+
+```bash
+docker compose up -d postgres        # arranca postgres:16-alpine en :5432
+```
+
+Luego en `backend/.env`:
+
+```
+DATABASE_URL=postgresql+asyncpg://kabbalah:kabbalah_dev@localhost:5432/kabbalah
+```
+
+Y aplicá las migraciones:
+
+```bash
+cd backend && source venv/bin/activate
+alembic upgrade head
+```
+
+### Migraciones — comandos clave
+
+```bash
+# Aplicar todas las migraciones pendientes
+alembic upgrade head
+
+# Generar una migración nueva después de cambiar models.py
+alembic revision --autogenerate -m "describe el cambio"
+
+# Volver una migración atrás
+alembic downgrade -1
+
+# Marcar la BD como "ya migrada" sin correr nada (adopción inicial)
+alembic stamp head
+
+# Ver en qué revisión está la BD
+alembic current
+```
+
+Las migraciones viven en `backend/alembic/versions/`. La inicial (`328674a34f67_initial_schema.py`) crea las 7 tablas del modelo. `alembic/env.py` lee `DATABASE_URL` desde `Settings`, así que apunta a la misma base que la app.
+
+---
+
 ## Estructura
 
 ```
@@ -84,6 +139,11 @@ kabbalah-space/
 │   ├── main.py              FastAPI app + endpoints
 │   ├── models.py            SQLAlchemy models
 │   ├── database.py          engine, session, Base
+│   ├── config.py            pydantic-settings (env loader)
+│   ├── alembic/             migraciones (env.py async + versions/)
+│   ├── alembic.ini          config de alembic (URL viene de Settings)
+│   ├── requirements.txt
+│   ├── .env.example
 │   └── scripts/             seeds y utilidades one-off
 ├── frontend/
 │   └── src/
@@ -92,9 +152,9 @@ kabbalah-space/
 │       ├── calendar/        Módulo 2 — Calendario cabalístico
 │       ├── evolucion/       Mi Evolución (curvas mensuales)
 │       └── shared/          tokens de diseño compartidos
-├── docs/
-│   └── superpowers/         specs y plans (un md por feature)
-└── README.md                este archivo
+├── docs/superpowers/        specs y plans (un md por feature)
+├── docker-compose.yml       Postgres local opcional
+└── README.md
 ```
 
 ---
@@ -123,7 +183,10 @@ Estás corriendo `uvicorn` desde la raíz del repo. `cd backend` primero.
 Tailwind no está compilando. Verificá que `npm install` haya corrido sin errores en `frontend/` y reiniciá el dev server.
 
 **SQLite locked / `database is locked`**
-Otro proceso (un seed, un test, otro `uvicorn`) tiene la BD abierta. Cerrá todos y reintentá. Migrar a Postgres (issue [#5](https://github.com/zAlexander19/kabbalah-space/issues/5)) elimina este problema.
+Otro proceso (un seed, un test, otro `uvicorn`) tiene la BD abierta. Cerrá todos y reintentá. Pasarse a Postgres (`docker compose up -d postgres`) elimina este problema.
+
+**`alembic` falla con `Can't locate revision identified by '...'`**
+La BD apunta a una revisión que ya no existe en `alembic/versions/`. Solución: borrá `kabbalah.db` y `alembic upgrade head` desde cero, o bajá los archivos de versions correspondientes.
 
 **El Espejo devuelve scores random**
 Es esperado por ahora — el endpoint `/evaluate` es un stub. Issue [#9](https://github.com/zAlexander19/kabbalah-space/issues/9) lo conecta a un LLM real.

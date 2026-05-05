@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kabbalah-postgres
+    environment:
+      POSTGRES_USER: kabbalah
+      POSTGRES_PASSWORD: kabbalah_dev
+      POSTGRES_DB: kabbalah
+    ports:
+      - "5432:5432"
+    volumes:
+      - kabbalah_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kabbalah -d kabbalah"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  kabbalah_pgdata:
