@@ -51,6 +51,15 @@ async def health(s: Settings = Depends(get_settings)):
     return {"status": "ok", "llm_provider": s.llm_provider}
 
 
+@app.get("/auth/config")
+async def auth_config(s: Settings = Depends(get_settings)):
+    """Public auth feature flags. The frontend hits this on bootstrap to
+    decide which login methods to render."""
+    return {
+        "google_oauth_enabled": s.google_oauth_configured,
+    }
+
+
 # ---------------------------------------------------------------- AUTH
 
 @app.post("/auth/register", response_model=UserOut, status_code=201)

@@ -30,6 +30,14 @@ export interface AuthContextValue {
   oauthError: OAuthErrorCode | null;
   clearOAuthError: () => void;
 
+  /** True if the backend has Google OAuth credentials configured. */
+  googleOAuthEnabled: boolean;
+
+  /** Login modal state. Opened by the header button (#27) and gated actions (#28). */
+  isLoginModalOpen: boolean;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
+
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string, nombre: string) => Promise<void>;
   startGoogleOAuth: () => void;
