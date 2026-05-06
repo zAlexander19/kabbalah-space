@@ -4,7 +4,7 @@ import AdminPanel from "./AdminPanel";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
 import EvolucionModule from "./evolucion";
-import { useAuth } from "./auth";
+import { UserMenu } from "./auth";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -48,7 +48,6 @@ export default function App() {
   const [activeView, setActiveView] = useState<ViewKey>('espejo');
   const [pageRevealed, setPageRevealed] = useState<boolean>(() => !shouldPlayIntro());
   const [introPlaying, setIntroPlaying] = useState<boolean>(() => shouldPlayIntro());
-  const auth = useAuth();
 
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
@@ -139,32 +138,7 @@ export default function App() {
         </div>
       </motion.aside>
 
-      {/* TEMP login indicator — #27 will replace with proper avatar/dropdown */}
-      <div className="fixed top-4 right-4 z-40 flex items-center gap-2 text-xs">
-        {auth.status === 'authenticated' && auth.user && (
-          <>
-            <span className="px-3 py-1.5 rounded-full bg-stone-900/70 border border-stone-800/60 text-stone-300">
-              {auth.user.nombre}
-            </span>
-            <button
-              type="button"
-              onClick={auth.logout}
-              className="px-3 py-1.5 rounded-full bg-stone-900/70 border border-stone-800/60 text-stone-400 hover:text-amber-200 hover:border-amber-300/30 transition-colors"
-            >
-              Cerrar sesión
-            </button>
-          </>
-        )}
-        {auth.status === 'anonymous' && (
-          <button
-            type="button"
-            onClick={auth.openLoginModal}
-            className="px-4 py-1.5 rounded-full bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/30 text-amber-100 tracking-wide transition-colors shadow-[0_0_12px_rgba(233,195,73,0.15)]"
-          >
-            Iniciar sesión
-          </button>
-        )}
-      </div>
+      <UserMenu />
 
       <main className="md:pl-14 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
         <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-8 px-4 py-6 text-center overflow-hidden">
