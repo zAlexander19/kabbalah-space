@@ -912,19 +912,28 @@ async def delete_actividad(
     actividad_id: str,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     actividad = (await db.execute(
-        select(Actividad).where(Actividad.id == actividad_id)
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
     if scope == "series" and actividad.serie_id is not None:
         siblings = (await db.execute(
-            select(Actividad.id).where(Actividad.serie_id == actividad.serie_id)
+            select(Actividad.id).where(
+                Actividad.serie_id == actividad.serie_id,
+                Actividad.usuario_id == user.id,
+            )
         )).scalars().all()
         await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(siblings)))
-        await db.execute(delete(Actividad).where(Actividad.serie_id == actividad.serie_id))
+        await db.execute(delete(Actividad).where(
+            and_(Actividad.serie_id == actividad.serie_id, Actividad.usuario_id == user.id)
+        ))
     else:
         await db.delete(actividad)
 

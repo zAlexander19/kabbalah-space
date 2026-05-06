@@ -99,3 +99,22 @@ async def test_put_actividad_404_for_other_user(client: AsyncClient, seed_sefiro
 async def test_put_actividad_requires_auth(client: AsyncClient, seed_sefirot):
     r = await client.put("/actividades/some-id", json=_payload())
     assert r.status_code == 401
+
+
+async def test_delete_actividad_404_for_other_user(client: AsyncClient, seed_sefirot, two_users):
+    alice, bob = two_users["alice"], two_users["bob"]
+
+    r = await client.post("/actividades", json=_payload(), headers=alice["headers"])
+    actividad_id = r.json()[0]["id"]
+
+    r_bob = await client.delete(f"/actividades/{actividad_id}", headers=bob["headers"])
+    assert r_bob.status_code == 404
+
+    # Alice can still delete it
+    r_alice = await client.delete(f"/actividades/{actividad_id}", headers=alice["headers"])
+    assert r_alice.status_code == 200
+
+
+async def test_delete_actividad_requires_auth(client: AsyncClient, seed_sefirot):
+    r = await client.delete("/actividades/some-id")
+    assert r.status_code == 401
