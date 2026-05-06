@@ -86,19 +86,22 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
               </p>
             </div>
 
-            {/* Grid */}
-            <div className="relative px-7 py-6 overflow-y-auto">
-              {answered.length === 0 ? (
-                <p className="text-center text-stone-500 italic py-10">
-                  Todavía no hay respuestas guardadas para esta sefirá.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                  {answered.map((p, i) => (
-                    <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
-                  ))}
-                </div>
-              )}
+            {/* Grid — centered in the modal with bounded width so cards keep
+                a comfortable size even with only a few answers. */}
+            <div className="relative flex-1 overflow-y-auto px-6 sm:px-10 py-8">
+              <div className="max-w-7xl mx-auto">
+                {answered.length === 0 ? (
+                  <p className="text-center text-stone-500 italic py-16">
+                    Todavía no hay respuestas guardadas para esta sefirá.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {answered.map((p, i) => (
+                      <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         </motion.div>
@@ -116,18 +119,18 @@ function AnswerCard({ pregunta, delay }: { pregunta: PreguntaConEstado; delay: n
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease, delay }}
-      className="rounded-xl border border-stone-800/60 bg-stone-900/40 p-4 flex flex-col gap-3 hover:border-stone-700/80 transition-colors"
+      className="rounded-2xl border border-stone-800/60 bg-stone-900/40 p-6 flex flex-col gap-4 min-h-[200px] hover:border-stone-700/80 hover:bg-stone-900/55 transition-colors"
     >
-      <p className="text-stone-100 text-sm leading-snug font-medium">
+      <p className="text-stone-100 text-base leading-snug font-medium">
         {pregunta.texto_pregunta}
       </p>
-      <p className="text-stone-300/85 text-xs leading-relaxed italic flex-1 whitespace-pre-wrap">
+      <p className="text-stone-300/85 text-sm leading-relaxed italic flex-1 whitespace-pre-wrap">
         {pregunta.ultima_respuesta}
       </p>
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-stone-500 pt-1 border-t border-stone-800/60">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-stone-500 pt-3 border-t border-stone-800/60">
         <span>{fecha}</span>
         {pregunta.dias_restantes !== null && pregunta.dias_restantes > 0 && (
-          <span className="text-amber-200/60">en {pregunta.dias_restantes}d</span>
+          <span className="text-amber-200/60">vuelve en {pregunta.dias_restantes}d</span>
         )}
       </div>
     </motion.div>
