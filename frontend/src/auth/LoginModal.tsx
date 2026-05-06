@@ -114,11 +114,11 @@ export function LoginModal() {
             <div className="absolute -top-20 -right-16 w-60 h-60 bg-amber-700/10 rounded-full blur-[80px] pointer-events-none" />
             <div className="absolute -bottom-20 -left-16 w-60 h-60 bg-indigo-800/10 rounded-full blur-[80px] pointer-events-none" />
 
-            {/* Close X */}
+            {/* Close X — z-20 so it stays clickable above the form content */}
             <button
               type="button"
               onClick={auth.closeLoginModal}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-amber-200 hover:bg-stone-800/50 transition-colors"
+              className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-amber-200 hover:bg-stone-800/50 transition-colors"
               aria-label="Cerrar"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
