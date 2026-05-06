@@ -106,14 +106,21 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         )}
       </Section>
 
-      <Section>
-        <h4 className="text-xs uppercase tracking-[0.16em] text-stone-400 mb-3">Nueva reflexión</h4>
-        <ReflectionEditor
-          sefiraId={resumen.sefira_id}
-          sefiraName={resumen.sefira_nombre}
-          onSaved={onDataChanged}
-        />
-      </Section>
+      {/* Nivelación de energía: sólo aparece cuando no quedan preguntas
+          guía pendientes (todas respondidas o la sefirá no tiene preguntas
+          configuradas). Es el cierre del flujo, después del carrusel. */}
+      {!hasUnblocked && (
+        <Section>
+          <h4 className="text-xs uppercase tracking-[0.16em] text-stone-400 mb-3">
+            Nivelación de energía
+          </h4>
+          <ReflectionEditor
+            sefiraId={resumen.sefira_id}
+            sefiraName={resumen.sefira_nombre}
+            onSaved={onDataChanged}
+          />
+        </Section>
+      )}
 
       {registros.length > 1 && (
         <Section><HistoryList registros={registros} /></Section>

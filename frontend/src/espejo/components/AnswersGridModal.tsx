@@ -51,13 +51,13 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
             transition={{ duration: 0.18 }}
           />
 
-          {/* Card */}
+          {/* Card — almost full-screen so the answers grid breathes */}
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.32, ease }}
-            className="relative w-full max-w-5xl max-h-[90vh] bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col"
+            className="relative w-[95vw] h-[95vh] bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col"
           >
             {/* Subtle cosmic glow */}
             <div className="absolute -top-24 -right-20 w-72 h-72 bg-amber-700/10 rounded-full blur-[100px] pointer-events-none" />
@@ -93,7 +93,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
                   Todavía no hay respuestas guardadas para esta sefirá.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                   {answered.map((p, i) => (
                     <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
                   ))}
