@@ -526,7 +526,10 @@ async def get_registros(
 
 
 @app.get("/espejo/resumen", response_model=list[SefiraResumen])
-async def espejo_resumen(db: AsyncSession = Depends(get_db)):
+async def espejo_resumen(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
     today = datetime.utcnow()
     threshold = today - timedelta(days=30)
@@ -543,7 +546,10 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
         for pid in preguntas:
             last = (await db.execute(
                 select(RespuestaPregunta.fecha_registro)
-                .where(RespuestaPregunta.pregunta_id == pid)
+                .where(
+                    RespuestaPregunta.pregunta_id == pid,
+                    RespuestaPregunta.usuario_id == user.id,
+                )
                 .order_by(RespuestaPregunta.fecha_registro.desc()).limit(1)
             )).scalars().first()
             if last is None:
@@ -558,7 +564,10 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
 
         regs = (await db.execute(
             select(RegistroDiario)
-            .where(RegistroDiario.sefira_id == s.id)
+            .where(
+                RegistroDiario.sefira_id == s.id,
+                RegistroDiario.usuario_id == user.id,
+            )
             .order_by(RegistroDiario.fecha_registro.desc())
         )).scalars().all()
 
