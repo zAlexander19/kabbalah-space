@@ -61,3 +61,22 @@ async def test_list_actividades_only_shows_own(client: AsyncClient, seed_sefirot
     r_bob = await client.get("/actividades", headers=bob["headers"])
     assert r_bob.status_code == 200
     assert r_bob.json() == []
+
+
+async def test_get_actividad_by_id_returns_404_for_other_user(client: AsyncClient, seed_sefirot, two_users):
+    alice, bob = two_users["alice"], two_users["bob"]
+
+    r = await client.post("/actividades", json=_payload(), headers=alice["headers"])
+    assert r.status_code == 200
+    actividad_id = r.json()[0]["id"]
+
+    r_alice = await client.get(f"/actividades/{actividad_id}", headers=alice["headers"])
+    assert r_alice.status_code == 200
+
+    r_bob = await client.get(f"/actividades/{actividad_id}", headers=bob["headers"])
+    assert r_bob.status_code == 404
+
+
+async def test_get_actividad_by_id_requires_auth(client: AsyncClient, seed_sefirot):
+    r = await client.get("/actividades/some-id")
+    assert r.status_code == 401

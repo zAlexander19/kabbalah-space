@@ -777,8 +777,17 @@ async def list_actividades(
 
 
 @app.get("/actividades/{actividad_id}", response_model=ActividadOut)
-async def get_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Actividad).where(Actividad.id == actividad_id))
+async def get_actividad(
+    actividad_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
+    )
     actividad = result.scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
