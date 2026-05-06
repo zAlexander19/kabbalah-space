@@ -100,3 +100,13 @@ export async function registerEmail(email: string, password: string, nombre: str
 export function googleAuthorizeUrl(): string {
   return `${API_BASE}/auth/google/authorize`;
 }
+
+export interface AuthConfig {
+  google_oauth_enabled: boolean;
+}
+
+export async function fetchAuthConfig(): Promise<AuthConfig> {
+  const res = await apiFetch('/auth/config');
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}

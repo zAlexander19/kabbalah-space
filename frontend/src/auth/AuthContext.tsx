@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 
 import {
+  fetchAuthConfig,
   fetchMe,
   getStoredToken,
   googleAuthorizeUrl,
@@ -49,17 +50,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [oauthError, setOauthError] = useState<OAuthErrorCode | null>(null);
+  const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState<boolean>(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
-  // Bootstrap: handle /auth/return, then validate any stored token.
+  // Bootstrap: handle /auth/return, validate any stored token, fetch auth config.
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
+      // /auth/config — independent of token, fetch in parallel
+      fetchAuthConfig()
+        .then((cfg) => { if (!cancelled) setGoogleOAuthEnabled(cfg.google_oauth_enabled); })
+        .catch(() => { /* leave default false */ });
+
       const fragment = readReturnFragment();
       if (fragment.error) {
         setOauthError(fragment.error);
         cleanReturnUrl();
         setStatus('anonymous');
+        // Auto-open the modal so the user sees the error message.
+        setIsLoginModalOpen(true);
         return;
       }
       if (fragment.token) {
@@ -88,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(() => {
       setUser(null);
       setStatus('anonymous');
+      setIsLoginModalOpen(true);
     });
 
     return () => { cancelled = true; };
@@ -99,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await fetchMe();
     setUser(me);
     setStatus('authenticated');
+    setIsLoginModalOpen(false);
   }, []);
 
   const registerWithEmail = useCallback(async (email: string, password: string, nombre: string) => {
@@ -109,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await fetchMe();
     setUser(me);
     setStatus('authenticated');
+    setIsLoginModalOpen(false);
   }, []);
 
   const startGoogleOAuth = useCallback(() => {
@@ -122,17 +135,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearOAuthError = useCallback(() => setOauthError(null), []);
+  const openLoginModal = useCallback(() => setIsLoginModalOpen(true), []);
+  const closeLoginModal = useCallback(() => {
+    setIsLoginModalOpen(false);
+    setOauthError(null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
     status,
     oauthError,
     clearOAuthError,
+    googleOAuthEnabled,
+    isLoginModalOpen,
+    openLoginModal,
+    closeLoginModal,
     loginWithEmail,
     registerWithEmail,
     startGoogleOAuth,
     logout,
-  }), [user, status, oauthError, clearOAuthError, loginWithEmail, registerWithEmail, startGoogleOAuth, logout]);
+  }), [
+    user, status, oauthError, clearOAuthError,
+    googleOAuthEnabled, isLoginModalOpen, openLoginModal, closeLoginModal,
+    loginWithEmail, registerWithEmail, startGoogleOAuth, logout,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
