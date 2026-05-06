@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -27,7 +28,11 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
 
   const answered = preguntas.filter(p => !!p.ultima_respuesta);
 
-  return (
+  // Render via portal so position: fixed escapes any transformed ancestor.
+  // Without this, framer-motion `x` transforms on parent containers turn
+  // `fixed` into "fixed relative to that ancestor", trapping the modal
+  // inside the right column instead of covering the viewport.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -106,7 +111,8 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
