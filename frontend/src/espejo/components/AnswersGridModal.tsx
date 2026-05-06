@@ -46,9 +46,9 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
           role="dialog"
           aria-labelledby="answers-modal-title"
         >
-          {/* Backdrop */}
+          {/* Backdrop — light dim so the tree behind stays a bit visible */}
           <motion.div
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/55"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -56,17 +56,14 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
             transition={{ duration: 0.18 }}
           />
 
-          {/* Card — almost full-screen so the answers grid breathes */}
+          {/* Card — sized so the page edges still peek through */}
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.32, ease }}
-            className="relative w-[95vw] h-[95vh] bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col"
+            className="relative w-[85vw] max-w-[1200px] h-[85vh] bg-stone-950/95 border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col"
           >
-            {/* Subtle cosmic glow */}
-            <div className="absolute -top-24 -right-20 w-72 h-72 bg-amber-700/10 rounded-full blur-[100px] pointer-events-none" />
-            <div className="absolute -bottom-24 -left-20 w-72 h-72 bg-indigo-800/10 rounded-full blur-[100px] pointer-events-none" />
 
             {/* Close X */}
             <button
