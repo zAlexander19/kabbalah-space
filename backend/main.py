@@ -695,12 +695,16 @@ async def save_respuesta(
     return nueva_res
 
 
-async def ensure_series_materialized(db: AsyncSession, end: datetime) -> None:
+async def ensure_series_materialized(db: AsyncSession, end: datetime, user_id: str) -> None:
     """For each open-ended series (no UNTIL/COUNT), materialize more instances
     if the series' last instance ends before `end`."""
     seeds = (await db.execute(
         select(Actividad).where(
-            and_(Actividad.rrule.is_not(None), Actividad.serie_id.is_not(None))
+            and_(
+                Actividad.rrule.is_not(None),
+                Actividad.serie_id.is_not(None),
+                Actividad.usuario_id == user_id,
+            )
         )
     )).scalars().all()
 
@@ -756,11 +760,12 @@ async def list_actividades(
     start: Optional[datetime] = None,
     end: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     if start and end:
-        await ensure_series_materialized(db, normalize_datetime(end))
+        await ensure_series_materialized(db, normalize_datetime(end), user_id=user.id)
 
-    query = select(Actividad).order_by(Actividad.inicio)
+    query = select(Actividad).where(Actividad.usuario_id == user.id).order_by(Actividad.inicio)
     if start and end:
         start_dt = normalize_datetime(start)
         end_dt = normalize_datetime(end)

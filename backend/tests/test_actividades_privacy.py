@@ -41,3 +41,23 @@ async def test_post_actividad_with_rrule_persists_usuario_id(client: AsyncClient
     assert r.status_code == 200, r.text
     instances = r.json()
     assert len(instances) == 3
+
+
+async def test_list_actividades_requires_auth(client: AsyncClient, seed_sefirot):
+    r = await client.get("/actividades")
+    assert r.status_code == 401
+
+
+async def test_list_actividades_only_shows_own(client: AsyncClient, seed_sefirot, two_users):
+    alice, bob = two_users["alice"], two_users["bob"]
+
+    r = await client.post("/actividades", json=_payload(), headers=alice["headers"])
+    assert r.status_code == 200
+
+    r_alice = await client.get("/actividades", headers=alice["headers"])
+    assert r_alice.status_code == 200
+    assert len(r_alice.json()) == 1
+
+    r_bob = await client.get("/actividades", headers=bob["headers"])
+    assert r_bob.status_code == 200
+    assert r_bob.json() == []
