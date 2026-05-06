@@ -131,7 +131,7 @@ export function LoginModal() {
               >
                 {tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
               </h2>
-              <p className="text-center text-stone-400 text-xs mb-6 tracking-[0.18em] uppercase">
+              <p className="text-center text-stone-400 text-xs mb-6 tracking-wide">
                 Kabbalah Space
               </p>
 
