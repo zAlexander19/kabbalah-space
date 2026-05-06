@@ -82,3 +82,11 @@ async def register_and_login(client: AsyncClient, email: str, password: str, nom
         "token": token,
         "headers": {"Authorization": f"Bearer {token}"},
     }
+
+
+@pytest_asyncio.fixture
+async def two_users(client: AsyncClient):
+    """Register two users A and B; return both auth bundles."""
+    a = await register_and_login(client, "alice@example.com", "password1", "Alice")
+    b = await register_and_login(client, "bob@example.com",   "password2", "Bob")
+    return {"alice": a, "bob": b}

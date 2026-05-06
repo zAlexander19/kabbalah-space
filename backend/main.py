@@ -621,10 +621,17 @@ async def espejo_evolucion(
 
 
 @app.post("/respuestas")
-async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db)):
+async def save_respuesta(
+    rep: RespuestaCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     last = (await db.execute(
         select(RespuestaPregunta)
-        .where(RespuestaPregunta.pregunta_id == rep.pregunta_id)
+        .where(
+            RespuestaPregunta.pregunta_id == rep.pregunta_id,
+            RespuestaPregunta.usuario_id == user.id,
+        )
         .order_by(RespuestaPregunta.fecha_registro.desc())
         .limit(1)
     )).scalars().first()
@@ -640,7 +647,11 @@ async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db
                 detail=f"Esta pregunta vuelve a estar disponible el {next_available.date().isoformat()}",
             )
 
-    nueva_res = RespuestaPregunta(pregunta_id=rep.pregunta_id, respuesta_texto=rep.respuesta_texto)
+    nueva_res = RespuestaPregunta(
+        pregunta_id=rep.pregunta_id,
+        respuesta_texto=rep.respuesta_texto,
+        usuario_id=user.id,
+    )
     db.add(nueva_res)
     await db.commit()
     await db.refresh(nueva_res)
