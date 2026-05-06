@@ -450,7 +450,11 @@ def _months_back(today: datetime, count: int) -> list[str]:
     return list(reversed(keys))
 
 @app.get("/respuestas/{sefira_id}", response_model=list[PreguntaConEstado])
-async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_db)):
+async def get_respuestas_estado(
+    sefira_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     preguntas = (await db.execute(
         select(PreguntaSefira).where(PreguntaSefira.sefira_id == sefira_id)
     )).scalars().all()
@@ -460,7 +464,10 @@ async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_d
     for p in preguntas:
         last = (await db.execute(
             select(RespuestaPregunta)
-            .where(RespuestaPregunta.pregunta_id == p.id)
+            .where(
+                RespuestaPregunta.pregunta_id == p.id,
+                RespuestaPregunta.usuario_id == user.id,
+            )
             .order_by(RespuestaPregunta.fecha_registro.desc())
             .limit(1)
         )).scalars().first()
