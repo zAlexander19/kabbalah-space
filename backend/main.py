@@ -595,6 +595,7 @@ async def espejo_resumen(
 async def espejo_evolucion(
     meses: int = Query(12, ge=1, le=120),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
     today = datetime.utcnow()
@@ -603,13 +604,19 @@ async def espejo_evolucion(
     out: list[SefiraEvolucion] = []
     for s in sefirot:
         regs = (await db.execute(
-            select(RegistroDiario).where(RegistroDiario.sefira_id == s.id)
+            select(RegistroDiario).where(
+                RegistroDiario.sefira_id == s.id,
+                RegistroDiario.usuario_id == user.id,
+            )
         )).scalars().all()
 
         respuestas_rows = (await db.execute(
             select(RespuestaPregunta.fecha_registro)
             .join(PreguntaSefira, PreguntaSefira.id == RespuestaPregunta.pregunta_id)
-            .where(PreguntaSefira.sefira_id == s.id)
+            .where(
+                PreguntaSefira.sefira_id == s.id,
+                RespuestaPregunta.usuario_id == user.id,
+            )
         )).scalars().all()
 
         regs_por_mes: dict[str, list] = {}
