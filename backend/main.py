@@ -844,13 +844,17 @@ async def update_actividad(
     payload: ActividadCreate,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
 
     actividad = (await db.execute(
-        select(Actividad).where(Actividad.id == actividad_id)
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
@@ -880,16 +884,23 @@ async def update_actividad(
         raise HTTPException(status_code=422, detail="No se pudo determinar el RRULE de la serie")
 
     siblings = (await db.execute(
-        select(Actividad).where(Actividad.serie_id == serie_id)
+        select(Actividad).where(
+            Actividad.serie_id == serie_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().all()
     sibling_ids = [a.id for a in siblings]
 
     await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
-    await db.execute(delete(Actividad).where(Actividad.serie_id == serie_id))
+    await db.execute(delete(Actividad).where(
+        and_(Actividad.serie_id == serie_id, Actividad.usuario_id == user.id)
+    ))
     await db.flush()
 
     series_payload = payload.model_copy(update={"rrule": rrule_to_use})
-    instancias = await materialize_series(db, series_payload, serie_id, payload.sefirot_ids)
+    instancias = await materialize_series(
+        db, series_payload, serie_id, payload.sefirot_ids, usuario_id=user.id,
+    )
     if not instancias:
         raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
     await db.commit()
