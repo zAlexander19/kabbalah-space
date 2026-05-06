@@ -1,20 +1,7 @@
 """Privacy contract for /respuestas endpoints."""
 from __future__ import annotations
 
-import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from models import PreguntaSefira
-
-
-@pytest.fixture
-async def seeded_pregunta(db_session: AsyncSession, seed_sefirot):
-    p = PreguntaSefira(sefira_id="jesed", texto_pregunta="¿Cómo cuidás tu Jésed?")
-    db_session.add(p)
-    await db_session.commit()
-    await db_session.refresh(p)
-    return p
 
 
 async def test_post_respuesta_requires_auth(client: AsyncClient, seeded_pregunta):

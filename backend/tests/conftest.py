@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from database import Base, get_db
 from main import app
-from models import Sefira
+from models import PreguntaSefira, Sefira
 
 
 @pytest_asyncio.fixture
@@ -90,3 +90,12 @@ async def two_users(client: AsyncClient):
     a = await register_and_login(client, "alice@example.com", "password1", "Alice")
     b = await register_and_login(client, "bob@example.com",   "password2", "Bob")
     return {"alice": a, "bob": b}
+
+
+@pytest_asyncio.fixture
+async def seeded_pregunta(db_session: AsyncSession, seed_sefirot):
+    p = PreguntaSefira(sefira_id="jesed", texto_pregunta="¿Cómo cuidás tu Jésed?")
+    db_session.add(p)
+    await db_session.commit()
+    await db_session.refresh(p)
+    return p
