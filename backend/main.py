@@ -339,7 +339,11 @@ class EvaluationResponse(BaseModel):
     feedback: str
 
 @app.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate(request: EvaluationRequest, db: AsyncSession = Depends(get_db)):
+async def evaluate(
+    request: EvaluationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     await asyncio.sleep(1)
     ai_score = min(10.0, max(1.0, request.score + random.choice([-1.5, -0.5, 0.0, 0.5, 1.5])))
     feedback = (
@@ -352,6 +356,7 @@ async def evaluate(request: EvaluationRequest, db: AsyncSession = Depends(get_db
         reflexion_texto=request.text,
         puntuacion_usuario=int(round(request.score)),
         puntuacion_ia=int(round(ai_score)),
+        usuario_id=user.id,
     )
     db.add(registro)
     await db.commit()
@@ -497,10 +502,17 @@ async def get_respuestas_estado(
 
 
 @app.get("/registros/{sefira_id}", response_model=list[RegistroOut])
-async def get_registros(sefira_id: str, db: AsyncSession = Depends(get_db)):
+async def get_registros(
+    sefira_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     rows = (await db.execute(
         select(RegistroDiario)
-        .where(RegistroDiario.sefira_id == sefira_id)
+        .where(
+            RegistroDiario.sefira_id == sefira_id,
+            RegistroDiario.usuario_id == user.id,
+        )
         .order_by(RegistroDiario.fecha_registro.desc())
     )).scalars().all()
     return [
