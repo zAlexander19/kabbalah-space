@@ -942,7 +942,11 @@ async def delete_actividad(
 
 
 @app.get("/energia/volumen-semanal", response_model=VolumenSemanalOut)
-async def get_volumen_semanal(fecha: Optional[date] = None, db: AsyncSession = Depends(get_db)):
+async def get_volumen_semanal(
+    fecha: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     target_date = fecha or datetime.utcnow().date()
     semana_inicio = target_date - timedelta(days=target_date.weekday())
     semana_fin = semana_inicio + timedelta(days=6)
@@ -972,7 +976,11 @@ async def get_volumen_semanal(fecha: Optional[date] = None, db: AsyncSession = D
         )
         .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
         .join(Sefira, Sefira.id == ActividadSefira.sefira_id)
-        .where(and_(Actividad.inicio < week_end_dt, Actividad.fin > week_start_dt))
+        .where(and_(
+            Actividad.inicio < week_end_dt,
+            Actividad.fin > week_start_dt,
+            Actividad.usuario_id == user.id,
+        ))
     )
 
     for row in rows.all():
