@@ -287,6 +287,7 @@ async def materialize_series(
     payload: ActividadCreate,
     serie_id: str,
     sefirot_ids: list[str],
+    usuario_id: str,
     range_start: Optional[datetime] = None,
     range_end: Optional[datetime] = None,
 ) -> list[Actividad]:
@@ -315,6 +316,7 @@ async def materialize_series(
             estado="pendiente",
             serie_id=serie_id,
             rrule=payload.rrule if (idx == 0 and range_start is None) else None,
+            usuario_id=usuario_id,
         )
         db.add(actividad)
         created.append(actividad)
@@ -738,6 +740,7 @@ async def ensure_series_materialized(db: AsyncSession, end: datetime) -> None:
             synthetic_payload,
             seed.serie_id,
             list(sefirot_rows),
+            usuario_id=seed.usuario_id,
             range_start=new_window_start,
             range_end=new_window_end,
         )
@@ -778,7 +781,11 @@ async def get_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/actividades", response_model=list[ActividadOut])
-async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(get_db)):
+async def create_actividad(
+    payload: ActividadCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
@@ -790,7 +797,9 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
             raise HTTPException(status_code=422, detail=f"RRULE inválido: {exc}")
 
         serie_id = str(uuid.uuid4())
-        instancias = await materialize_series(db, payload, serie_id, payload.sefirot_ids)
+        instancias = await materialize_series(
+            db, payload, serie_id, payload.sefirot_ids, usuario_id=user.id,
+        )
         if not instancias:
             raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
         await db.commit()
@@ -802,6 +811,7 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
         inicio=normalize_datetime(payload.inicio),
         fin=normalize_datetime(payload.fin),
         estado="pendiente",
+        usuario_id=user.id,
     )
     db.add(actividad)
     await db.flush()
