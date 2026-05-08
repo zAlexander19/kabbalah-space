@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 
 import type { PreguntaConEstado, SefiraResumen } from '../types';
 import ReflectionEditor from './ReflectionEditor';
+import { SEFIRA_COLORS } from '../../shared/tokens';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -78,17 +79,22 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, on
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
 
-            {/* Header */}
-            <div className="relative px-7 pt-7 pb-4 border-b border-stone-800/60">
-              <h2
-                id="answers-modal-title"
-                className="font-serif text-2xl text-amber-100/90 font-light tracking-tight"
-              >
-                Tus respuestas
-              </h2>
-              <p className="text-stone-400 text-xs tracking-wide mt-1">
-                {resumen.sefira_nombre} · {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
-              </p>
+            {/* Header — "Tus respuestas" left, sefirá name right */}
+            <div className="relative px-7 pt-7 pb-4 border-b border-stone-800/60 flex items-baseline justify-between gap-4">
+              <div>
+                <h2
+                  id="answers-modal-title"
+                  className="font-serif text-2xl text-amber-100/90 font-light tracking-tight"
+                >
+                  Tus respuestas
+                </h2>
+                <p className="text-stone-400 text-xs tracking-wide mt-1">
+                  {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
+                </p>
+              </div>
+              <h3 className="font-serif text-3xl text-amber-100/95 font-light tracking-tight">
+                {resumen.sefira_nombre}
+              </h3>
             </div>
 
             {/* Body — 2 columns of answer cards on the left, sefirá + scoring on
@@ -110,11 +116,11 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, on
                   )}
                 </div>
 
-                {/* Sidebar — sefirá identity + scoring widget */}
-                <aside className="lg:col-span-1 space-y-4">
-                  <SefiraSidebarCard resumen={resumen} />
+                {/* Sidebar — orb above the scoring widget */}
+                <aside className="lg:col-span-1 space-y-5">
+                  <SefiraOrb sefiraId={resumen.sefira_id} sefiraName={resumen.sefira_nombre} />
                   <div>
-                    <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3">
+                    <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3 text-center">
                       Nivelación de energía
                     </h3>
                     <ReflectionEditor
@@ -134,24 +140,21 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, on
   );
 }
 
-function SefiraSidebarCard({ resumen }: { resumen: SefiraResumen }) {
-  const score = resumen.score_ia_promedio;
+function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: string }) {
+  const color = SEFIRA_COLORS[sefiraId] ?? '#a3a3a3';
   return (
-    <div className="rounded-2xl border border-stone-800/60 bg-stone-900/40 p-5">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-stone-500 mb-1">
-        Sefirá en evaluación
-      </p>
-      <h3 className="font-serif text-2xl text-amber-100/95 font-light tracking-tight">
-        {resumen.sefira_nombre}
-      </h3>
-      <div className="mt-4 pt-4 border-t border-stone-800/60 flex items-baseline justify-between">
-        <span className="text-[10px] uppercase tracking-[0.16em] text-stone-500">
-          Score IA promedio
-        </span>
-        <span className="font-serif text-xl text-amber-200/85 tabular-nums">
-          {score !== null && score !== undefined
-            ? <>{score.toFixed(1)}<span className="text-stone-500 text-sm">/10</span></>
-            : <span className="text-stone-600 text-sm italic">sin datos</span>}
+    <div className="flex justify-center pt-2">
+      <div
+        className="w-24 h-24 rounded-full flex items-center justify-center"
+        style={{
+          background: `radial-gradient(circle at 30% 30%, ${color}ff 0%, ${color}aa 60%, ${color}55 100%)`,
+          border: '2px solid rgba(255,255,255,0.2)',
+          boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 24px ${color}aa, 0 0 48px ${color}55`,
+        }}
+        title={sefiraName}
+      >
+        <span className="text-[10px] font-bold tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+          {sefiraName.toUpperCase()}
         </span>
       </div>
     </div>
