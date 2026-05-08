@@ -57,7 +57,7 @@ export function UserMenu() {
           <motion.button
             key="signin"
             type="button"
-            onClick={auth.openLoginModal}
+            onClick={() => auth.openLoginModal()}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}

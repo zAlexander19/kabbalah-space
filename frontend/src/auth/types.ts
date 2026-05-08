@@ -35,7 +35,11 @@ export interface AuthContextValue {
 
   /** Login modal state. Opened by the header button (#27) and gated actions (#28). */
   isLoginModalOpen: boolean;
-  openLoginModal: () => void;
+  openLoginModal: (triggeredBy?: 'gated-save' | 'manual') => void;
+  /** Monotonic counter, incremented once after each successful login that
+   *  was triggered by a gated-save flow. Consumers (useGatedSave) watch this
+   *  to know when to open their confirm dialog. */
+  gatedSaveSignal: number;
   closeLoginModal: () => void;
 
   loginWithEmail: (email: string, password: string) => Promise<void>;

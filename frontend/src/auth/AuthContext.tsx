@@ -11,6 +11,7 @@ import {
   setStoredToken,
   setUnauthorizedHandler,
 } from './api';
+import { adoptAnonymous, wipeAll } from '../shared/drafts/storage';
 import type { AuthContextValue, AuthStatus, OAuthErrorCode, User } from './types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -52,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [oauthError, setOauthError] = useState<OAuthErrorCode | null>(null);
   const [googleOAuthEnabled, setGoogleOAuthEnabled] = useState<boolean>(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [lastTriggeredBy, setLastTriggeredBy] = useState<'gated-save' | 'manual' | null>(null);
+  const [gatedSaveSignal, setGatedSaveSignal] = useState<number>(0);
 
   // Bootstrap: handle /auth/return, validate any stored token, fetch auth config.
   useEffect(() => {
@@ -96,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
 
     setUnauthorizedHandler(() => {
+      wipeAll();
       setUser(null);
       setStatus('anonymous');
       setIsLoginModalOpen(true);
@@ -108,10 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await loginEmail(email, password);
     setStoredToken(access_token);
     const me = await fetchMe();
+    adoptAnonymous(me.id);
     setUser(me);
     setStatus('authenticated');
     setIsLoginModalOpen(false);
-  }, []);
+    if (lastTriggeredBy === 'gated-save') {
+      setGatedSaveSignal((n) => n + 1);
+    }
+    setLastTriggeredBy(null);
+  }, [lastTriggeredBy]);
 
   const registerWithEmail = useCallback(async (email: string, password: string, nombre: string) => {
     await registerEmail(email, password, nombre);
@@ -119,26 +128,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await loginEmail(email, password);
     setStoredToken(access_token);
     const me = await fetchMe();
+    adoptAnonymous(me.id);
     setUser(me);
     setStatus('authenticated');
     setIsLoginModalOpen(false);
-  }, []);
+    if (lastTriggeredBy === 'gated-save') {
+      setGatedSaveSignal((n) => n + 1);
+    }
+    setLastTriggeredBy(null);
+  }, [lastTriggeredBy]);
 
   const startGoogleOAuth = useCallback(() => {
     window.location.href = googleAuthorizeUrl();
   }, []);
 
   const logout = useCallback(() => {
+    wipeAll();
     setStoredToken(null);
     setUser(null);
     setStatus('anonymous');
   }, []);
 
   const clearOAuthError = useCallback(() => setOauthError(null), []);
-  const openLoginModal = useCallback(() => setIsLoginModalOpen(true), []);
+  const openLoginModal = useCallback((triggeredBy: 'gated-save' | 'manual' = 'manual') => {
+    setLastTriggeredBy(triggeredBy);
+    setIsLoginModalOpen(true);
+  }, []);
   const closeLoginModal = useCallback(() => {
     setIsLoginModalOpen(false);
     setOauthError(null);
+    setLastTriggeredBy(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
@@ -154,10 +173,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerWithEmail,
     startGoogleOAuth,
     logout,
+    gatedSaveSignal,
   }), [
     user, status, oauthError, clearOAuthError,
     googleOAuthEnabled, isLoginModalOpen, openLoginModal, closeLoginModal,
     loginWithEmail, registerWithEmail, startGoogleOAuth, logout,
+    gatedSaveSignal,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
