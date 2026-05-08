@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import type { SefiraResumen } from './types';
 import { useEspejoSummary } from './hooks/useEspejoSummary';
 import { useSefiraData } from './hooks/useSefiraData';
 import SefirotInteractiveTree, { type SefiraNode } from './components/SefirotInteractiveTree';
@@ -44,7 +45,27 @@ export default function EspejoModule({
   }, [introPlaying]);
 
   const selectedNode = useMemo(() => sefirot.find(s => s.id === selectedId) ?? null, [sefirot, selectedId]);
-  const selectedResumen = useMemo(() => summary.find(s => s.sefira_id === selectedId) ?? null, [summary, selectedId]);
+  // Prefer the per-user resumen when available; otherwise synthesize a minimal
+  // one from the selected node so anonymous users can still open the panel and
+  // reach the carousel + drafts flow before logging in.
+  const selectedResumen = useMemo<SefiraResumen | null>(() => {
+    if (!selectedNode) return null;
+    const real = summary.find(s => s.sefira_id === selectedId);
+    if (real) return real;
+    return {
+      sefira_id: selectedNode.id,
+      sefira_nombre: selectedNode.name,
+      preguntas_total: 0,
+      preguntas_frescas: 0,
+      preguntas_disponibles: 0,
+      score_ia_promedio: null,
+      score_ia_ultimos: [],
+      ultima_reflexion_texto: null,
+      ultima_reflexion_score: null,
+      ultima_actividad: null,
+      intensidad: 0,
+    };
+  }, [summary, selectedId, selectedNode]);
 
   function handleDataChanged() {
     void reloadSummary();
