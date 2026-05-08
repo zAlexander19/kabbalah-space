@@ -4,6 +4,7 @@ import Section2Promise from './components/Section2Promise';
 import Section3Path from './components/Section3Path';
 import Section4Bridge from './components/Section4Bridge';
 import Section5Tool from './components/Section5Tool';
+import Section6Cta from './components/Section6Cta';
 
 type Props = {
   onEnterEspejo: () => void;
@@ -28,16 +29,7 @@ export default function InicioModule({ onEnterEspejo }: Props) {
       <Section3Path />
       <Section4Bridge />
       <Section5Tool />
-      {/* Section 6 (CTA) lands here in the next task. */}
-      <div className="py-24 text-center text-stone-400 italic">
-        <button
-          type="button"
-          onClick={onEnterEspejo}
-          className="underline text-amber-200 hover:text-amber-100 transition-colors"
-        >
-          Entrar al Árbol de la Vida
-        </button>
-      </div>
+      <Section6Cta onEnterEspejo={onEnterEspejo} />
     </motion.main>
   );
 }
