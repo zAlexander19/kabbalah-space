@@ -5,7 +5,6 @@ import SefiraHeader from './SefiraHeader';
 import LastReflection from './LastReflection';
 import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
-import ReflectionEditor from './ReflectionEditor';
 import HistoryList from './HistoryList';
 import { apiFetch } from '../../auth';
 
@@ -105,22 +104,6 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
           />
         )}
       </Section>
-
-      {/* Nivelación de energía: sólo aparece cuando no quedan preguntas
-          guía pendientes (todas respondidas o la sefirá no tiene preguntas
-          configuradas). Es el cierre del flujo, después del carrusel. */}
-      {!hasUnblocked && (
-        <Section>
-          <h4 className="text-xs uppercase tracking-[0.16em] text-stone-400 mb-3">
-            Nivelación de energía
-          </h4>
-          <ReflectionEditor
-            sefiraId={resumen.sefira_id}
-            sefiraName={resumen.sefira_nombre}
-            onSaved={onDataChanged}
-          />
-        </Section>
-      )}
 
       {registros.length > 1 && (
         <Section><HistoryList registros={registros} /></Section>
