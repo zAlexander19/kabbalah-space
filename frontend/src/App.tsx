@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import AdminPanel from "./AdminPanel";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
@@ -56,6 +56,17 @@ export default function App() {
       window.sessionStorage.setItem(INTRO_FLAG, '1');
     }
   }, []);
+
+  // If the user navigates away from Espejo while the intro is still playing,
+  // EspejoIntro unmounts without ever calling onComplete — leaving introPlaying
+  // stuck at `true`, which on the next return to Espejo hides the tree
+  // (opacity 0) but doesn't render the intro either. Fast-forward the flag
+  // here so coming back shows the tree directly.
+  useEffect(() => {
+    if (activeView !== 'espejo' && introPlaying) {
+      handleIntroComplete();
+    }
+  }, [activeView, introPlaying, handleIntroComplete]);
 
   const glassEffect = "bg-stone-950/40 backdrop-blur-2xl border border-stone-800/60 shadow-[0_8px_32px_rgba(0,0,0,0.4)]";
   const glowText = "text-amber-100/90 text-shadow-sm";
@@ -162,29 +173,19 @@ export default function App() {
           </motion.p>
         </header>
 
-        <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeView}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18, ease }}
-            >
-              {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
-              {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
-              {activeView === 'evolucion' && <EvolucionModule />}
-              {activeView === 'espejo' && (
-                <EspejoModule
-                  sefirot={SEFIROT}
-                  glassEffect={glassEffect}
-                  introPlaying={introPlaying}
-                  pageRevealed={pageRevealed}
-                  onIntroComplete={handleIntroComplete}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+        <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
+          {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
+          {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
+          {activeView === 'evolucion' && <EvolucionModule />}
+          {activeView === 'espejo' && (
+            <EspejoModule
+              sefirot={SEFIROT}
+              glassEffect={glassEffect}
+              introPlaying={introPlaying}
+              pageRevealed={pageRevealed}
+              onIntroComplete={handleIntroComplete}
+            />
+          )}
         </section>
       </main>
     </div>
