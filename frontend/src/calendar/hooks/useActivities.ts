@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 import type { Activity, VolumeItem, DateRange } from '../types';
 
 function dateToYmd(d: Date): string {
@@ -24,8 +24,8 @@ export function useActivities(range: DateRange) {
       endDate.setHours(0, 0, 0, 0);
 
       const [actRes, volRes] = await Promise.all([
-        fetch(`${API_BASE}/actividades?start=${encodeURIComponent(startDate.toISOString())}&end=${encodeURIComponent(endDate.toISOString())}`),
-        fetch(`${API_BASE}/energia/volumen-semanal?fecha=${dateToYmd(range.start)}`),
+        apiFetch(`/actividades?start=${encodeURIComponent(startDate.toISOString())}&end=${encodeURIComponent(endDate.toISOString())}`),
+        apiFetch(`/energia/volumen-semanal?fecha=${dateToYmd(range.start)}`),
       ]);
 
       if (!actRes.ok) throw new Error('No se pudieron cargar actividades');

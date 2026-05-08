@@ -4,7 +4,7 @@ import { ChevronDown, Lock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PreguntaConEstado } from '../types';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 
 type Props = {
   pregunta: PreguntaConEstado;
@@ -24,7 +24,7 @@ export default function QuestionCard({ pregunta, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/respuestas`, {
+      const res = await apiFetch('/respuestas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pregunta_id: pregunta.pregunta_id, respuesta_texto: text.trim() }),

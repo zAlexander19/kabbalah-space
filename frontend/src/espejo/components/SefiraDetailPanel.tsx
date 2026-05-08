@@ -7,7 +7,7 @@ import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
 import ReflectionEditor from './ReflectionEditor';
 import HistoryList from './HistoryList';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 
 type Props = {
   resumen: SefiraResumen;
@@ -49,7 +49,7 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
   async function handleBatchSave(answers: Record<string, string>) {
     const entries = Object.entries(answers).filter(([, t]) => t.trim().length > 0);
     for (const [pregunta_id, respuesta_texto] of entries) {
-      const res = await fetch(`${API_BASE}/respuestas`, {
+      const res = await apiFetch('/respuestas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pregunta_id, respuesta_texto: respuesta_texto.trim() }),

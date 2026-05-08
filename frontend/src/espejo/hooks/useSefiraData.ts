@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 import type { PreguntaConEstado, Registro } from '../types';
 
 export function useSefiraData(sefiraId: string | null) {
@@ -16,8 +16,8 @@ export function useSefiraData(sefiraId: string | null) {
     setLoading(true);
     try {
       const [pRes, rRes] = await Promise.all([
-        fetch(`${API_BASE}/respuestas/${sefiraId}`),
-        fetch(`${API_BASE}/registros/${sefiraId}`),
+        apiFetch(`/respuestas/${sefiraId}`),
+        apiFetch(`/registros/${sefiraId}`),
       ]);
       if (pRes.ok) setPreguntas(await pRes.json());
       if (rRes.ok) setRegistros(await rRes.json());

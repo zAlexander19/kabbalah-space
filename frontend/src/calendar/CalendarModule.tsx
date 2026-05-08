@@ -3,7 +3,7 @@ import { startOfMonth } from 'date-fns';
 import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
-import { API_BASE } from '../shared/tokens';
+import { apiFetch } from '../auth';
 import CalendarToolbar from './components/CalendarToolbar';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
@@ -93,7 +93,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   async function deleteWithScope(id: string, chosenScope: Scope) {
-    const res = await fetch(`${API_BASE}/actividades/${id}?scope=${chosenScope}`, { method: 'DELETE' });
+    const res = await apiFetch(`/actividades/${id}?scope=${chosenScope}`, { method: 'DELETE' });
     if (res.ok) {
       setPanelOpen(false);
       reload();
