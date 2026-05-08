@@ -3,10 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
 
 import type { PreguntaConEstado } from '../types';
+import { PendingDraftBadge, useDraftPersistence } from '../../shared/drafts';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
 type Props = {
+  /** Sefirá id used to namespace the localStorage draft. */
+  sefiraId: string;
   preguntas: PreguntaConEstado[];
   /** Called with a map of pregunta_id -> respuesta_texto. Resolves when the
    *  batch save finishes (the parent does the actual POSTs). On reject the
@@ -14,21 +17,65 @@ type Props = {
   onBatchSave: (answers: Record<string, string>) => Promise<void>;
 };
 
-export default function QuestionCarousel({ preguntas, onBatchSave }: Props) {
+export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: Props) {
   // Only unblocked questions enter the carousel.
-  const items = useMemo(() => preguntas.filter(p => !p.bloqueada), [preguntas]);
-  const [index, setIndex] = useState(0);
+  const items = useMemo(() => preguntas.filter((p) => !p.bloqueada), [preguntas]);
+
+  // Persist the in-progress answers map per sefirá. `hydrated` (set on mount)
+  // seeds the initial state so a refresh or a return visit resumes where we left off.
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Note: we deliberately don't destructure `clear` — the parent owns the
+  // draft lifetime now (it clears after the actual POST succeeds, which only
+  // happens after the user confirms the gated-save dialog).
+  const { hydrated, hasPendingDraft } = useDraftPersistence(
+    'espejo',
+    sefiraId,
+    answers,
+  );
+
+  // Apply the rehydrated draft once on mount.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    if (hydrated && Object.keys(hydrated).length > 0) {
+      setAnswers(hydrated);
+    }
+  }, [hydrated]);
+
+  // Pick the starting question: the first that doesn't yet have a non-empty
+  // answer in `answers` (whether from rehydration or the running session).
+  const initialIndex = useMemo(() => {
+    if (items.length === 0) return 0;
+    const restoredAnswers = hydrated && Object.keys(hydrated).length > 0 ? hydrated : {};
+    const firstUnanswered = items.findIndex((p) => !(restoredAnswers[p.pregunta_id]?.trim()));
+    return firstUnanswered === -1 ? items.length - 1 : firstUnanswered;
+  }, [items, hydrated]);
+  const [index, setIndex] = useState<number>(0);
+
+  // Initialize index after items + hydration are settled.
+  const indexInitRef = useRef(false);
+  useEffect(() => {
+    if (indexInitRef.current || items.length === 0) return;
+    indexInitRef.current = true;
+    setIndex(initialIndex);
+  }, [initialIndex, items.length]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset session state if the underlying questions change (e.g. after save).
+  // Reset session state if the underlying questions change (e.g. after save —
+  // questions reload with new bloqueada flags, possibly different ids).
+  const itemKey = useMemo(() => items.map((p) => p.pregunta_id).join('|'), [items]);
+  const lastItemKeyRef = useRef(itemKey);
   useEffect(() => {
+    if (lastItemKeyRef.current === itemKey) return;
+    lastItemKeyRef.current = itemKey;
     setIndex(0);
     setAnswers({});
     setError(null);
-  }, [items.map(p => p.pregunta_id).join('|')]);
+  }, [itemKey]);
 
   // Autofocus textarea on each step
   useEffect(() => {
@@ -36,27 +83,23 @@ export default function QuestionCarousel({ preguntas, onBatchSave }: Props) {
     return () => window.clearTimeout(t);
   }, [index]);
 
-  if (items.length === 0) {
-    // Caller decides what to render in this case (typically the AnswersGridModal
-    // or a "todo respondido" empty state). We render nothing on purpose.
-    return null;
-  }
+  if (items.length === 0) return null;
 
-  const current = items[index];
+  const current = items[Math.min(index, items.length - 1)];
   const currentText = answers[current.pregunta_id] ?? '';
-  const isLast = index === items.length - 1;
+  const isLast = index >= items.length - 1;
   const canAdvance = currentText.trim().length > 0;
 
   function setText(v: string) {
-    setAnswers(prev => ({ ...prev, [current.pregunta_id]: v }));
+    setAnswers((prev) => ({ ...prev, [current.pregunta_id]: v }));
     if (error) setError(null);
   }
 
   function goPrev() {
-    if (index > 0) setIndex(i => i - 1);
+    if (index > 0) setIndex((i) => i - 1);
   }
   function goNext() {
-    if (canAdvance && !isLast) setIndex(i => i + 1);
+    if (canAdvance && !isLast) setIndex((i) => i + 1);
   }
 
   async function handleSave() {
@@ -64,6 +107,11 @@ export default function QuestionCarousel({ preguntas, onBatchSave }: Props) {
     setSaving(true);
     setError(null);
     try {
+      // The parent (SefiraDetailPanel) routes this through useGatedSave —
+      // it resolves immediately, opens the ConfirmSaveDialog, and the actual
+      // POSTs run on confirm. The parent clears the draft (via storage.ts)
+      // after the POSTs succeed; we don't try to manage the draft lifetime
+      // from here since we don't know if the user will confirm or cancel.
       await onBatchSave(answers);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar.');
@@ -76,11 +124,18 @@ export default function QuestionCarousel({ preguntas, onBatchSave }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Pending draft indicator */}
+      {hasPendingDraft && (
+        <div>
+          <PendingDraftBadge visible message="Tenés respuestas sin guardar" />
+        </div>
+      )}
+
       {/* Progress header */}
       <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.16em] text-stone-500">
         <span>Pregunta {index + 1} de {items.length}</span>
         <span className="text-stone-600">
-          {Object.values(answers).filter(t => t.trim()).length} respondidas
+          {Object.values(answers).filter((t) => t.trim()).length} respondidas
         </span>
       </div>
       <div className="h-[2px] w-full bg-stone-800/60 rounded-full overflow-hidden">
@@ -109,7 +164,7 @@ export default function QuestionCarousel({ preguntas, onBatchSave }: Props) {
             <textarea
               ref={textareaRef}
               value={currentText}
-              onChange={e => setText(e.target.value)}
+              onChange={(e) => setText(e.target.value)}
               placeholder="Escribí tu reflexión..."
               disabled={saving}
               className="flex-1 min-h-[100px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors disabled:opacity-60"
