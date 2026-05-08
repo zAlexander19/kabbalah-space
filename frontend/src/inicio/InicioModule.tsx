@@ -3,6 +3,7 @@ import Section1Hook from './components/Section1Hook';
 import Section2Promise from './components/Section2Promise';
 import Section3Path from './components/Section3Path';
 import Section4Bridge from './components/Section4Bridge';
+import Section5Tool from './components/Section5Tool';
 
 type Props = {
   onEnterEspejo: () => void;
@@ -26,7 +27,8 @@ export default function InicioModule({ onEnterEspejo }: Props) {
       <Section2Promise />
       <Section3Path />
       <Section4Bridge />
-      {/* Section 5 lands here in the next task. */}
+      <Section5Tool />
+      {/* Section 6 (CTA) lands here in the next task. */}
       <div className="py-24 text-center text-stone-400 italic">
         <button
           type="button"
