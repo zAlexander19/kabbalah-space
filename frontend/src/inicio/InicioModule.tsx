@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import Section1Hook from './components/Section1Hook';
 
 type Props = {
   onEnterEspejo: () => void;
@@ -18,8 +19,9 @@ export default function InicioModule({ onEnterEspejo }: Props) {
       transition={{ duration: 0.5 }}
       className="w-full max-w-2xl mx-auto px-6 md:px-8"
     >
-      <div className="py-32 text-center text-stone-400 italic">
-        Manifiesto en construcción.{' '}
+      <Section1Hook />
+      {/* Sections 2–5 land here as later tasks add them. */}
+      <div className="py-24 text-center text-stone-400 italic">
         <button
           type="button"
           onClick={onEnterEspejo}
