@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import AdminPanel from "./AdminPanel";
 import CalendarModule from "./calendar";
@@ -56,6 +56,17 @@ export default function App() {
       window.sessionStorage.setItem(INTRO_FLAG, '1');
     }
   }, []);
+
+  // If the user navigates away from Espejo while the intro is still playing,
+  // EspejoIntro unmounts without ever calling onComplete — leaving introPlaying
+  // stuck at `true`, which on the next return to Espejo hides the tree
+  // (opacity 0) but doesn't render the intro either. Fast-forward the flag
+  // here so coming back shows the tree directly.
+  useEffect(() => {
+    if (activeView !== 'espejo' && introPlaying) {
+      handleIntroComplete();
+    }
+  }, [activeView, introPlaying, handleIntroComplete]);
 
   const glassEffect = "bg-stone-950/40 backdrop-blur-2xl border border-stone-800/60 shadow-[0_8px_32px_rgba(0,0,0,0.4)]";
   const glowText = "text-amber-100/90 text-shadow-sm";
