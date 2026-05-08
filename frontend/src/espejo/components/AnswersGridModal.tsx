@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-import type { PreguntaConEstado } from '../types';
+import type { PreguntaConEstado, SefiraResumen } from '../types';
+import ReflectionEditor from './ReflectionEditor';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -14,10 +15,12 @@ type Props = {
   /** All questions of the sefirá (answered + unanswered). The modal renders
    *  only those with `ultima_respuesta`. */
   preguntas: PreguntaConEstado[];
-  sefiraNombre: string;
+  resumen: SefiraResumen;
+  /** Called after a successful score submission so the parent can refetch data. */
+  onScoreSaved: () => void;
 };
 
-export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombre }: Props) {
+export default function AnswersGridModal({ open, onClose, preguntas, resumen, onScoreSaved }: Props) {
   // ESC closes
   useEffect(() => {
     if (!open) return;
@@ -84,25 +87,43 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
                 Tus respuestas
               </h2>
               <p className="text-stone-400 text-xs tracking-wide mt-1">
-                {sefiraNombre} · {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
+                {resumen.sefira_nombre} · {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
               </p>
             </div>
 
-            {/* Grid — centered in the modal with bounded width so cards keep
-                a comfortable size even with only a few answers. */}
+            {/* Body — 2 columns of answer cards on the left, sefirá + scoring on
+                the right. Stacks vertically on narrow viewports. */}
             <div className="relative flex-1 overflow-y-auto px-6 sm:px-10 py-8">
-              <div className="max-w-7xl mx-auto">
-                {answered.length === 0 ? (
-                  <p className="text-center text-stone-500 italic py-16">
-                    Todavía no hay respuestas guardadas para esta sefirá.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {answered.map((p, i) => (
-                      <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
-                    ))}
+              <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Answers area — spans 2/3 of the width on lg+ */}
+                <div className="lg:col-span-2">
+                  {answered.length === 0 ? (
+                    <p className="text-center text-stone-500 italic py-16">
+                      Todavía no hay respuestas guardadas para esta sefirá.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {answered.map((p, i) => (
+                        <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar — sefirá identity + scoring widget */}
+                <aside className="lg:col-span-1 space-y-4">
+                  <SefiraSidebarCard resumen={resumen} />
+                  <div>
+                    <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3">
+                      Nivelación de energía
+                    </h3>
+                    <ReflectionEditor
+                      sefiraId={resumen.sefira_id}
+                      sefiraName={resumen.sefira_nombre}
+                      onSaved={onScoreSaved}
+                    />
                   </div>
-                )}
+                </aside>
               </div>
             </div>
           </motion.div>
@@ -110,6 +131,30 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
       )}
     </AnimatePresence>,
     document.body
+  );
+}
+
+function SefiraSidebarCard({ resumen }: { resumen: SefiraResumen }) {
+  const score = resumen.score_ia_promedio;
+  return (
+    <div className="rounded-2xl border border-stone-800/60 bg-stone-900/40 p-5">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-stone-500 mb-1">
+        Sefirá en evaluación
+      </p>
+      <h3 className="font-serif text-2xl text-amber-100/95 font-light tracking-tight">
+        {resumen.sefira_nombre}
+      </h3>
+      <div className="mt-4 pt-4 border-t border-stone-800/60 flex items-baseline justify-between">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-stone-500">
+          Score IA promedio
+        </span>
+        <span className="font-serif text-xl text-amber-200/85 tabular-nums">
+          {score !== null && score !== undefined
+            ? <>{score.toFixed(1)}<span className="text-stone-500 text-sm">/10</span></>
+            : <span className="text-stone-600 text-sm italic">sin datos</span>}
+        </span>
+      </div>
+    </div>
   );
 }
 

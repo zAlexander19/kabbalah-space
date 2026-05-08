@@ -130,7 +130,8 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         preguntas={preguntas}
-        sefiraNombre={resumen.sefira_nombre}
+        resumen={resumen}
+        onScoreSaved={onDataChanged}
       />
     </motion.div>
   );
