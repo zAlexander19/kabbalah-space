@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import Section1Hook from './components/Section1Hook';
 import Section2Promise from './components/Section2Promise';
+import Section3Path from './components/Section3Path';
 
 type Props = {
   onEnterEspejo: () => void;
@@ -22,7 +23,8 @@ export default function InicioModule({ onEnterEspejo }: Props) {
     >
       <Section1Hook />
       <Section2Promise />
-      {/* Sections 3–5 land here as later tasks add them. */}
+      <Section3Path />
+      {/* Sections 4–5 land here as later tasks add them. */}
       <div className="py-24 text-center text-stone-400 italic">
         <button
           type="button"
