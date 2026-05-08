@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { SefiraResumen, PreguntaConEstado, Registro } from '../types';
 import SefiraHeader from './SefiraHeader';
@@ -7,6 +7,7 @@ import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
 import HistoryList from './HistoryList';
 import { apiFetch } from '../../auth';
+import { ConfirmSaveDialog, clearDraft, useGatedSave } from '../../shared/drafts';
 
 type Props = {
   resumen: SefiraResumen;
@@ -45,23 +46,49 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
     setAutoOpenedFor(null);
   }, [resumen.sefira_id]);
 
-  async function handleBatchSave(answers: Record<string, string>) {
+  // Pending answers snapshot. The carousel calls handleBatchSave(answers),
+  // we stash the map here, then trigger the gated-save flow. The actual
+  // POST happens inside performBatchSave (referenced by useGatedSave).
+  const pendingAnswersRef = useRef<Record<string, string>>({});
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function performBatchSave() {
+    setConfirmError(null);
+    const answers = pendingAnswersRef.current;
     const entries = Object.entries(answers).filter(([, t]) => t.trim().length > 0);
-    for (const [pregunta_id, respuesta_texto] of entries) {
-      const res = await apiFetch('/respuestas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pregunta_id, respuesta_texto: respuesta_texto.trim() }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail ?? `No se pudo guardar la pregunta ${pregunta_id.slice(0, 6)}.`);
+    try {
+      for (const [pregunta_id, respuesta_texto] of entries) {
+        const res = await apiFetch('/respuestas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pregunta_id, respuesta_texto: respuesta_texto.trim() }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail ?? `No se pudo guardar la pregunta ${pregunta_id.slice(0, 6)}.`);
+        }
       }
+      // Reload + open summary modal + drop the persisted draft.
+      onDataChanged();
+      setModalOpen(true);
+      pendingAnswersRef.current = {};
+      clearDraft('espejo', resumen.sefira_id);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo guardar.';
+      setConfirmError(msg);
+      throw e; // let useGatedSave know we failed, but the dialog stays open
     }
-    // Reload the sefirá state so all questions are now blocked.
-    onDataChanged();
-    // Open the summary modal with what was just saved.
-    setModalOpen(true);
+  }
+
+  const gated = useGatedSave(performBatchSave);
+
+  function handleBatchSave(answers: Record<string, string>): Promise<void> {
+    pendingAnswersRef.current = answers;
+    setConfirmError(null);
+    gated.triggerSave();
+    // We resolve immediately so the carousel can drop its loading state.
+    // Errors will surface inside the ConfirmSaveDialog instead.
+    return Promise.resolve();
   }
 
   return (
@@ -96,7 +123,7 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
             No hay preguntas guía para esta sefirá. Agregá algunas desde el Panel de Administrador.
           </p>
         ) : hasUnblocked ? (
-          <QuestionCarousel preguntas={preguntas} onBatchSave={handleBatchSave} />
+          <QuestionCarousel sefiraId={resumen.sefira_id} preguntas={preguntas} onBatchSave={handleBatchSave} />
         ) : (
           <AllAnsweredEmptyState
             preguntas={preguntas}
@@ -115,6 +142,23 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         preguntas={preguntas}
         resumen={resumen}
         onScoreSaved={onDataChanged}
+      />
+
+      <ConfirmSaveDialog
+        open={gated.isConfirming}
+        title="¿Guardar tus respuestas?"
+        body={
+          <>
+            Al confirmar, tus respuestas quedan registradas y la sefirá entra en
+            cooldown por <strong className="text-amber-200/90">30 días</strong>{' '}
+            antes de que puedas volver a contestar estas preguntas.
+          </>
+        }
+        confirmLabel="Guardar respuestas"
+        isSaving={gated.isSaving}
+        errorMessage={confirmError}
+        onConfirm={() => { void gated.confirm().catch(() => { /* error already in confirmError */ }); }}
+        onCancel={gated.cancel}
       />
     </motion.div>
   );
