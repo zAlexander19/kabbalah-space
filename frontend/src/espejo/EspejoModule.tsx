@@ -51,13 +51,13 @@ export default function EspejoModule({
     void reloadSefira();
   }
 
-  // El árbol internamente trabaja en un sistema 400×880 px. Lo escalamos al 80%
-  // para que el conjunto entero (árbol + intro + card rotativa) entre en el viewport
-  // sin que ningún hijo se desalinee. Outer toma las dimensiones escaladas; inner
-  // mantiene la lógica original con scale transform.
+  // El árbol internamente trabaja en un sistema 400×880 px. Lo escalamos para
+  // que el conjunto entero (árbol + intro + card rotativa) entre en el viewport
+  // sin que ningún hijo se desalinee. Outer toma las dimensiones escaladas;
+  // inner mantiene la lógica original con scale transform.
   const TREE_W = 400;
   const TREE_H = 880;
-  const TREE_SCALE = 0.9;
+  const TREE_SCALE = 1.05;
   return (
     <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
       <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE, height: TREE_H * TREE_SCALE }}>

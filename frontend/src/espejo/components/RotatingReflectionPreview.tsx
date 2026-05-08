@@ -11,10 +11,10 @@ type Props = {
   onSelectSefira: (id: string) => void;
 };
 
-const CARD_W = 220;
-const CARD_H = 100; // estimate for vertical centering
+const CARD_W = 280;
+const CARD_H = 130; // estimate for vertical centering
 
-function snippet(text: string, max = 90): string {
+function snippet(text: string, max = 110): string {
   const t = text.trim().replace(/\s+/g, ' ');
   if (t.length <= max) return `"${t}"`;
   return `"${t.slice(0, max - 1)}…"`;
@@ -82,26 +82,26 @@ export default function RotatingReflectionPreview({ sefirot, summary, active, on
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="px-3 py-2.5"
+          className="px-4 py-3"
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-              <span className="text-[9px] uppercase tracking-[0.14em] text-stone-300/90">{current.sefira_nombre}</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+              <span className="text-[11px] uppercase tracking-[0.14em] text-stone-200/95 font-medium">{current.sefira_nombre}</span>
             </div>
             {hasReflection && (
-              <span className="text-[9px] tabular-nums px-1.5 py-0.5 rounded-full bg-amber-300/10 text-amber-200/80">
+              <span className="text-[11px] tabular-nums px-2 py-0.5 rounded-full bg-amber-300/10 text-amber-200/85">
                 {current.score_ia_promedio}
               </span>
             )}
           </div>
 
           {hasReflection ? (
-            <p className="text-[11px] text-stone-300/85 italic line-clamp-3 leading-snug mb-2">
-              {snippet(current.ultima_reflexion_texto ?? '', 90)}
+            <p className="text-[13px] text-stone-300/90 italic line-clamp-3 leading-relaxed mb-2.5">
+              {snippet(current.ultima_reflexion_texto ?? '', 110)}
             </p>
           ) : (
-            <p className="text-[11px] text-stone-400/75 line-clamp-3 leading-snug mb-2">
+            <p className="text-[13px] text-stone-400/85 line-clamp-3 leading-relaxed mb-2.5">
               {node.description}
             </p>
           )}
@@ -109,7 +109,7 @@ export default function RotatingReflectionPreview({ sefirot, summary, active, on
           <button
             type="button"
             onClick={() => onSelectSefira(current.sefira_id)}
-            className="text-[10px] text-amber-300/70 hover:text-amber-200 inline-flex items-center gap-1 transition-colors"
+            className="text-[12px] text-amber-300/80 hover:text-amber-200 inline-flex items-center gap-1 transition-colors"
           >
             {hasReflection ? 'Ver más' : 'Reflexionar'} <span aria-hidden>→</span>
           </button>
