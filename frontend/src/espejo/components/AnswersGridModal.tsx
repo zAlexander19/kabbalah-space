@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-import type { PreguntaConEstado } from '../types';
+import type { PreguntaConEstado, SefiraResumen } from '../types';
+import ReflectionEditor from './ReflectionEditor';
+import { SEFIRA_COLORS } from '../../shared/tokens';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -14,10 +16,12 @@ type Props = {
   /** All questions of the sefirá (answered + unanswered). The modal renders
    *  only those with `ultima_respuesta`. */
   preguntas: PreguntaConEstado[];
-  sefiraNombre: string;
+  resumen: SefiraResumen;
+  /** Called after a successful score submission so the parent can refetch data. */
+  onScoreSaved: () => void;
 };
 
-export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombre }: Props) {
+export default function AnswersGridModal({ open, onClose, preguntas, resumen, onScoreSaved }: Props) {
   // ESC closes
   useEffect(() => {
     if (!open) return;
@@ -75,34 +79,57 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
 
-            {/* Header */}
-            <div className="relative px-7 pt-7 pb-4 border-b border-stone-800/60">
-              <h2
-                id="answers-modal-title"
-                className="font-serif text-2xl text-amber-100/90 font-light tracking-tight"
-              >
-                Tus respuestas
-              </h2>
-              <p className="text-stone-400 text-xs tracking-wide mt-1">
-                {sefiraNombre} · {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
-              </p>
+            {/* Header — "Tus respuestas" left, sefirá name right */}
+            <div className="relative px-7 pt-7 pb-4 border-b border-stone-800/60 flex items-baseline justify-between gap-4">
+              <div>
+                <h2
+                  id="answers-modal-title"
+                  className="font-serif text-2xl text-amber-100/90 font-light tracking-tight"
+                >
+                  Tus respuestas
+                </h2>
+                <p className="text-stone-400 text-xs tracking-wide mt-1">
+                  {answered.length} {answered.length === 1 ? 'reflexión' : 'reflexiones'}
+                </p>
+              </div>
+              <h3 className="font-serif text-3xl text-amber-100/95 font-light tracking-tight">
+                {resumen.sefira_nombre}
+              </h3>
             </div>
 
-            {/* Grid — centered in the modal with bounded width so cards keep
-                a comfortable size even with only a few answers. */}
+            {/* Body — 2 columns of answer cards on the left, sefirá + scoring on
+                the right. Stacks vertically on narrow viewports. */}
             <div className="relative flex-1 overflow-y-auto px-6 sm:px-10 py-8">
-              <div className="max-w-7xl mx-auto">
-                {answered.length === 0 ? (
-                  <p className="text-center text-stone-500 italic py-16">
-                    Todavía no hay respuestas guardadas para esta sefirá.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {answered.map((p, i) => (
-                      <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
-                    ))}
+              <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Answers area — spans 2/3 of the width on lg+ */}
+                <div className="lg:col-span-2">
+                  {answered.length === 0 ? (
+                    <p className="text-center text-stone-500 italic py-16">
+                      Todavía no hay respuestas guardadas para esta sefirá.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {answered.map((p, i) => (
+                        <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar — orb above the scoring widget */}
+                <aside className="lg:col-span-1 space-y-5">
+                  <SefiraOrb sefiraId={resumen.sefira_id} sefiraName={resumen.sefira_nombre} />
+                  <div>
+                    <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3 text-center">
+                      Nivelación de energía
+                    </h3>
+                    <ReflectionEditor
+                      sefiraId={resumen.sefira_id}
+                      sefiraName={resumen.sefira_nombre}
+                      onSaved={onScoreSaved}
+                    />
                   </div>
-                )}
+                </aside>
               </div>
             </div>
           </motion.div>
@@ -110,6 +137,27 @@ export default function AnswersGridModal({ open, onClose, preguntas, sefiraNombr
       )}
     </AnimatePresence>,
     document.body
+  );
+}
+
+function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: string }) {
+  const color = SEFIRA_COLORS[sefiraId] ?? '#a3a3a3';
+  return (
+    <div className="flex justify-center pt-2">
+      <div
+        className="w-24 h-24 rounded-full flex items-center justify-center"
+        style={{
+          background: `radial-gradient(circle at 30% 30%, ${color}ff 0%, ${color}aa 60%, ${color}55 100%)`,
+          border: '2px solid rgba(255,255,255,0.2)',
+          boxShadow: `inset -8px -8px 16px rgba(0,0,0,0.6), inset 8px 8px 16px rgba(255,255,255,0.3), 0 0 24px ${color}aa, 0 0 48px ${color}55`,
+        }}
+        title={sefiraName}
+      >
+        <span className="text-[10px] font-bold tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+          {sefiraName.toUpperCase()}
+        </span>
+      </div>
+    </div>
   );
 }
 

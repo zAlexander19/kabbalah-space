@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SefiraNode, Activity } from '../types';
-import { SEFIRA_COLORS, API_BASE } from '../../shared/tokens';
+import { SEFIRA_COLORS } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 import RecurrencePicker from './RecurrencePicker';
 
 type Scope = 'one' | 'series';
@@ -97,10 +98,10 @@ export default function ActivityForm({
         rrule: rrule || undefined,
       };
       const url = editing
-        ? `${API_BASE}/actividades/${editing.id}?scope=${scope}`
-        : `${API_BASE}/actividades`;
+        ? `/actividades/${editing.id}?scope=${scope}`
+        : '/actividades';
       const method = editing ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
         setError(data.detail ?? 'No se pudo guardar');
@@ -129,7 +130,7 @@ export default function ActivityForm({
 
   async function doDelete() {
     if (!editing) return;
-    const res = await fetch(`${API_BASE}/actividades/${editing.id}?scope=${scope}`, { method: 'DELETE' });
+    const res = await apiFetch(`/actividades/${editing.id}?scope=${scope}`, { method: 'DELETE' });
     if (!res.ok) {
       setError('No se pudo eliminar');
       return;

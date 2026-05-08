@@ -61,7 +61,7 @@ class RegistroDiario(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
 
-    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"))
+    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
 
     sefira_id = Column(String(50), ForeignKey("sefirot.id"))
 
@@ -93,7 +93,7 @@ class RespuestaPregunta(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
 
-    usuario_id = Column(String(36), ForeignKey('usuarios.id', ondelete='CASCADE'))
+    usuario_id = Column(String(36), ForeignKey('usuarios.id', ondelete='CASCADE'), nullable=False, index=True)
 
     pregunta_id = Column(String(36), ForeignKey('preguntas_sefirot.id', ondelete='CASCADE'), nullable=False)
 
@@ -108,7 +108,7 @@ class Actividad(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
 
-    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"))
+    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
 
     titulo = Column(String(200), nullable=False)
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 
 type Props = {
   sefiraId: string;
@@ -22,7 +22,7 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
     setSubmitting(true);
     setFeedback(null);
     try {
-      const res = await fetch(`${API_BASE}/evaluate`, {
+      const res = await apiFetch('/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sefira: sefiraName, sefira_id: sefiraId, text, score }),

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 import type { SefiraEvolucion, RangeOption } from '../types';
 import { RANGE_TO_MESES } from '../types';
 
@@ -13,7 +13,7 @@ export function useEvolucion(range: RangeOption) {
     setError('');
     try {
       const meses = RANGE_TO_MESES[range];
-      const res = await fetch(`${API_BASE}/espejo/evolucion?meses=${meses}`);
+      const res = await apiFetch(`/espejo/evolucion?meses=${meses}`);
       if (!res.ok) throw new Error('No se pudo cargar la evolución');
       setData(await res.json());
     } catch (err) {

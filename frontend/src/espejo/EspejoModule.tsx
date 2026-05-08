@@ -51,19 +51,25 @@ export default function EspejoModule({
     void reloadSefira();
   }
 
-  // El árbol internamente trabaja en un sistema 400×880 px. Lo escalamos al 80%
-  // para que el conjunto entero (árbol + intro + card rotativa) entre en el viewport
-  // sin que ningún hijo se desalinee. Outer toma las dimensiones escaladas; inner
-  // mantiene la lógica original con scale transform.
+  // El árbol internamente trabaja en un sistema 400×880 px. Lo escalamos para
+  // que el conjunto entero (árbol + intro + card rotativa) entre en el viewport
+  // sin que ningún hijo se desalinee. Outer toma las dimensiones escaladas;
+  // inner mantiene la lógica original con scale transform.
+  //
+  // LEFT_GUTTER reserva espacio dentro del wrapper para que las cards flotantes
+  // de las sefirot del pilar izquierdo (Biná, Guevurá, Hod, Maljut) — que se
+  // posicionan en `x - 30 - CARD_W` del sistema interno — no queden cortadas
+  // por el `overflow-hidden` del layout de la página.
   const TREE_W = 400;
   const TREE_H = 880;
-  const TREE_SCALE = 0.9;
+  const TREE_SCALE = 0.95;
+  const LEFT_GUTTER = 180;
   return (
     <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
-      <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE, height: TREE_H * TREE_SCALE }}>
+      <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE + LEFT_GUTTER, height: TREE_H * TREE_SCALE }}>
         <div
-          className="absolute top-0 left-0"
-          style={{ width: TREE_W, height: TREE_H, transform: `scale(${TREE_SCALE})`, transformOrigin: 'top left' }}
+          className="absolute top-0"
+          style={{ left: LEFT_GUTTER, width: TREE_W, height: TREE_H, transform: `scale(${TREE_SCALE})`, transformOrigin: 'top left' }}
         >
           <motion.div
             animate={{ opacity: introPlaying ? 0 : 1 }}

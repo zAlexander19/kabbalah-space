@@ -5,9 +5,8 @@ import SefiraHeader from './SefiraHeader';
 import LastReflection from './LastReflection';
 import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
-import ReflectionEditor from './ReflectionEditor';
 import HistoryList from './HistoryList';
-import { API_BASE } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 
 type Props = {
   resumen: SefiraResumen;
@@ -49,7 +48,7 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
   async function handleBatchSave(answers: Record<string, string>) {
     const entries = Object.entries(answers).filter(([, t]) => t.trim().length > 0);
     for (const [pregunta_id, respuesta_texto] of entries) {
-      const res = await fetch(`${API_BASE}/respuestas`, {
+      const res = await apiFetch('/respuestas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pregunta_id, respuesta_texto: respuesta_texto.trim() }),
@@ -106,22 +105,6 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         )}
       </Section>
 
-      {/* Nivelación de energía: sólo aparece cuando no quedan preguntas
-          guía pendientes (todas respondidas o la sefirá no tiene preguntas
-          configuradas). Es el cierre del flujo, después del carrusel. */}
-      {!hasUnblocked && (
-        <Section>
-          <h4 className="text-xs uppercase tracking-[0.16em] text-stone-400 mb-3">
-            Nivelación de energía
-          </h4>
-          <ReflectionEditor
-            sefiraId={resumen.sefira_id}
-            sefiraName={resumen.sefira_nombre}
-            onSaved={onDataChanged}
-          />
-        </Section>
-      )}
-
       {registros.length > 1 && (
         <Section><HistoryList registros={registros} /></Section>
       )}
@@ -130,7 +113,8 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         preguntas={preguntas}
-        sefiraNombre={resumen.sefira_nombre}
+        resumen={resumen}
+        onScoreSaved={onDataChanged}
       />
     </motion.div>
   );

@@ -287,6 +287,7 @@ async def materialize_series(
     payload: ActividadCreate,
     serie_id: str,
     sefirot_ids: list[str],
+    usuario_id: str,
     range_start: Optional[datetime] = None,
     range_end: Optional[datetime] = None,
 ) -> list[Actividad]:
@@ -315,6 +316,7 @@ async def materialize_series(
             estado="pendiente",
             serie_id=serie_id,
             rrule=payload.rrule if (idx == 0 and range_start is None) else None,
+            usuario_id=usuario_id,
         )
         db.add(actividad)
         created.append(actividad)
@@ -339,7 +341,11 @@ class EvaluationResponse(BaseModel):
     feedback: str
 
 @app.post("/evaluate", response_model=EvaluationResponse)
-async def evaluate(request: EvaluationRequest, db: AsyncSession = Depends(get_db)):
+async def evaluate(
+    request: EvaluationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     await asyncio.sleep(1)
     ai_score = min(10.0, max(1.0, request.score + random.choice([-1.5, -0.5, 0.0, 0.5, 1.5])))
     feedback = (
@@ -352,6 +358,7 @@ async def evaluate(request: EvaluationRequest, db: AsyncSession = Depends(get_db
         reflexion_texto=request.text,
         puntuacion_usuario=int(round(request.score)),
         puntuacion_ia=int(round(ai_score)),
+        usuario_id=user.id,
     )
     db.add(registro)
     await db.commit()
@@ -450,7 +457,11 @@ def _months_back(today: datetime, count: int) -> list[str]:
     return list(reversed(keys))
 
 @app.get("/respuestas/{sefira_id}", response_model=list[PreguntaConEstado])
-async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_db)):
+async def get_respuestas_estado(
+    sefira_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     preguntas = (await db.execute(
         select(PreguntaSefira).where(PreguntaSefira.sefira_id == sefira_id)
     )).scalars().all()
@@ -460,7 +471,10 @@ async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_d
     for p in preguntas:
         last = (await db.execute(
             select(RespuestaPregunta)
-            .where(RespuestaPregunta.pregunta_id == p.id)
+            .where(
+                RespuestaPregunta.pregunta_id == p.id,
+                RespuestaPregunta.usuario_id == user.id,
+            )
             .order_by(RespuestaPregunta.fecha_registro.desc())
             .limit(1)
         )).scalars().first()
@@ -490,10 +504,17 @@ async def get_respuestas_estado(sefira_id: str, db: AsyncSession = Depends(get_d
 
 
 @app.get("/registros/{sefira_id}", response_model=list[RegistroOut])
-async def get_registros(sefira_id: str, db: AsyncSession = Depends(get_db)):
+async def get_registros(
+    sefira_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     rows = (await db.execute(
         select(RegistroDiario)
-        .where(RegistroDiario.sefira_id == sefira_id)
+        .where(
+            RegistroDiario.sefira_id == sefira_id,
+            RegistroDiario.usuario_id == user.id,
+        )
         .order_by(RegistroDiario.fecha_registro.desc())
     )).scalars().all()
     return [
@@ -507,7 +528,10 @@ async def get_registros(sefira_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/espejo/resumen", response_model=list[SefiraResumen])
-async def espejo_resumen(db: AsyncSession = Depends(get_db)):
+async def espejo_resumen(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
     today = datetime.utcnow()
     threshold = today - timedelta(days=30)
@@ -524,7 +548,10 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
         for pid in preguntas:
             last = (await db.execute(
                 select(RespuestaPregunta.fecha_registro)
-                .where(RespuestaPregunta.pregunta_id == pid)
+                .where(
+                    RespuestaPregunta.pregunta_id == pid,
+                    RespuestaPregunta.usuario_id == user.id,
+                )
                 .order_by(RespuestaPregunta.fecha_registro.desc()).limit(1)
             )).scalars().first()
             if last is None:
@@ -539,7 +566,10 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
 
         regs = (await db.execute(
             select(RegistroDiario)
-            .where(RegistroDiario.sefira_id == s.id)
+            .where(
+                RegistroDiario.sefira_id == s.id,
+                RegistroDiario.usuario_id == user.id,
+            )
             .order_by(RegistroDiario.fecha_registro.desc())
         )).scalars().all()
 
@@ -567,6 +597,7 @@ async def espejo_resumen(db: AsyncSession = Depends(get_db)):
 async def espejo_evolucion(
     meses: int = Query(12, ge=1, le=120),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
     today = datetime.utcnow()
@@ -575,13 +606,19 @@ async def espejo_evolucion(
     out: list[SefiraEvolucion] = []
     for s in sefirot:
         regs = (await db.execute(
-            select(RegistroDiario).where(RegistroDiario.sefira_id == s.id)
+            select(RegistroDiario).where(
+                RegistroDiario.sefira_id == s.id,
+                RegistroDiario.usuario_id == user.id,
+            )
         )).scalars().all()
 
         respuestas_rows = (await db.execute(
             select(RespuestaPregunta.fecha_registro)
             .join(PreguntaSefira, PreguntaSefira.id == RespuestaPregunta.pregunta_id)
-            .where(PreguntaSefira.sefira_id == s.id)
+            .where(
+                PreguntaSefira.sefira_id == s.id,
+                RespuestaPregunta.usuario_id == user.id,
+            )
         )).scalars().all()
 
         regs_por_mes: dict[str, list] = {}
@@ -621,10 +658,17 @@ async def espejo_evolucion(
 
 
 @app.post("/respuestas")
-async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db)):
+async def save_respuesta(
+    rep: RespuestaCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     last = (await db.execute(
         select(RespuestaPregunta)
-        .where(RespuestaPregunta.pregunta_id == rep.pregunta_id)
+        .where(
+            RespuestaPregunta.pregunta_id == rep.pregunta_id,
+            RespuestaPregunta.usuario_id == user.id,
+        )
         .order_by(RespuestaPregunta.fecha_registro.desc())
         .limit(1)
     )).scalars().first()
@@ -640,19 +684,27 @@ async def save_respuesta(rep: RespuestaCreate, db: AsyncSession = Depends(get_db
                 detail=f"Esta pregunta vuelve a estar disponible el {next_available.date().isoformat()}",
             )
 
-    nueva_res = RespuestaPregunta(pregunta_id=rep.pregunta_id, respuesta_texto=rep.respuesta_texto)
+    nueva_res = RespuestaPregunta(
+        pregunta_id=rep.pregunta_id,
+        respuesta_texto=rep.respuesta_texto,
+        usuario_id=user.id,
+    )
     db.add(nueva_res)
     await db.commit()
     await db.refresh(nueva_res)
     return nueva_res
 
 
-async def ensure_series_materialized(db: AsyncSession, end: datetime) -> None:
+async def ensure_series_materialized(db: AsyncSession, end: datetime, user_id: str) -> None:
     """For each open-ended series (no UNTIL/COUNT), materialize more instances
     if the series' last instance ends before `end`."""
     seeds = (await db.execute(
         select(Actividad).where(
-            and_(Actividad.rrule.is_not(None), Actividad.serie_id.is_not(None))
+            and_(
+                Actividad.rrule.is_not(None),
+                Actividad.serie_id.is_not(None),
+                Actividad.usuario_id == user_id,
+            )
         )
     )).scalars().all()
 
@@ -692,6 +744,7 @@ async def ensure_series_materialized(db: AsyncSession, end: datetime) -> None:
             synthetic_payload,
             seed.serie_id,
             list(sefirot_rows),
+            usuario_id=seed.usuario_id,
             range_start=new_window_start,
             range_end=new_window_end,
         )
@@ -707,11 +760,12 @@ async def list_actividades(
     start: Optional[datetime] = None,
     end: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     if start and end:
-        await ensure_series_materialized(db, normalize_datetime(end))
+        await ensure_series_materialized(db, normalize_datetime(end), user_id=user.id)
 
-    query = select(Actividad).order_by(Actividad.inicio)
+    query = select(Actividad).where(Actividad.usuario_id == user.id).order_by(Actividad.inicio)
     if start and end:
         start_dt = normalize_datetime(start)
         end_dt = normalize_datetime(end)
@@ -723,8 +777,17 @@ async def list_actividades(
 
 
 @app.get("/actividades/{actividad_id}", response_model=ActividadOut)
-async def get_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Actividad).where(Actividad.id == actividad_id))
+async def get_actividad(
+    actividad_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
+    )
     actividad = result.scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
@@ -732,7 +795,11 @@ async def get_actividad(actividad_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/actividades", response_model=list[ActividadOut])
-async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(get_db)):
+async def create_actividad(
+    payload: ActividadCreate,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
@@ -744,7 +811,9 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
             raise HTTPException(status_code=422, detail=f"RRULE inválido: {exc}")
 
         serie_id = str(uuid.uuid4())
-        instancias = await materialize_series(db, payload, serie_id, payload.sefirot_ids)
+        instancias = await materialize_series(
+            db, payload, serie_id, payload.sefirot_ids, usuario_id=user.id,
+        )
         if not instancias:
             raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
         await db.commit()
@@ -756,6 +825,7 @@ async def create_actividad(payload: ActividadCreate, db: AsyncSession = Depends(
         inicio=normalize_datetime(payload.inicio),
         fin=normalize_datetime(payload.fin),
         estado="pendiente",
+        usuario_id=user.id,
     )
     db.add(actividad)
     await db.flush()
@@ -774,13 +844,17 @@ async def update_actividad(
     payload: ActividadCreate,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
 
     actividad = (await db.execute(
-        select(Actividad).where(Actividad.id == actividad_id)
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
@@ -810,16 +884,23 @@ async def update_actividad(
         raise HTTPException(status_code=422, detail="No se pudo determinar el RRULE de la serie")
 
     siblings = (await db.execute(
-        select(Actividad).where(Actividad.serie_id == serie_id)
+        select(Actividad).where(
+            Actividad.serie_id == serie_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().all()
     sibling_ids = [a.id for a in siblings]
 
     await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
-    await db.execute(delete(Actividad).where(Actividad.serie_id == serie_id))
+    await db.execute(delete(Actividad).where(
+        and_(Actividad.serie_id == serie_id, Actividad.usuario_id == user.id)
+    ))
     await db.flush()
 
     series_payload = payload.model_copy(update={"rrule": rrule_to_use})
-    instancias = await materialize_series(db, series_payload, serie_id, payload.sefirot_ids)
+    instancias = await materialize_series(
+        db, series_payload, serie_id, payload.sefirot_ids, usuario_id=user.id,
+    )
     if not instancias:
         raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
     await db.commit()
@@ -831,19 +912,28 @@ async def delete_actividad(
     actividad_id: str,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
 ):
     actividad = (await db.execute(
-        select(Actividad).where(Actividad.id == actividad_id)
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == user.id,
+        )
     )).scalars().first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
     if scope == "series" and actividad.serie_id is not None:
         siblings = (await db.execute(
-            select(Actividad.id).where(Actividad.serie_id == actividad.serie_id)
+            select(Actividad.id).where(
+                Actividad.serie_id == actividad.serie_id,
+                Actividad.usuario_id == user.id,
+            )
         )).scalars().all()
         await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(siblings)))
-        await db.execute(delete(Actividad).where(Actividad.serie_id == actividad.serie_id))
+        await db.execute(delete(Actividad).where(
+            and_(Actividad.serie_id == actividad.serie_id, Actividad.usuario_id == user.id)
+        ))
     else:
         await db.delete(actividad)
 
@@ -852,7 +942,11 @@ async def delete_actividad(
 
 
 @app.get("/energia/volumen-semanal", response_model=VolumenSemanalOut)
-async def get_volumen_semanal(fecha: Optional[date] = None, db: AsyncSession = Depends(get_db)):
+async def get_volumen_semanal(
+    fecha: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
     target_date = fecha or datetime.utcnow().date()
     semana_inicio = target_date - timedelta(days=target_date.weekday())
     semana_fin = semana_inicio + timedelta(days=6)
@@ -882,7 +976,11 @@ async def get_volumen_semanal(fecha: Optional[date] = None, db: AsyncSession = D
         )
         .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
         .join(Sefira, Sefira.id == ActividadSefira.sefira_id)
-        .where(and_(Actividad.inicio < week_end_dt, Actividad.fin > week_start_dt))
+        .where(and_(
+            Actividad.inicio < week_end_dt,
+            Actividad.fin > week_start_dt,
+            Actividad.usuario_id == user.id,
+        ))
     )
 
     for row in rows.all():
