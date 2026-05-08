@@ -80,11 +80,24 @@ export default function EspejoModule({
   // LEFT_GUTTER reserva espacio dentro del wrapper para que las cards flotantes
   // de las sefirot del pilar izquierdo (Biná, Guevurá, Hod, Maljut) — que se
   // posicionan en `x - 30 - CARD_W` del sistema interno — no queden cortadas
-  // por el `overflow-hidden` del layout de la página.
+  // por el `overflow-hidden` del layout de la página. En mobile (<768px) esa
+  // gutter sumada al ancho del árbol no entra en la pantalla, así que la
+  // anulamos y reducimos la escala — la card rotativa queda más justa pero al
+  // menos el árbol entra completo.
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const TREE_W = 400;
   const TREE_H = 880;
-  const TREE_SCALE = 0.95;
-  const LEFT_GUTTER = 180;
+  const TREE_SCALE = isMobile ? 0.7 : 0.95;
+  const LEFT_GUTTER = isMobile ? 0 : 180;
   return (
     <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
       <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE + LEFT_GUTTER, height: TREE_H * TREE_SCALE }}>

@@ -1,14 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '../../auth';
+import { apiFetch, useAuth } from '../../auth';
 import type { SefiraEvolucion, RangeOption } from '../types';
 import { RANGE_TO_MESES } from '../types';
 
 export function useEvolucion(range: RangeOption) {
+  const { status } = useAuth();
   const [data, setData] = useState<SefiraEvolucion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
   const reload = useCallback(async () => {
+    if (status !== 'authenticated') {
+      setData([]);
+      setError('');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -21,7 +27,7 @@ export function useEvolucion(range: RangeOption) {
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [range, status]);
 
   useEffect(() => { void reload(); }, [reload]);
 
