@@ -3,6 +3,7 @@ import type { SefiraNode, Activity } from '../types';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 import { apiFetch } from '../../auth';
 import RecurrencePicker from './RecurrencePicker';
+import { ConfirmSaveDialog, PendingDraftBadge, useDraftPersistence, useGatedSave } from '../../shared/drafts';
 
 type Scope = 'one' | 'series';
 
@@ -47,6 +48,77 @@ export default function ActivityForm({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const confirmTimer = useRef<number | null>(null);
 
+  // Snapshot of the form fields used for both autosave and gated POST.
+  // We only autosave the "create new" flow — editing is direct.
+  const isNew = !editing;
+  type DraftPayload = {
+    title: string;
+    description: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    selected: string[];
+    rrule: string | null;
+  };
+  const formState: DraftPayload = { title, description, date, startTime, endTime, selected, rrule };
+
+  const { hydrated: hydratedDraft, hasPendingDraft, clear: clearActivityDraft } = useDraftPersistence<DraftPayload>(
+    'calendario',
+    'new',
+    formState,
+  );
+
+  // Apply the rehydrated draft once on mount, only when creating new.
+  const draftHydratedRef = useRef(false);
+  useEffect(() => {
+    if (draftHydratedRef.current) return;
+    if (!isNew) { draftHydratedRef.current = true; return; }
+    if (!hydratedDraft) { draftHydratedRef.current = true; return; }
+    draftHydratedRef.current = true;
+    setTitle(hydratedDraft.title);
+    setDescription(hydratedDraft.description);
+    setDate(hydratedDraft.date);
+    setStartTime(hydratedDraft.startTime);
+    setEndTime(hydratedDraft.endTime);
+    setSelected(hydratedDraft.selected);
+    setRrule(hydratedDraft.rrule);
+  }, [hydratedDraft, isNew]);
+
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function performCreate() {
+    setConfirmError(null);
+    if (selected.length === 0) {
+      setConfirmError('Debes seleccionar al menos una sefirá');
+      throw new Error('Debes seleccionar al menos una sefirá');
+    }
+    const startIso = new Date(`${date}T${startTime}:00`).toISOString();
+    const endIso = new Date(`${date}T${endTime}:00`).toISOString();
+    const payload = {
+      titulo: title,
+      descripcion: description,
+      inicio: startIso,
+      fin: endIso,
+      sefirot_ids: selected,
+      rrule: rrule || undefined,
+    };
+    const res = await apiFetch('/actividades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
+      const msg = data.detail ?? 'No se pudo guardar';
+      setConfirmError(msg);
+      throw new Error(msg);
+    }
+    clearActivityDraft();
+    onSaved();
+  }
+
+  const gated = useGatedSave(performCreate);
+
   useEffect(() => {
     if (editing) {
       const s = new Date(editing.inicio);
@@ -84,6 +156,16 @@ export default function ActivityForm({
       setShake(s => s + 1);
       return;
     }
+
+    if (isNew) {
+      // Gated flow: open LoginModal if anonymous, then ConfirmSaveDialog.
+      setError('');
+      setConfirmError(null);
+      gated.triggerSave();
+      return;
+    }
+
+    // Editing existing activity: direct PUT, no gate.
     setSaving(true);
     setError('');
     try {
@@ -97,11 +179,11 @@ export default function ActivityForm({
         sefirot_ids: selected,
         rrule: rrule || undefined,
       };
-      const url = editing
-        ? `/actividades/${editing.id}?scope=${scope}`
-        : '/actividades';
-      const method = editing ? 'PUT' : 'POST';
-      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await apiFetch(`/actividades/${editing!.id}?scope=${scope}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
         setError(data.detail ?? 'No se pudo guardar');
@@ -148,6 +230,11 @@ export default function ActivityForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex-1 overflow-auto px-6 py-6 space-y-6">
+      {isNew && hasPendingDraft && (
+        <div className="-mb-2">
+          <PendingDraftBadge visible message="Tenés una actividad sin guardar" />
+        </div>
+      )}
       <div>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Título</label>
         <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ej. Meditación de Jésed" className={inputBase} />
@@ -239,6 +326,23 @@ export default function ActivityForm({
           </button>
         )}
       </div>
+
+      <ConfirmSaveDialog
+        open={gated.isConfirming}
+        title="¿Crear esta actividad?"
+        body={
+          <>
+            Vas a crear la actividad{' '}
+            <strong className="text-amber-200/90">{title.trim() || 'sin título'}</strong>{' '}
+            en tu agenda.
+          </>
+        }
+        confirmLabel="Crear actividad"
+        isSaving={gated.isSaving}
+        errorMessage={confirmError}
+        onConfirm={() => { void gated.confirm().catch(() => { /* shown in errorMessage */ }); }}
+        onCancel={gated.cancel}
+      />
     </form>
   );
 }
