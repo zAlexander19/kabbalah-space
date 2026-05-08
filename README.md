@@ -131,6 +131,57 @@ Las migraciones viven en `backend/alembic/versions/`. La inicial (`328674a34f67_
 
 ---
 
+## Configurar Google OAuth (10 min)
+
+El botón "Continuar con Google" en el modal de login funciona solo si configurás un OAuth Client en Google Cloud Console. Sin esto, el botón aparece deshabilitado y el flujo de email/password sigue funcionando normal.
+
+### Pasos
+
+1. **Crear un proyecto** en [Google Cloud Console](https://console.cloud.google.com/). Si ya tenés uno, podés reutilizarlo.
+
+2. **Habilitar la pantalla de consentimiento (OAuth consent screen)**.
+   - Menú izquierdo → **APIs & Services → OAuth consent screen**.
+   - User type: **External**. Hacé click en **Create**.
+   - Llená los campos obligatorios: app name (ej. "Kabbalah Space — Local"), user support email (el tuyo), developer contact (el tuyo). El resto lo podés dejar vacío.
+   - **Publishing status: Testing** (queda así). Agregá tu propio email en "Test users" — esto te permite usar la app en local sin tener que pasar el verification de Google.
+
+3. **Crear un OAuth Client ID tipo "Web application"**.
+   - Menú izquierdo → **APIs & Services → Credentials**.
+   - Click en **+ Create Credentials → OAuth client ID**.
+   - Application type: **Web application**.
+   - Name: cualquier cosa (ej. "Kabbalah Space dev").
+
+4. **Authorized JavaScript origins**: agregá `http://localhost:5173` (el dev server de Vite).
+
+5. **Authorized redirect URIs**: agregá `http://localhost:8000/auth/google/callback` (el callback que maneja FastAPI).
+
+6. Click en **Create**. Google muestra un modal con `Client ID` y `Client Secret`. Copialos a `backend/.env`:
+
+   ```
+   GOOGLE_CLIENT_ID=xxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxxxxxxxx
+   GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+   FRONTEND_URL=http://localhost:5173
+   ```
+
+7. Reiniciá `uvicorn` para que tome las nuevas variables. Refrescá el frontend — el botón de Google ya queda habilitado.
+
+### Troubleshooting OAuth
+
+**`Error 400: redirect_uri_mismatch`**
+La URI que el backend envía a Google no coincide con ninguna de las registradas en el OAuth Client. Verificá que `GOOGLE_REDIRECT_URI` en `.env` coincida exactamente (incluyendo puerto y protocolo) con la línea que pusiste en "Authorized redirect URIs" en el paso 5.
+
+**`Error 401: invalid_client`**
+`GOOGLE_CLIENT_ID` o `GOOGLE_CLIENT_SECRET` están mal copiados, o el OAuth Client fue eliminado. Re-copialos desde Credentials → tu OAuth Client → Client secrets.
+
+**`Access blocked: app not verified` o "Esta app no está verificada"**
+La pantalla de consentimiento está en modo **Testing** y tu email no está en la lista de Test users. Volvé al paso 2 y agregate como test user.
+
+**El botón "Continuar con Google" sigue deshabilitado después de configurar**
+El backend leyó las variables al startup y no encontró las dos primeras. Confirmá que `.env` está en `backend/` (no en la raíz) y que reiniciaste `uvicorn` después de editar.
+
+---
+
 ## Estructura
 
 ```
