@@ -22,10 +22,18 @@ const ease = [0.16, 1, 0.3, 1] as const;
 export default function EspejoModule({
   sefirot,
   glassEffect,
-  introPlaying = false,
+  introPlaying: introPlayingProp = false,
   pageRevealed = true,
   onIntroComplete,
 }: Props) {
+  // Belt-and-suspenders: if the sessionStorage flag is already set (the intro
+  // was completed in this browser session), force introPlaying to false even
+  // if the prop arrives as true. This protects against stale App-level state
+  // after navigations.
+  const introAlreadySeen =
+    typeof window !== 'undefined' && window.sessionStorage?.getItem('espejo-intro-done') === '1';
+  const introPlaying = introPlayingProp && !introAlreadySeen;
+
   const { summary, reload: reloadSummary } = useEspejoSummary();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { preguntas, registros, reload: reloadSefira } = useSefiraData(selectedId);
