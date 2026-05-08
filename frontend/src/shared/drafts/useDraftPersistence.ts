@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../auth';
 import { clearDraft, readDraft, writeDraft } from './storage';
 
-const DEBOUNCE_MS = 250;
+// Short debounce — long enough to coalesce same-tick keystrokes, short
+// enough that "type → refresh quickly" still preserves the value.
+const DEBOUNCE_MS = 80;
 
 export type DraftPersistence<T> = {
   /** The draft value stored at mount time, or null if none was found.
@@ -35,14 +37,23 @@ export function useDraftPersistence<T>(scope: string, key: string, value: T): Dr
 
   const timerRef = useRef<number | null>(null);
 
-  // Debounced write. Re-runs whenever value or owner changes.
+  // Debounced write. Re-runs whenever value or owner changes. The cleanup
+  // function flushes any pending write synchronously so a refresh / unmount
+  // mid-debounce doesn't lose the latest value.
   useEffect(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => {
       writeDraft(scope, key, value, ownerId);
     }, DEBOUNCE_MS);
     return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+        // Flush synchronously on cleanup — covers the "user types then
+        // refreshes within DEBOUNCE_MS" case (browsers fire effect cleanups
+        // on unload).
+        writeDraft(scope, key, value, ownerId);
+      }
     };
   }, [scope, key, value, ownerId]);
 

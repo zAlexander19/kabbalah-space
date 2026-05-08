@@ -55,7 +55,25 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
   async function performBatchSave() {
     setConfirmError(null);
     const answers = pendingAnswersRef.current;
-    const entries = Object.entries(answers).filter(([, t]) => t.trim().length > 0);
+
+    // Pre-filter: anonymous users see all questions as unblocked, but once
+    // they log in, useSefiraData re-fetches with auth and `preguntas` reflects
+    // the real per-user cooldown state. If the same user previously answered
+    // these questions in another session, those rows are blocked. Skip them
+    // to avoid the server returning 409 partway through the loop.
+    const unblockedIds = new Set(preguntas.filter((p) => !p.bloqueada).map((p) => p.pregunta_id));
+    const allEntries = Object.entries(answers).filter(([, t]) => t.trim().length > 0);
+    const entries = allEntries.filter(([pregunta_id]) => unblockedIds.has(pregunta_id));
+    const skipped = allEntries.length - entries.length;
+
+    if (entries.length === 0) {
+      const msg = skipped > 0
+        ? 'Estas preguntas ya las habías contestado hace menos de 30 días — no hay nada nuevo que guardar.'
+        : 'No hay respuestas para guardar.';
+      setConfirmError(msg);
+      throw new Error(msg);
+    }
+
     try {
       for (const [pregunta_id, respuesta_texto] of entries) {
         const res = await apiFetch('/respuestas', {
