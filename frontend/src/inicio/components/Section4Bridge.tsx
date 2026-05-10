@@ -18,7 +18,7 @@ export default function Section4Bridge() {
 
   return (
     <InicioSection className="text-center">
-      <h2 className="font-serif font-light tracking-tight text-amber-100/90 text-3xl md:text-5xl leading-tight mb-10">
+      <h2 className="font-display italic tracking-tight text-amber-100/90 text-3xl md:text-5xl leading-tight mb-10">
         Conocer el universo empieza
         <br />
         por conocerte a vos mismo.
