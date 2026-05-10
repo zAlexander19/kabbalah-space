@@ -19,7 +19,7 @@ function ModuleCard({ art, title, body }: CardData) {
 }
 
 const EspejoArt = (
-  <svg viewBox="0 0 200 80" className="w-full h-20">
+  <svg viewBox="0 0 200 80" className="w-full h-20" aria-hidden="true">
     <line x1="100" y1="40" x2="60" y2="40" stroke="#e9c349" strokeOpacity="0.25" strokeWidth="0.75" />
     <line x1="100" y1="40" x2="140" y2="40" stroke="#e9c349" strokeOpacity="0.25" strokeWidth="0.75" />
     <line x1="100" y1="40" x2="100" y2="12" stroke="#e9c349" strokeOpacity="0.25" strokeWidth="0.75" />
@@ -32,7 +32,7 @@ const EspejoArt = (
 );
 
 const CalendarioArt = (
-  <svg viewBox="0 0 200 80" className="w-full h-20">
+  <svg viewBox="0 0 200 80" className="w-full h-20" aria-hidden="true">
     {Array.from({ length: 4 }, (_, row) =>
       Array.from({ length: 7 }, (_, col) => {
         const isHighlight = col === 4 && row === 2;
@@ -56,7 +56,7 @@ const CalendarioArt = (
 );
 
 const EvolucionArt = (
-  <svg viewBox="0 0 200 80" className="w-full h-20">
+  <svg viewBox="0 0 200 80" className="w-full h-20" aria-hidden="true">
     <defs>
       <linearGradient id="evoGrad" x1="0" x2="0" y1="0" y2="1">
         <stop offset="0%" stopColor="#e9c349" />
