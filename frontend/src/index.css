@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Manrope:wght@200..800&family=Space+Grotesk:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 @import 'tailwindcss';
 
@@ -6,6 +7,7 @@
   --font-headline: 'Newsreader', serif;
   --font-body: 'Manrope', sans-serif;
   --font-label: 'Space Grotesk', monospace;
+  --font-display: 'Instrument Serif', Georgia, serif;
 
   --color-tertiary-fixed: #eddcff;
   --color-on-secondary-fixed-variant: #343d96;
@@ -168,3 +170,15 @@ body {
 }
 .cal-loading-dot { animation: calLoadingDot 0.9s ease-in-out infinite; }
 
+/* Amber accent gradient — used by the loading-screen progress bar and the
+   manifiesto's primary CTA hover ring. */
+.accent-gradient {
+  background-image: linear-gradient(90deg, #e9c349 0%, #b8860b 100%);
+}
+
+/* Star flicker for the cosmic background. Each star gets a unique
+   `animation-duration` and `animation-delay` via inline style. */
+@keyframes flicker {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
