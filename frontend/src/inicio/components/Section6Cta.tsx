@@ -8,7 +8,8 @@ type Props = {
 /**
  * Section 6 — CTA. Two buttons:
  *  - "Entrar al Árbol de la Vida" always visible; calls onEnterEspejo
- *    which the App turns into setActiveView('espejo').
+ *    which the App turns into setActiveView('espejo'). On hover an
+ *    accent-gradient ring slides behind the button.
  *  - "Iniciar sesión" only renders when the user is anonymous; opens the
  *    LoginModal with triggeredBy 'manual' (no draft to flush).
  */
@@ -22,17 +23,32 @@ export default function Section6Cta({ onEnterEspejo }: Props) {
         <button
           type="button"
           onClick={onEnterEspejo}
-          className="px-7 py-3.5 rounded-xl bg-amber-300/15 hover:bg-amber-300/25 active:bg-amber-300/30 border border-amber-300/40 text-amber-100 text-sm tracking-[0.14em] uppercase transition-colors shadow-[0_0_18px_rgba(233,195,73,0.18)]"
+          className="group relative px-7 py-3.5 rounded-xl text-amber-100 text-sm tracking-[0.14em] uppercase transition-colors"
         >
-          Entrar al Árbol de la Vida
+          {/* Hover-revealed accent gradient ring */}
+          <span
+            aria-hidden
+            className="accent-gradient absolute -inset-[2px] rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          />
+          {/* Solid inner pill so the gradient reads as a ring */}
+          <span className="relative block bg-stone-950/85 backdrop-blur-md border border-amber-300/40 rounded-xl px-7 py-3.5 -mx-7 -my-3.5">
+            Entrar al Árbol de la Vida
+          </span>
         </button>
+
         {showLogin && (
           <button
             type="button"
             onClick={() => auth.openLoginModal('manual')}
-            className="px-7 py-3.5 rounded-xl border border-stone-700/60 text-stone-300 hover:text-amber-100 hover:border-amber-300/40 text-sm tracking-[0.14em] uppercase transition-colors"
+            className="group relative px-7 py-3.5 rounded-xl text-stone-300 hover:text-amber-100 text-sm tracking-[0.14em] uppercase transition-colors"
           >
-            Iniciar sesión
+            <span
+              aria-hidden
+              className="accent-gradient absolute -inset-[2px] rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            />
+            <span className="relative block bg-stone-950/85 backdrop-blur-md border border-stone-700/60 group-hover:border-transparent rounded-xl px-7 py-3.5 -mx-7 -my-3.5 transition-colors">
+              Iniciar sesión
+            </span>
           </button>
         )}
       </div>
