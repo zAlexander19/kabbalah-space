@@ -6,6 +6,7 @@ import InicioNav from './components/InicioNav';
 import InicioHero from './components/InicioHero';
 import InicioPremisa from './components/InicioPremisa';
 import InicioModulos from './components/InicioModulos';
+import InicioSefirot from './components/InicioSefirot';
 
 const LOADING_FLAG = 'kabbalah-loading-done';
 
@@ -48,6 +49,7 @@ export default function InicioModule({ onEnterEspejo }: Props) {
         <InicioHero onEnterEspejo={onEnterEspejo} />
         <InicioPremisa />
         <InicioModulos />
+        <InicioSefirot />
       </main>
     </>
   );
