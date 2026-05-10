@@ -5,6 +5,7 @@ import CosmicBackground from './components/CosmicBackground';
 import InicioNav from './components/InicioNav';
 import InicioHero from './components/InicioHero';
 import InicioPremisa from './components/InicioPremisa';
+import InicioModulos from './components/InicioModulos';
 
 const LOADING_FLAG = 'kabbalah-loading-done';
 
@@ -46,6 +47,7 @@ export default function InicioModule({ onEnterEspejo }: Props) {
       <main className="relative">
         <InicioHero onEnterEspejo={onEnterEspejo} />
         <InicioPremisa />
+        <InicioModulos />
       </main>
     </>
   );
