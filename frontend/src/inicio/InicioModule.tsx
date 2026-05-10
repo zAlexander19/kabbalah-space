@@ -4,6 +4,7 @@ import LoadingScreen from './components/LoadingScreen';
 import CosmicBackground from './components/CosmicBackground';
 import InicioNav from './components/InicioNav';
 import InicioHero from './components/InicioHero';
+import InicioPremisa from './components/InicioPremisa';
 
 const LOADING_FLAG = 'kabbalah-loading-done';
 
@@ -42,7 +43,10 @@ export default function InicioModule({ onEnterEspejo }: Props) {
         {!loadingDone && <LoadingScreen key="loading" onComplete={handleLoadingComplete} />}
       </AnimatePresence>
       <InicioNav onEnterEspejo={onEnterEspejo} />
-      <main className="relative"><InicioHero onEnterEspejo={onEnterEspejo} /></main>
+      <main className="relative">
+        <InicioHero onEnterEspejo={onEnterEspejo} />
+        <InicioPremisa />
+      </main>
     </>
   );
 }
