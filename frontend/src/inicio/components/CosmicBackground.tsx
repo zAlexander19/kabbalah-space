@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
 
 type Star = {
@@ -10,6 +9,16 @@ type Star = {
 };
 
 const STAR_COUNT = 80;
+
+// Generated once at module load so star positions are stable across renders,
+// remounts, and Strict-Mode double-invocation in dev.
+const STARS: Star[] = Array.from({ length: STAR_COUNT }, () => ({
+  top: `${Math.random() * 100}%`,
+  left: `${Math.random() * 100}%`,
+  size: Math.random() < 0.75 ? 1 : 2,
+  duration: 3 + Math.random() * 5,
+  delay: Math.random() * 5,
+}));
 
 /**
  * Three-layer cosmic background for the landing:
@@ -23,16 +32,6 @@ const STAR_COUNT = 80;
 export default function CosmicBackground() {
   const reduced = useReducedMotion();
 
-  const stars: Star[] = useMemo(() => {
-    return Array.from({ length: STAR_COUNT }, () => ({
-      top: `${Math.random() * 100}%`,
-      left: `${Math.random() * 100}%`,
-      size: Math.random() < 0.75 ? 1 : 2,
-      duration: 3 + Math.random() * 5,
-      delay: Math.random() * 5,
-    }));
-  }, []);
-
   return (
     <div aria-hidden className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
       <div
@@ -43,7 +42,7 @@ export default function CosmicBackground() {
       />
 
       <div className="absolute inset-0">
-        {stars.map((s, i) => (
+        {STARS.map((s, i) => (
           <span
             key={i}
             className="absolute rounded-full bg-white"

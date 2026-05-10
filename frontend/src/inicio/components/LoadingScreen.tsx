@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -21,10 +21,15 @@ type Props = {
 export default function LoadingScreen({ onComplete }: Props) {
   const [count, setCount] = useState(0);
   const [wordIndex, setWordIndex] = useState(0);
+  // Hold onComplete in a ref so a new identity from the parent doesn't
+  // restart the rAF tick mid-animation (which would reset the counter).
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const start = performance.now();
     let rafId = 0;
+    let timeoutId = 0;
     const tick = (now: number) => {
       const elapsed = now - start;
       const next = Math.min(100, Math.round((elapsed / DURATION_MS) * 100));
@@ -32,19 +37,23 @@ export default function LoadingScreen({ onComplete }: Props) {
       if (next < 100) {
         rafId = requestAnimationFrame(tick);
       } else {
-        window.setTimeout(onComplete, HOLD_MS);
+        timeoutId = window.setTimeout(() => onCompleteRef.current(), HOLD_MS);
       }
     };
     rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [onComplete]);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   useEffect(() => {
+    if (count >= 100) return;
     const id = window.setInterval(() => {
       setWordIndex((i) => (i + 1) % WORDS.length);
     }, WORD_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [count]);
 
   const padded = count.toString().padStart(3, '0');
 

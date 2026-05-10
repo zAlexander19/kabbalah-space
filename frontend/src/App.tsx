@@ -91,7 +91,9 @@ export default function App() {
         <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[1000px] h-[1000px] bg-emerald-900/5 rounded-full blur-[150px] mix-blend-screen"></div>
       </motion.div>
 
-      {/* Icon rail — always visible thin sidebar with avatar + nav icons */}
+      {/* Icon rail — always visible thin sidebar with avatar + nav icons.
+          Hidden on the landing ('inicio') where InicioNav serves as the chrome. */}
+      {activeView !== 'inicio' && (
       <motion.aside
         initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -20 }}
         animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -20 }}
@@ -151,11 +153,14 @@ export default function App() {
           </div>
         </div>
       </motion.aside>
+      )}
 
-      <UserMenu />
+      {activeView !== 'inicio' && <UserMenu />}
 
-      <main className="md:pl-14 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
-        {activeView !== 'inicio' && (
+      {activeView === 'inicio' ? (
+        <InicioModule onEnterEspejo={() => setActiveView('espejo')} />
+      ) : (
+        <main className="md:pl-14 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
           <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-8 px-4 py-6 text-center overflow-hidden">
             <motion.h2
               initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -80 }}
@@ -176,24 +181,23 @@ export default function App() {
               {current.subtitle}
             </motion.p>
           </header>
-        )}
 
-        <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
-          {activeView === 'inicio' && <InicioModule onEnterEspejo={() => setActiveView('espejo')} />}
-          {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
-          {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
-          {activeView === 'evolucion' && <EvolucionModule />}
-          {activeView === 'espejo' && (
-            <EspejoModule
-              sefirot={SEFIROT}
-              glassEffect={glassEffect}
-              introPlaying={introPlaying}
-              pageRevealed={pageRevealed}
-              onIntroComplete={handleIntroComplete}
-            />
-          )}
-        </section>
-      </main>
+          <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
+            {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
+            {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
+            {activeView === 'evolucion' && <EvolucionModule />}
+            {activeView === 'espejo' && (
+              <EspejoModule
+                sefirot={SEFIROT}
+                glassEffect={glassEffect}
+                introPlaying={introPlaying}
+                pageRevealed={pageRevealed}
+                onIntroComplete={handleIntroComplete}
+              />
+            )}
+          </section>
+        </main>
+      )}
     </div>
   );
 }
