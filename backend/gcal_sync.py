@@ -123,3 +123,215 @@ async def disable_sync_for_user(db: AsyncSession, usuario_id: str) -> None:
     )
     await db.commit()
     logger.info("Sync disabled for user %s", usuario_id)
+
+
+from typing import Callable, AsyncContextManager
+
+from gcal_client import (
+    GcalError,
+    delete_event,
+    insert_event,
+    update_event,
+)
+from gcal_mapper import actividad_to_event
+from models import ActividadSefira, Sefira
+
+
+DbFactory = Callable[[], AsyncContextManager[AsyncSession]]
+
+
+async def _get_user_access_token(db: AsyncSession, usuario_id: str) -> tuple[Usuario, str]:
+    """Look up the user, decrypt refresh_token, fetch a fresh access_token.
+
+    Raises GcalAuthError if the refresh_token is revoked — caller catches
+    and calls disable_sync_for_user.
+    """
+    settings = get_settings()
+    user = (await db.execute(select(Usuario).where(Usuario.id == usuario_id))).scalars().first()
+    if not user or not user.gcal_sync_enabled or not user.google_refresh_token_enc:
+        raise RuntimeError(f"Sync not enabled for user {usuario_id}")
+
+    refresh_token = decrypt_token(user.google_refresh_token_enc, settings.fernet_key)
+    access_token = await refresh_access_token(
+        refresh_token,
+        client_id=settings.google_client_id,
+        client_secret=settings.google_client_secret,
+    )
+    return user, access_token
+
+
+async def _load_actividad_with_sefirot(
+    db: AsyncSession, actividad_id: str, usuario_id: str
+) -> tuple[Actividad | None, list[Sefira]]:
+    """Load the actividad scoped to the user, plus its sefirot rows."""
+    actividad = (await db.execute(
+        select(Actividad).where(
+            Actividad.id == actividad_id,
+            Actividad.usuario_id == usuario_id,
+        )
+    )).scalars().first()
+    if actividad is None:
+        return None, []
+
+    sefirot_rows = (await db.execute(
+        select(Sefira)
+        .join(ActividadSefira, ActividadSefira.sefira_id == Sefira.id)
+        .where(ActividadSefira.actividad_id == actividad_id)
+        .order_by(Sefira.nombre)
+    )).scalars().all()
+    return actividad, list(sefirot_rows)
+
+
+async def push_actividad(db_factory: DbFactory, usuario_id: str, actividad_id: str) -> None:
+    """Insert the activity as a new event in Google. Updates DB on result.
+
+    Called as a BackgroundTask. Never raises — failures become sync_status='error'.
+    Auth errors disable sync entirely.
+    """
+    async with db_factory() as db:
+        try:
+            user, access_token = await _get_user_access_token(db, usuario_id)
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+            return
+        except Exception as exc:
+            logger.error("push_actividad setup failed for %s/%s: %s", usuario_id, actividad_id, exc)
+            return
+
+        actividad, sefirot = await _load_actividad_with_sefirot(db, actividad_id, usuario_id)
+        if actividad is None:
+            return
+
+        event = actividad_to_event(actividad, sefirot)
+        try:
+            result = await insert_event(
+                access_token=access_token,
+                calendar_id=user.google_calendar_id,
+                event=event,
+            )
+            actividad.gcal_event_id = result["id"]
+            actividad.sync_status = "synced"
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+            return
+        except GcalNotFoundError:
+            # Calendar was deleted in Google — recreate and retry once.
+            new_cal = await create_calendar(access_token=access_token, summary=CALENDAR_NAME)
+            user.google_calendar_id = new_cal["id"]
+            try:
+                result = await insert_event(
+                    access_token=access_token,
+                    calendar_id=user.google_calendar_id,
+                    event=event,
+                )
+                actividad.gcal_event_id = result["id"]
+                actividad.sync_status = "synced"
+            except GcalError as exc:
+                logger.error("push_actividad retry-after-recreate failed: %s", exc)
+                actividad.sync_status = "error"
+        except GcalError as exc:
+            logger.error("push_actividad failed for %s: %s", actividad_id, exc)
+            actividad.sync_status = "error"
+
+        await db.commit()
+
+
+async def update_actividad(db_factory: DbFactory, usuario_id: str, actividad_id: str) -> None:
+    """Update an existing Google event from the current Actividad state.
+
+    If the Actividad has no gcal_event_id yet (series child being edited as
+    an override, or a previous push that failed), falls back to insert as
+    a new standalone event. This is a v1 simplification: a true Google
+    "recurring instance override" would use recurringEventId+originalStartTime
+    so the override stays linked to the series master in Google. For v1 we
+    accept that overrides create a separate Google event (slightly noisier
+    in the user's calendar but functionally correct). Refinement is tracked
+    as Future work in the spec §8.
+    """
+    async with db_factory() as db:
+        try:
+            user, access_token = await _get_user_access_token(db, usuario_id)
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+            return
+        except Exception as exc:
+            logger.error("update_actividad setup failed: %s", exc)
+            return
+
+        actividad, sefirot = await _load_actividad_with_sefirot(db, actividad_id, usuario_id)
+        if actividad is None:
+            return
+
+        if not actividad.gcal_event_id:
+            event = actividad_to_event(actividad, sefirot)
+            try:
+                result = await insert_event(
+                    access_token=access_token,
+                    calendar_id=user.google_calendar_id,
+                    event=event,
+                )
+                actividad.gcal_event_id = result["id"]
+                actividad.sync_status = "synced"
+            except GcalError as exc:
+                logger.error("update_actividad insert fallback failed: %s", exc)
+                actividad.sync_status = "error"
+            await db.commit()
+            return
+
+        event = actividad_to_event(actividad, sefirot)
+        try:
+            await update_event(
+                access_token=access_token,
+                calendar_id=user.google_calendar_id,
+                event_id=actividad.gcal_event_id,
+                event=event,
+            )
+            actividad.sync_status = "synced"
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+            return
+        except GcalNotFoundError:
+            try:
+                result = await insert_event(
+                    access_token=access_token,
+                    calendar_id=user.google_calendar_id,
+                    event=event,
+                )
+                actividad.gcal_event_id = result["id"]
+                actividad.sync_status = "synced"
+            except GcalError as exc:
+                logger.error("update_actividad re-insert failed: %s", exc)
+                actividad.sync_status = "error"
+        except GcalError as exc:
+            logger.error("update_actividad failed: %s", exc)
+            actividad.sync_status = "error"
+
+        await db.commit()
+
+
+async def delete_actividad(db_factory: DbFactory, usuario_id: str, gcal_event_id: str) -> None:
+    """Delete an event from Google. Called with the gcal_event_id read BEFORE
+    the DB row is deleted (because by the time this task runs, the row is gone).
+    """
+    async with db_factory() as db:
+        try:
+            user, access_token = await _get_user_access_token(db, usuario_id)
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+            return
+        except Exception as exc:
+            logger.error("delete_actividad setup failed: %s", exc)
+            return
+
+        try:
+            await delete_event(
+                access_token=access_token,
+                calendar_id=user.google_calendar_id,
+                event_id=gcal_event_id,
+            )
+        except GcalAuthError:
+            await disable_sync_for_user(db, usuario_id)
+        except GcalNotFoundError:
+            pass
+        except GcalError as exc:
+            logger.error("delete_actividad failed: %s", exc)
