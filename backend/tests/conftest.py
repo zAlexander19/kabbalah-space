@@ -99,3 +99,20 @@ async def seeded_pregunta(db_session: AsyncSession, seed_sefirot):
     await db_session.commit()
     await db_session.refresh(p)
     return p
+
+
+@pytest_asyncio.fixture
+async def google_user(db_session: AsyncSession):
+    """Seed a provider='google' user with sync NOT yet enabled."""
+    from models import Usuario
+    u = Usuario(
+        nombre="Greta Garbo",
+        email="greta@example.com",
+        provider="google",
+        provider_id="google-sub-123",
+        password_hash=None,
+    )
+    db_session.add(u)
+    await db_session.commit()
+    await db_session.refresh(u)
+    return u
