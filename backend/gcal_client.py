@@ -125,3 +125,66 @@ async def _request_with_retry(
             raise GcalRateLimitError("rate limit exhausted") from last_exc
         raise GcalTransientError(f"transient {last_exc.response.status_code} after {MAX_ATTEMPTS} attempts") from last_exc
     raise GcalTransientError(f"network error after {MAX_ATTEMPTS} attempts") from last_exc
+
+
+async def create_calendar(*, access_token: str, summary: str, timezone: str = "UTC") -> dict:
+    """POST /calendars — create a new secondary calendar. Returns {id, summary}."""
+    resp = await _request_with_retry(
+        "POST",
+        f"{CALENDAR_API_BASE}/calendars",
+        access_token=access_token,
+        json={"summary": summary, "timeZone": timezone},
+    )
+    return resp.json()
+
+
+async def delete_calendar(*, access_token: str, calendar_id: str) -> None:
+    """DELETE /calendars/{id} — remove a secondary calendar entirely."""
+    await _request_with_retry(
+        "DELETE",
+        f"{CALENDAR_API_BASE}/calendars/{calendar_id}",
+        access_token=access_token,
+    )
+
+
+async def insert_event(*, access_token: str, calendar_id: str, event: dict) -> dict:
+    """POST /calendars/{cal}/events — insert an event. Returns the created event dict."""
+    resp = await _request_with_retry(
+        "POST",
+        f"{CALENDAR_API_BASE}/calendars/{calendar_id}/events",
+        access_token=access_token,
+        json=event,
+    )
+    return resp.json()
+
+
+async def update_event(*, access_token: str, calendar_id: str, event_id: str, event: dict) -> dict:
+    """PUT /calendars/{cal}/events/{id} — full replace. Returns the updated event."""
+    resp = await _request_with_retry(
+        "PUT",
+        f"{CALENDAR_API_BASE}/calendars/{calendar_id}/events/{event_id}",
+        access_token=access_token,
+        json=event,
+    )
+    return resp.json()
+
+
+async def delete_event(*, access_token: str, calendar_id: str, event_id: str) -> None:
+    """DELETE /calendars/{cal}/events/{id} — remove a single event."""
+    await _request_with_retry(
+        "DELETE",
+        f"{CALENDAR_API_BASE}/calendars/{calendar_id}/events/{event_id}",
+        access_token=access_token,
+    )
+
+
+async def revoke_refresh_token(refresh_token: str) -> None:
+    """POST /revoke — invalidate the refresh_token on Google's side.
+
+    Best-effort: even if this fails, the caller still wipes local state.
+    """
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            await client.post(GOOGLE_REVOKE_URL, data={"token": refresh_token})
+        except httpx.HTTPError as exc:
+            logger.warning("revoke_refresh_token failed (non-fatal): %s", exc)
