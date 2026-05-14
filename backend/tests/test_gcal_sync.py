@@ -219,3 +219,43 @@ async def test_delete_actividad_calls_delete_event(
 
         await delete_actividad(session_maker, google_user.id, "evt_existing")
         assert route.called
+
+
+from gcal_sync import backfill_user
+
+
+@pytest.mark.asyncio
+async def test_backfill_iterates_only_pending_and_skips_children(
+    db_session, session_maker, google_user, fkey, monkeypatch,
+):
+    await _seed_user_with_sync(db_session, fkey, google_user)
+    monkeypatch.setattr("gcal_sync.get_settings", lambda: _settings_with(fkey))
+
+    # Three activities: single pending, series master pending, series child (should skip)
+    a1 = await _seed_actividad(db_session, google_user.id, titulo="Single")
+    a2 = await _seed_actividad(
+        db_session, google_user.id, titulo="Master",
+        serie_id="series-x", rrule="FREQ=WEEKLY",
+    )
+    a3 = await _seed_actividad(
+        db_session, google_user.id, titulo="Child",
+        serie_id="series-x", rrule=None,
+    )
+
+    with respx.mock:
+        respx.post(GOOGLE_TOKEN_URL).mock(return_value=httpx.Response(200, json={"access_token": "ya29"}))
+        insert_route = respx.post(f"{CALENDAR_API_BASE}/calendars/cal_abc/events").mock(
+            side_effect=[
+                httpx.Response(200, json={"id": "evt_1"}),
+                httpx.Response(200, json={"id": "evt_2"}),
+            ],
+        )
+
+        await backfill_user(session_maker, google_user.id)
+        assert insert_route.call_count == 2  # only single + master, not child
+
+    for a in (a1, a2, a3):
+        await db_session.refresh(a)
+    assert a1.sync_status == "synced"
+    assert a2.sync_status == "synced"
+    assert a3.sync_status == "skipped"

@@ -335,3 +335,48 @@ async def delete_actividad(db_factory: DbFactory, usuario_id: str, gcal_event_id
             pass
         except GcalError as exc:
             logger.error("delete_actividad failed: %s", exc)
+
+
+import asyncio
+
+
+BACKFILL_THROTTLE_PER_SECOND = 10
+BACKFILL_THROTTLE_DELAY = 1.0 / BACKFILL_THROTTLE_PER_SECOND
+
+
+async def backfill_user(db_factory: DbFactory, usuario_id: str) -> None:
+    """Push all not-yet-synced activities of the user to Google.
+
+    Idempotent: filter is `sync_status='pending' AND (rrule IS NOT NULL OR serie_id IS NULL)`.
+    Materialized children of a series are marked 'skipped' immediately (their
+    master is what gets pushed; Google handles the repetitions).
+
+    Throttled to BACKFILL_THROTTLE_PER_SECOND req/s to stay under Google's
+    per-user-per-minute quota. If interrupted, calling again continues from
+    where it stopped because synced rows are filtered out.
+    """
+    async with db_factory() as db:
+        # Mark all series children as 'skipped' upfront — they don't need pushes.
+        await db.execute(
+            update(Actividad)
+            .where(
+                Actividad.usuario_id == usuario_id,
+                Actividad.sync_status == "pending",
+                Actividad.serie_id.is_not(None),
+                Actividad.rrule.is_(None),
+            )
+            .values(sync_status="skipped")
+        )
+        await db.commit()
+
+        rows = (await db.execute(
+            select(Actividad.id).where(
+                Actividad.usuario_id == usuario_id,
+                Actividad.sync_status == "pending",
+            ).order_by(Actividad.inicio)
+        )).scalars().all()
+
+    for actividad_id in rows:
+        await push_actividad(db_factory, usuario_id, actividad_id)
+        await asyncio.sleep(BACKFILL_THROTTLE_DELAY)
+    logger.info("Backfill complete for user %s: %d activities", usuario_id, len(rows))
