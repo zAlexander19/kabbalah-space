@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import LoadingScreen from './components/LoadingScreen';
 import CosmicBackground from './components/CosmicBackground';
-import InicioNav from './components/InicioNav';
+import InicioNav, { type InicioNavTarget } from './components/InicioNav';
 import InicioHero from './components/InicioHero';
 import InicioPremisa from './components/InicioPremisa';
 import InicioModulos from './components/InicioModulos';
@@ -21,15 +21,10 @@ function shouldSkipLoading(): boolean {
 }
 
 type Props = {
-  onEnterEspejo: () => void;
+  onNavigate: (target: InicioNavTarget) => void;
 };
 
-/**
- * Landing page for Kabbalah Space. Marketing-style layout: nav, hero,
- * premise, modules, sefirot grid, marquee, final CTA, footer. Sections
- * get added one task at a time after this scaffolding lands.
- */
-export default function InicioModule({ onEnterEspejo }: Props) {
+export default function InicioModule({ onNavigate }: Props) {
   const [loadingDone, setLoadingDone] = useState<boolean>(() => shouldSkipLoading());
 
   const handleLoadingComplete = () => {
@@ -41,20 +36,22 @@ export default function InicioModule({ onEnterEspejo }: Props) {
     setLoadingDone(true);
   };
 
+  const goToEspejo = () => onNavigate('espejo');
+
   return (
     <>
       <CosmicBackground />
       <AnimatePresence>
         {!loadingDone && <LoadingScreen key="loading" onComplete={handleLoadingComplete} />}
       </AnimatePresence>
-      <InicioNav onEnterEspejo={onEnterEspejo} />
+      <InicioNav onNavigate={onNavigate} />
       <main className="relative">
-        <InicioHero onEnterEspejo={onEnterEspejo} />
+        <InicioHero onEnterEspejo={goToEspejo} />
         <InicioPremisa />
         <InicioModulos />
         <InicioSefirot />
         <InicioMarquee />
-        <InicioCtaFinal onEnterEspejo={onEnterEspejo} />
+        <InicioCtaFinal onEnterEspejo={goToEspejo} />
         <InicioFooter />
       </main>
     </>

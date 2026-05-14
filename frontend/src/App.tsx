@@ -158,7 +158,7 @@ export default function App() {
       {activeView !== 'inicio' && <UserMenu />}
 
       {activeView === 'inicio' ? (
-        <InicioModule onEnterEspejo={() => setActiveView('espejo')} />
+        <InicioModule onNavigate={(target) => setActiveView(target)} />
       ) : (
         <main className="md:pl-14 flex-1 pt-16 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
           <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-8 px-4 py-6 text-center overflow-hidden">

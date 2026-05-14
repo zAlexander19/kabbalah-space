@@ -23,9 +23,10 @@ export default function InicioPremisa() {
         <p className="ks-body text-lg mb-6">
           Llegará un día en que la humanidad entera conocerá el misterio en el que vive. Pero ese día no nace de la multitud — nace en cada persona que decide mirar adentro.
         </p>
-        <p className="ks-body text-lg">
-          Kabbalah Space mapea las diez dimensiones del alma — las sefirot — para que veas, día a día, cuál vibra y cuál se calla.
-        </p>
+        <blockquote className="ks-serif italic text-xl md:text-2xl text-ink-glow/90 leading-relaxed border-l-2 border-gold/40 pl-6 mt-10 mx-auto max-w-xl text-left">
+          “Porque la tierra será llena del conocimiento del Señor, como las aguas cubren el mar.”
+          <footer className="ks-eyebrow text-gold mt-3 not-italic">— Isaías 11:9</footer>
+        </blockquote>
       </div>
     </motion.section>
   );

@@ -82,18 +82,18 @@ const EvolucionArt = (
 const CARDS: CardData[] = [
   {
     art: EspejoArt,
-    title: 'Espejo Cognitivo',
-    body: 'Reflexión guiada por las preguntas de cada sefirá. La IA observa lo que escribís y devuelve un score de coherencia.',
+    title: 'Árbol de la Vida',
+    body: 'Respondé preguntas interiores que te permitirán ver cómo estás trabajando en cada dimensión.',
   },
   {
     art: CalendarioArt,
     title: 'Calendario Cabalístico',
-    body: 'Mapeá tus actividades semanales a las dimensiones del alma. Vé el volumen energético de cada sefirá.',
+    body: 'Para organizar tus energías tenés que organizar tu tiempo. En Kabbalah Space podés agregar tus actividades relacionándolas con cada sefirá.',
   },
   {
     art: EvolucionArt,
     title: 'Mi Evolución',
-    body: 'Curvas mensuales por sefirá: cómo te movés en el tiempo. Score IA vs. score propio, lado a lado.',
+    body: 'Los humanos somos personas de patrones. Vé qué patrones tenés y analizá cómo los podés usar a tu favor.',
   },
 ];
 

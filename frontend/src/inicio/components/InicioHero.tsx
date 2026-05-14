@@ -15,12 +15,11 @@ export default function InicioHero({ onEnterEspejo }: Props) {
         </h1>
 
         <p className="ks-serif ks-blur-in italic text-2xl md:text-4xl text-gold mb-10" style={{ animationDelay: '0.4s' }}>
-          Inteligencia del Ser.
+          Tu espacio para crecer.
         </p>
 
         <p className="ks-body ks-blur-in max-w-xl mx-auto mb-14" style={{ animationDelay: '0.7s' }}>
-          Una herramienta de auto-conocimiento basada en el Árbol de la Vida.<br />
-          Mapeá las diez dimensiones de tu alma. Vé cuál vibra, cuál se calla.
+          Un espacio donde te podrás conocer, donde podrás ver lo que estás siendo. Organizá tus energías organizando tu tiempo en un calendario en el que podrás diferenciar tus actividades por dimensiones.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-center ks-blur-in" style={{ animationDelay: '1s' }}>
@@ -31,11 +30,6 @@ export default function InicioHero({ onEnterEspejo }: Props) {
             Cómo funciona ↓
           </a>
         </div>
-      </div>
-
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 ks-blur-in" style={{ animationDelay: '1.4s' }}>
-        <span className="ks-eyebrow">SCROLL</span>
-        <div className="w-px h-10 bg-gradient-to-b from-gold/60 to-transparent ks-scroll-down" />
       </div>
     </section>
   );
