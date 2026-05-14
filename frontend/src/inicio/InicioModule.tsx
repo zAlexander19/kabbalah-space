@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import LoadingScreen from './components/LoadingScreen';
 import CosmicBackground from './components/CosmicBackground';
-import InicioNav, { type InicioNavTarget } from './components/InicioNav';
+import type { InicioNavTarget } from './components/InicioNav';
 import InicioHero from './components/InicioHero';
 import InicioPremisa from './components/InicioPremisa';
 import InicioModulos from './components/InicioModulos';
@@ -44,7 +44,6 @@ export default function InicioModule({ onNavigate }: Props) {
       <AnimatePresence>
         {!loadingDone && <LoadingScreen key="loading" onComplete={handleLoadingComplete} />}
       </AnimatePresence>
-      <InicioNav onNavigate={onNavigate} />
       <main className="relative">
         <InicioHero onEnterEspejo={goToEspejo} />
         <InicioPremisa />
