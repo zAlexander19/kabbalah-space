@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import type { Activity } from '../types';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 import { eventChip } from '../motion/transitions';
+import ActividadSyncBadge from './ActividadSyncBadge';
 
 type Variant = 'week' | 'month';
 
@@ -10,9 +11,10 @@ type Props = {
   variant: Variant;
   style?: React.CSSProperties;
   onClick?: (a: Activity) => void;
+  gcalEnabled?: boolean;
 };
 
-export default function CalendarEvent({ activity, variant, style, onClick }: Props) {
+export default function CalendarEvent({ activity, variant, style, onClick, gcalEnabled = false }: Props) {
   const color = SEFIRA_COLORS[activity.sefirot[0]?.id] ?? '#eab308';
   const sefirotLabel = activity.sefirot.map(s => s.nombre).join(', ');
   const isRecurring = !!activity.serie_id;
@@ -39,7 +41,12 @@ export default function CalendarEvent({ activity, variant, style, onClick }: Pro
           ...recurringBorder,
         }}
       >
-        <div className="text-[11px] font-semibold text-stone-100 truncate">{activity.titulo}</div>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-[11px] font-semibold text-stone-100 truncate">{activity.titulo}</span>
+          {gcalEnabled && activity.sync_status && (
+            <ActividadSyncBadge actividadId={activity.id} status={activity.sync_status} />
+          )}
+        </div>
         <div className="text-[10px] text-stone-300/80 truncate">{sefirotLabel}</div>
       </motion.div>
     );
@@ -54,10 +61,15 @@ export default function CalendarEvent({ activity, variant, style, onClick }: Pro
       exit="exit"
       whileHover={{ x: 1 }}
       onClick={(e) => { e.stopPropagation(); onClick?.(activity); }}
-      className="rounded-sm px-1.5 py-0.5 cursor-pointer overflow-hidden truncate text-[10px] text-stone-100"
+      className="rounded-sm px-1.5 py-0.5 cursor-pointer overflow-hidden text-[10px] text-stone-100"
       style={{ background: `${color}33`, borderLeft: `2px solid ${color}`, ...recurringBorder }}
     >
-      {activity.titulo}
+      <span className="flex items-center gap-1 min-w-0">
+        <span className="truncate">{activity.titulo}</span>
+        {gcalEnabled && activity.sync_status && (
+          <ActividadSyncBadge actividadId={activity.id} status={activity.sync_status} />
+        )}
+      </span>
     </motion.div>
   );
 }

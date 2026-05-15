@@ -4,6 +4,7 @@ import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
 import { apiFetch } from '../auth';
+import { useGcalStatus } from '../sync';
 import CalendarToolbar from './components/CalendarToolbar';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
@@ -13,6 +14,7 @@ import SefirotTree from './components/SefirotTree';
 import SefirotLegend from './components/SefirotLegend';
 import ActivityPanel from './components/ActivityPanel';
 import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
+import GcalSyncCard from './components/GcalSyncCard';
 
 type Scope = 'one' | 'series';
 type ScopePending = { activity: Activity; mode: 'edit' | 'delete' } | null;
@@ -25,6 +27,8 @@ type Props = {
 export default function CalendarModule({ sefirot, glowText }: Props) {
   const { anchor, setAnchor, view, setView, range, goPrev, goNext, goToday } = useCalendarRange();
   const { activities, volume, loading, error, reload } = useActivities(range);
+  const { status: gcalStatus } = useGcalStatus(true);
+  const gcalEnabled = gcalStatus?.enabled === true;
 
   const [filterId, setFilterId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -121,6 +125,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   return (
+    <div className="w-full flex flex-col gap-6 md:gap-8">
     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
       <div className={`lg:col-span-7 xl:col-span-7 2xl:col-span-8 w-full min-w-0 bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl relative ${panelOpen ? 'z-[60]' : 'z-10'}`}>
         <CalendarToolbar
@@ -154,10 +159,10 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
           <ViewMorph view={view}>
             {view === 'semana' && (
-              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} />
+              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
             )}
             {view === 'mes' && (
-              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} />
+              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
             )}
             {view === 'anio' && (
               <YearView date={anchor} activities={activities} onMonthClick={openMonth} />
@@ -199,6 +204,9 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         onChoose={handleScopeChosen}
         onCancel={() => setScopeDialog(null)}
       />
+    </div>
+
+      <GcalSyncCard />
     </div>
   );
 }

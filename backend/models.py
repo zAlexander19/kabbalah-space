@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index, Boolean
 
 from sqlalchemy.sql import func
 
@@ -34,6 +34,10 @@ class Usuario(Base):
     password_hash = Column(String(255), nullable=True)
 
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+
+    google_refresh_token_enc = Column(Text, nullable=True)
+    google_calendar_id       = Column(String(255), nullable=True)
+    gcal_sync_enabled        = Column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (
         Index("ix_usuarios_provider_provider_id", "provider", "provider_id"),
@@ -127,6 +131,9 @@ class Actividad(Base):
     serie_id = Column(String(36), nullable=True, index=True)
 
     rrule = Column(String(500), nullable=True)
+
+    gcal_event_id  = Column(String(255), nullable=True, index=True)
+    sync_status    = Column(String(20), nullable=False, server_default="pending")
 
 
 class ActividadSefira(Base):

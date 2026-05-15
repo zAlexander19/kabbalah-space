@@ -14,3 +14,15 @@ Base = declarative_base()
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+
+def get_session_factory():
+    """Returns the async sessionmaker callable. Used by BackgroundTasks /
+    asyncio.create_task that run outside the request lifecycle and need to
+    open their own DB session.
+
+    Usage:
+        async with get_session_factory()() as db:
+            ...
+    """
+    return AsyncSessionLocal

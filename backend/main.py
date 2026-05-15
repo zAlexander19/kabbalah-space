@@ -1,23 +1,33 @@
 import asyncio
+import logging
 import random
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from dateutil.rrule import rrulestr
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import and_, delete
+from sqlalchemy import and_, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+from urllib.parse import urlencode
+
+import httpx
 
 from config import Settings, get_settings
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
+import gcal_sync
+from gcal_client import GcalError
+
+logger = logging.getLogger(__name__)
 from auth import (
     EmailCollisionError,
+    GOOGLE_AUTH_URL,
     Token,
     UserCreate,
     UserLogin,
@@ -233,6 +243,8 @@ class ActividadOut(BaseModel):
     sefirot: list[ActividadSefiraOut]
     serie_id: Optional[str] = None
     rrule: Optional[str] = None
+    sync_status: str = "pending"
+    gcal_event_id: Optional[str] = None
 
 
 class VolumenSefiraOut(BaseModel):
@@ -277,6 +289,8 @@ async def serialize_actividad(db: AsyncSession, actividad: Actividad) -> Activid
         sefirot=sefirot,
         serie_id=actividad.serie_id,
         rrule=actividad.rrule,
+        sync_status=actividad.sync_status,
+        gcal_event_id=actividad.gcal_event_id,
     )
 
 MATERIALIZATION_CAP_DAYS = 365
@@ -797,6 +811,7 @@ async def get_actividad(
 @app.post("/actividades", response_model=list[ActividadOut])
 async def create_actividad(
     payload: ActividadCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
@@ -817,6 +832,19 @@ async def create_actividad(
         if not instancias:
             raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
         await db.commit()
+
+        # Schedule sync for the series master + mark children skipped.
+        if user.gcal_sync_enabled:
+            from database import get_session_factory
+            for actividad in instancias:
+                if actividad.rrule:  # this is the master
+                    background_tasks.add_task(
+                        gcal_sync.push_actividad, get_session_factory(), user.id, actividad.id,
+                    )
+                else:
+                    actividad.sync_status = "skipped"
+            await db.commit()
+
         return [await serialize_actividad(db, a) for a in instancias]
 
     actividad = Actividad(
@@ -835,6 +863,13 @@ async def create_actividad(
 
     await db.commit()
     await db.refresh(actividad)
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        background_tasks.add_task(
+            gcal_sync.push_actividad, get_session_factory(), user.id, actividad.id,
+        )
+
     return [await serialize_actividad(db, actividad)]
 
 
@@ -842,6 +877,7 @@ async def create_actividad(
 async def update_actividad(
     actividad_id: str,
     payload: ActividadCreate,
+    background_tasks: BackgroundTasks,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -876,6 +912,13 @@ async def update_actividad(
 
         await db.commit()
         await db.refresh(actividad)
+
+        if user.gcal_sync_enabled:
+            from database import get_session_factory
+            background_tasks.add_task(
+                gcal_sync.update_actividad, get_session_factory(), user.id, actividad_id,
+            )
+
         return [await serialize_actividad(db, actividad)]
 
     serie_id = actividad.serie_id
@@ -890,6 +933,11 @@ async def update_actividad(
         )
     )).scalars().all()
     sibling_ids = [a.id for a in siblings]
+    # Capture old master's gcal_event_id before destruction.
+    old_master_gcal_event_id = next(
+        (a.gcal_event_id for a in siblings if a.rrule and a.gcal_event_id),
+        None,
+    )
 
     await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
     await db.execute(delete(Actividad).where(
@@ -904,12 +952,30 @@ async def update_actividad(
     if not instancias:
         raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
     await db.commit()
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        if old_master_gcal_event_id:
+            background_tasks.add_task(
+                gcal_sync.delete_actividad, get_session_factory(), user.id, old_master_gcal_event_id,
+            )
+        new_master = next((a for a in instancias if a.rrule), None)
+        if new_master:
+            background_tasks.add_task(
+                gcal_sync.push_actividad, get_session_factory(), user.id, new_master.id,
+            )
+        for a in instancias:
+            if not a.rrule:
+                a.sync_status = "skipped"
+        await db.commit()
+
     return [await serialize_actividad(db, a) for a in instancias]
 
 
 @app.delete("/actividades/{actividad_id}")
 async def delete_actividad(
     actividad_id: str,
+    background_tasks: BackgroundTasks,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -923,21 +989,38 @@ async def delete_actividad(
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
+    # Capture gcal_event_ids BEFORE deletion.
+    event_ids_to_delete: list[str] = []
     if scope == "series" and actividad.serie_id is not None:
         siblings = (await db.execute(
-            select(Actividad.id).where(
+            select(Actividad).where(
                 Actividad.serie_id == actividad.serie_id,
                 Actividad.usuario_id == user.id,
             )
         )).scalars().all()
-        await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(siblings)))
+        for s in siblings:
+            if s.gcal_event_id and s.rrule:  # only the master has it
+                event_ids_to_delete.append(s.gcal_event_id)
+        sibling_ids = [s.id for s in siblings]
+
+        await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
         await db.execute(delete(Actividad).where(
             and_(Actividad.serie_id == actividad.serie_id, Actividad.usuario_id == user.id)
         ))
     else:
+        if actividad.gcal_event_id:
+            event_ids_to_delete.append(actividad.gcal_event_id)
         await db.delete(actividad)
 
     await db.commit()
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        for eid in event_ids_to_delete:
+            background_tasks.add_task(
+                gcal_sync.delete_actividad, get_session_factory(), user.id, eid,
+            )
+
     return {"message": "Actividad eliminada"}
 
 
@@ -1005,3 +1088,202 @@ async def get_volumen_semanal(
 
     volumen.sort(key=lambda x: (x.actividades_total, x.horas_total), reverse=True)
     return VolumenSemanalOut(semana_inicio=semana_inicio, semana_fin=semana_fin, volumen=volumen)
+
+
+# ---------------------------------------------------------------- GCAL SYNC
+
+GCAL_SCOPE = "https://www.googleapis.com/auth/calendar"
+
+
+def _build_gcal_authorize_url(settings, state: str) -> str:
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.gcal_redirect_uri,
+        "response_type": "code",
+        "scope": GCAL_SCOPE,
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+    }
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
+@app.get("/sync/google/authorize")
+async def gcal_authorize(
+    user: Usuario = Depends(get_current_user),
+):
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503, "Google Calendar sync is not configured on this server")
+    if user.provider != "google":
+        raise HTTPException(403, "Solo usuarios autenticados con Google pueden activar sync")
+
+    # Embed user_id in the state so the callback can identify the user
+    # (the callback is a redirect from Google and has no auth header).
+    state = create_state_token(
+        settings,
+        purpose="gcal_sync_state",
+        extra_claims={"user_id": user.id},
+    )
+    return {"url": _build_gcal_authorize_url(settings, state)}
+
+
+@app.get("/sync/google/callback")
+async def gcal_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """OAuth callback from Google. This route has NO auth header because it's
+    a redirect from Google's domain — we identify the user via the user_id
+    claim baked into the state JWT (which we signed in /authorize).
+    """
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503, "Google Calendar sync is not configured")
+
+    if error:
+        return RedirectResponse(f"{settings.frontend_url}/?sync=denied", status_code=303)
+    if not code or not state:
+        raise HTTPException(400, "Missing code or state")
+
+    payload = verify_state_token(state, settings, "gcal_sync_state")
+    if not payload or not payload.get("user_id"):
+        raise HTTPException(400, "Invalid OAuth state")
+
+    user_id = payload["user_id"]
+    user = (await db.execute(select(Usuario).where(Usuario.id == user_id))).scalars().first()
+    if not user or user.provider != "google":
+        raise HTTPException(403)
+
+    # Exchange code for tokens — must include refresh_token because we used access_type=offline.
+    async with httpx.AsyncClient(timeout=10.0) as http:
+        resp = await http.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.gcal_redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        if resp.status_code != 200:
+            raise HTTPException(400, f"Token exchange failed: {resp.text[:200]}")
+        tokens = resp.json()
+
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            400,
+            "Google did not return a refresh_token. Revoke access at "
+            "myaccount.google.com/permissions and try again.",
+        )
+
+    try:
+        await gcal_sync.enable_sync_for_user(db, user_id, refresh_token)
+    except GcalError as exc:
+        # Google API call failed during setup (e.g. Calendar API not enabled
+        # in the Cloud project → 403). Don't 500 — send the user back to the
+        # app with an error flag so the UI can show a clean message.
+        logger.error("enable_sync_for_user failed for %s: %s", user_id, exc)
+        return RedirectResponse(f"{settings.frontend_url}/?sync=error", status_code=303)
+
+    # Kick off backfill in the background — the route returns before it completes.
+    from database import get_session_factory
+    asyncio.create_task(gcal_sync.backfill_user(get_session_factory(), user_id))
+
+    return RedirectResponse(f"{settings.frontend_url}/?sync=connected", status_code=303)
+
+
+@app.post("/sync/google/disconnect")
+async def gcal_disconnect(
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503)
+    await gcal_sync.disable_sync_for_user(db, user.id)
+    return {"ok": True}
+
+
+class SyncStatusOut(BaseModel):
+    enabled: bool
+    calendar_name: Optional[str] = None
+    last_sync_at: Optional[datetime] = None
+    pending_count: int
+    error_count: int
+
+
+@app.get("/sync/status", response_model=SyncStatusOut)
+async def sync_status(
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    pending = (await db.execute(
+        select(func.count(Actividad.id)).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "pending",
+        )
+    )).scalar() or 0
+    errors = (await db.execute(
+        select(func.count(Actividad.id)).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "error",
+        )
+    )).scalar() or 0
+    last = (await db.execute(
+        select(Actividad.fecha_actualizacion).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "synced",
+        ).order_by(Actividad.fecha_actualizacion.desc()).limit(1)
+    )).scalar()
+
+    return SyncStatusOut(
+        enabled=user.gcal_sync_enabled,
+        calendar_name="Kabbalah Space" if user.gcal_sync_enabled else None,
+        last_sync_at=last,
+        pending_count=pending,
+        error_count=errors,
+    )
+
+
+@app.post("/sync/backfill")
+async def sync_backfill(
+    background_tasks: BackgroundTasks,
+    user: Usuario = Depends(get_current_user),
+):
+    if not user.gcal_sync_enabled:
+        raise HTTPException(400, "Sync not enabled")
+    from database import get_session_factory
+    background_tasks.add_task(gcal_sync.backfill_user, get_session_factory(), user.id)
+    return {"ok": True, "scheduled": True}
+
+
+@app.post("/actividades/{actividad_id}/retry-sync")
+async def retry_actividad_sync(
+    actividad_id: str,
+    background_tasks: BackgroundTasks,
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    actividad = (await db.execute(
+        select(Actividad).where(Actividad.id == actividad_id, Actividad.usuario_id == user.id)
+    )).scalars().first()
+    if not actividad:
+        raise HTTPException(404)
+    if not user.gcal_sync_enabled:
+        raise HTTPException(400, "Sync not enabled")
+
+    actividad.sync_status = "pending"
+    await db.commit()
+
+    from database import get_session_factory
+    if actividad.gcal_event_id:
+        background_tasks.add_task(gcal_sync.update_actividad, get_session_factory(), user.id, actividad_id)
+    else:
+        background_tasks.add_task(gcal_sync.push_actividad, get_session_factory(), user.id, actividad_id)
+    return {"ok": True}

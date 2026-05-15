@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
     frontend_url: str = "http://localhost:5173"
 
+    # ---------- Google Calendar sync ----------
+    fernet_key: str = ""
+    gcal_redirect_uri: str = "http://localhost:8000/sync/google/callback"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -47,6 +51,10 @@ class Settings(BaseSettings):
     @property
     def google_oauth_configured(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)
+
+    @property
+    def gcal_sync_configured(self) -> bool:
+        return bool(self.fernet_key) and self.google_oauth_configured
 
 
 @lru_cache(maxsize=1)

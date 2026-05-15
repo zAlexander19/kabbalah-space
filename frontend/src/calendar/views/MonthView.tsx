@@ -13,9 +13,10 @@ type Props = {
   activities: Activity[];
   onDayClick?: (day: Date) => void;
   onEventClick?: (a: Activity) => void;
+  gcalEnabled?: boolean;
 };
 
-export default function MonthView({ date, activities, onDayClick, onEventClick }: Props) {
+export default function MonthView({ date, activities, onDayClick, onEventClick, gcalEnabled = false }: Props) {
   const today = new Date();
   const days = useMemo(() => {
     const monthStart = startOfMonth(date);
@@ -75,7 +76,7 @@ export default function MonthView({ date, activities, onDayClick, onEventClick }
               </div>
               <AnimatePresence mode="popLayout">
                 {visible.map(act => (
-                  <CalendarEvent key={act.id} activity={act} variant="month" onClick={onEventClick} />
+                  <CalendarEvent key={act.id} activity={act} variant="month" onClick={onEventClick} gcalEnabled={gcalEnabled} />
                 ))}
               </AnimatePresence>
               {overflow > 0 && (

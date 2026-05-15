@@ -23,6 +23,8 @@ export type Activity = {
   sefirot: ActivitySefira[];
   serie_id?: string | null;
   rrule?: string | null;
+  sync_status?: 'pending' | 'synced' | 'error' | 'skipped';
+  gcal_event_id?: string | null;
 };
 
 export type VolumeItem = {

@@ -125,26 +125,48 @@ STATE_TOKEN_TTL_MINUTES = 10
 
 # ---------- State token (CSRF protection) ----------
 
-def create_state_token(settings: Settings) -> str:
+def create_state_token(
+    settings: Settings,
+    purpose: str = "oauth_state",
+    extra_claims: Optional[dict] = None,
+) -> str:
     """Signed JWT used as the OAuth `state` parameter.
 
     The signature ties the state to OUR backend (any tampering breaks it),
-    and the short TTL prevents replay if a redirect URL leaks.
+    and the short TTL prevents replay if a redirect URL leaks. The `purpose`
+    field distinguishes login flow ("oauth_state") from sync flow
+    ("gcal_sync_state") and prevents cross-flow attacks. The `extra_claims`
+    let the gcal flow embed the user_id so the callback can identify the
+    user without an auth header (the callback is a redirect from Google).
     """
     payload = {
         "nonce": secrets.token_urlsafe(16),
         "exp": datetime.now(timezone.utc) + timedelta(minutes=STATE_TOKEN_TTL_MINUTES),
-        "purpose": "oauth_state",
+        "purpose": purpose,
     }
+    if extra_claims:
+        payload.update(extra_claims)
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def verify_state_token(state: str, settings: Settings) -> bool:
+def verify_state_token(
+    state: str,
+    settings: Settings,
+    expected_purpose: str = "oauth_state",
+) -> Optional[dict]:
+    """Returns the decoded payload if valid and purpose matches; else None.
+
+    Callers that only need a yes/no can do `bool(verify_state_token(...))`.
+    Callers that need claims (like the gcal callback reading user_id) can
+    pull them from the returned dict.
+    """
     try:
         payload = jwt.decode(state, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        return payload.get("purpose") == "oauth_state"
     except JWTError:
-        return False
+        return None
+    if payload.get("purpose") != expected_purpose:
+        return None
+    return payload
 
 
 # ---------- Google API calls ----------
