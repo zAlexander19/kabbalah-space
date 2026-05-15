@@ -239,6 +239,8 @@ class ActividadOut(BaseModel):
     sefirot: list[ActividadSefiraOut]
     serie_id: Optional[str] = None
     rrule: Optional[str] = None
+    sync_status: str = "pending"
+    gcal_event_id: Optional[str] = None
 
 
 class VolumenSefiraOut(BaseModel):
@@ -283,6 +285,8 @@ async def serialize_actividad(db: AsyncSession, actividad: Actividad) -> Activid
         sefirot=sefirot,
         serie_id=actividad.serie_id,
         rrule=actividad.rrule,
+        sync_status=actividad.sync_status,
+        gcal_event_id=actividad.gcal_event_id,
     )
 
 MATERIALIZATION_CAP_DAYS = 365

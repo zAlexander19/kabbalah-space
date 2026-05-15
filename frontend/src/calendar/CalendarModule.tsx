@@ -4,6 +4,7 @@ import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
 import { apiFetch } from '../auth';
+import { useGcalStatus } from '../sync';
 import CalendarToolbar from './components/CalendarToolbar';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
@@ -25,6 +26,8 @@ type Props = {
 export default function CalendarModule({ sefirot, glowText }: Props) {
   const { anchor, setAnchor, view, setView, range, goPrev, goNext, goToday } = useCalendarRange();
   const { activities, volume, loading, error, reload } = useActivities(range);
+  const { status: gcalStatus } = useGcalStatus(true);
+  const gcalEnabled = gcalStatus?.enabled === true;
 
   const [filterId, setFilterId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -154,10 +157,10 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
           <ViewMorph view={view}>
             {view === 'semana' && (
-              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} />
+              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
             )}
             {view === 'mes' && (
-              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} />
+              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
             )}
             {view === 'anio' && (
               <YearView date={anchor} activities={activities} onMonthClick={openMonth} />

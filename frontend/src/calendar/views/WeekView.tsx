@@ -17,9 +17,10 @@ type Props = {
   activities: Activity[];
   onSlotClick?: (start: Date, end: Date) => void;
   onEventClick?: (a: Activity) => void;
+  gcalEnabled?: boolean;
 };
 
-export default function WeekView({ date, activities, onSlotClick, onEventClick }: Props) {
+export default function WeekView({ date, activities, onSlotClick, onEventClick, gcalEnabled = false }: Props) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -123,6 +124,7 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick }
                     variant="week"
                     style={eventStyle(act)}
                     onClick={onEventClick}
+                    gcalEnabled={gcalEnabled}
                   />
                 ))}
               </AnimatePresence>
