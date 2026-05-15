@@ -13,11 +13,17 @@ from sqlalchemy import and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from urllib.parse import urlencode
+
+import httpx
+
 from config import Settings, get_settings
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
+import gcal_sync
 from auth import (
     EmailCollisionError,
+    GOOGLE_AUTH_URL,
     Token,
     UserCreate,
     UserLogin,
@@ -1005,3 +1011,116 @@ async def get_volumen_semanal(
 
     volumen.sort(key=lambda x: (x.actividades_total, x.horas_total), reverse=True)
     return VolumenSemanalOut(semana_inicio=semana_inicio, semana_fin=semana_fin, volumen=volumen)
+
+
+# ---------------------------------------------------------------- GCAL SYNC
+
+GCAL_SCOPE = "https://www.googleapis.com/auth/calendar"
+
+
+def _build_gcal_authorize_url(settings, state: str) -> str:
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.gcal_redirect_uri,
+        "response_type": "code",
+        "scope": GCAL_SCOPE,
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+    }
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
+@app.get("/sync/google/authorize")
+async def gcal_authorize(
+    user: Usuario = Depends(get_current_user),
+):
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503, "Google Calendar sync is not configured on this server")
+    if user.provider != "google":
+        raise HTTPException(403, "Solo usuarios autenticados con Google pueden activar sync")
+
+    # Embed user_id in the state so the callback can identify the user
+    # (the callback is a redirect from Google and has no auth header).
+    state = create_state_token(
+        settings,
+        purpose="gcal_sync_state",
+        extra_claims={"user_id": user.id},
+    )
+    return {"url": _build_gcal_authorize_url(settings, state)}
+
+
+@app.get("/sync/google/callback")
+async def gcal_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """OAuth callback from Google. This route has NO auth header because it's
+    a redirect from Google's domain — we identify the user via the user_id
+    claim baked into the state JWT (which we signed in /authorize).
+    """
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503, "Google Calendar sync is not configured")
+
+    if error:
+        return RedirectResponse(f"{settings.frontend_url}/?sync=denied", status_code=303)
+    if not code or not state:
+        raise HTTPException(400, "Missing code or state")
+
+    payload = verify_state_token(state, settings, "gcal_sync_state")
+    if not payload or not payload.get("user_id"):
+        raise HTTPException(400, "Invalid OAuth state")
+
+    user_id = payload["user_id"]
+    user = (await db.execute(select(Usuario).where(Usuario.id == user_id))).scalars().first()
+    if not user or user.provider != "google":
+        raise HTTPException(403)
+
+    # Exchange code for tokens — must include refresh_token because we used access_type=offline.
+    async with httpx.AsyncClient(timeout=10.0) as http:
+        resp = await http.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.gcal_redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        if resp.status_code != 200:
+            raise HTTPException(400, f"Token exchange failed: {resp.text[:200]}")
+        tokens = resp.json()
+
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            400,
+            "Google did not return a refresh_token. Revoke access at "
+            "myaccount.google.com/permissions and try again.",
+        )
+
+    await gcal_sync.enable_sync_for_user(db, user_id, refresh_token)
+
+    # Kick off backfill in the background — the route returns before it completes.
+    from database import get_session_factory
+    asyncio.create_task(gcal_sync.backfill_user(get_session_factory(), user_id))
+
+    return RedirectResponse(f"{settings.frontend_url}/?sync=connected", status_code=303)
+
+
+@app.post("/sync/google/disconnect")
+async def gcal_disconnect(
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    settings = get_settings()
+    if not settings.gcal_sync_configured:
+        raise HTTPException(503)
+    await gcal_sync.disable_sync_for_user(db, user.id)
+    return {"ok": True}
