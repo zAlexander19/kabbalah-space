@@ -803,6 +803,7 @@ async def get_actividad(
 @app.post("/actividades", response_model=list[ActividadOut])
 async def create_actividad(
     payload: ActividadCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
@@ -823,6 +824,19 @@ async def create_actividad(
         if not instancias:
             raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
         await db.commit()
+
+        # Schedule sync for the series master + mark children skipped.
+        if user.gcal_sync_enabled:
+            from database import get_session_factory
+            for actividad in instancias:
+                if actividad.rrule:  # this is the master
+                    background_tasks.add_task(
+                        gcal_sync.push_actividad, get_session_factory(), user.id, actividad.id,
+                    )
+                else:
+                    actividad.sync_status = "skipped"
+            await db.commit()
+
         return [await serialize_actividad(db, a) for a in instancias]
 
     actividad = Actividad(
@@ -841,6 +855,13 @@ async def create_actividad(
 
     await db.commit()
     await db.refresh(actividad)
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        background_tasks.add_task(
+            gcal_sync.push_actividad, get_session_factory(), user.id, actividad.id,
+        )
+
     return [await serialize_actividad(db, actividad)]
 
 
@@ -848,6 +869,7 @@ async def create_actividad(
 async def update_actividad(
     actividad_id: str,
     payload: ActividadCreate,
+    background_tasks: BackgroundTasks,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -882,6 +904,13 @@ async def update_actividad(
 
         await db.commit()
         await db.refresh(actividad)
+
+        if user.gcal_sync_enabled:
+            from database import get_session_factory
+            background_tasks.add_task(
+                gcal_sync.update_actividad, get_session_factory(), user.id, actividad_id,
+            )
+
         return [await serialize_actividad(db, actividad)]
 
     serie_id = actividad.serie_id
@@ -896,6 +925,11 @@ async def update_actividad(
         )
     )).scalars().all()
     sibling_ids = [a.id for a in siblings]
+    # Capture old master's gcal_event_id before destruction.
+    old_master_gcal_event_id = next(
+        (a.gcal_event_id for a in siblings if a.rrule and a.gcal_event_id),
+        None,
+    )
 
     await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
     await db.execute(delete(Actividad).where(
@@ -910,12 +944,30 @@ async def update_actividad(
     if not instancias:
         raise HTTPException(status_code=422, detail="El RRULE no genera ninguna ocurrencia")
     await db.commit()
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        if old_master_gcal_event_id:
+            background_tasks.add_task(
+                gcal_sync.delete_actividad, get_session_factory(), user.id, old_master_gcal_event_id,
+            )
+        new_master = next((a for a in instancias if a.rrule), None)
+        if new_master:
+            background_tasks.add_task(
+                gcal_sync.push_actividad, get_session_factory(), user.id, new_master.id,
+            )
+        for a in instancias:
+            if not a.rrule:
+                a.sync_status = "skipped"
+        await db.commit()
+
     return [await serialize_actividad(db, a) for a in instancias]
 
 
 @app.delete("/actividades/{actividad_id}")
 async def delete_actividad(
     actividad_id: str,
+    background_tasks: BackgroundTasks,
     scope: str = Query("one", pattern="^(one|series)$"),
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
@@ -929,21 +981,38 @@ async def delete_actividad(
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
 
+    # Capture gcal_event_ids BEFORE deletion.
+    event_ids_to_delete: list[str] = []
     if scope == "series" and actividad.serie_id is not None:
         siblings = (await db.execute(
-            select(Actividad.id).where(
+            select(Actividad).where(
                 Actividad.serie_id == actividad.serie_id,
                 Actividad.usuario_id == user.id,
             )
         )).scalars().all()
-        await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(siblings)))
+        for s in siblings:
+            if s.gcal_event_id and s.rrule:  # only the master has it
+                event_ids_to_delete.append(s.gcal_event_id)
+        sibling_ids = [s.id for s in siblings]
+
+        await db.execute(delete(ActividadSefira).where(ActividadSefira.actividad_id.in_(sibling_ids)))
         await db.execute(delete(Actividad).where(
             and_(Actividad.serie_id == actividad.serie_id, Actividad.usuario_id == user.id)
         ))
     else:
+        if actividad.gcal_event_id:
+            event_ids_to_delete.append(actividad.gcal_event_id)
         await db.delete(actividad)
 
     await db.commit()
+
+    if user.gcal_sync_enabled:
+        from database import get_session_factory
+        for eid in event_ids_to_delete:
+            background_tasks.add_task(
+                gcal_sync.delete_actividad, get_session_factory(), user.id, eid,
+            )
+
     return {"message": "Actividad eliminada"}
 
 
