@@ -115,6 +115,14 @@ async def _request_with_retry(
                 await asyncio.sleep(BASE_BACKOFF_SECONDS * (2 ** attempt))
                 last_exc = httpx.HTTPStatusError("retryable", request=resp.request, response=resp)
                 continue
+            if 400 <= resp.status_code < 500:
+                # Non-retryable client error (403 = Calendar API not enabled or
+                # insufficient permission, 400 = bad request, etc.). Surface as
+                # a typed GcalError so callers degrade gracefully instead of
+                # leaking a raw httpx error.
+                raise GcalError(
+                    f"gcal {method} {url} -> {resp.status_code}: {resp.text[:300]}"
+                )
 
             resp.raise_for_status()
             return resp

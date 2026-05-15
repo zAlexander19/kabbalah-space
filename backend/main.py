@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import random
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
@@ -21,6 +22,9 @@ from config import Settings, get_settings
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
 import gcal_sync
+from gcal_client import GcalError
+
+logger = logging.getLogger(__name__)
 from auth import (
     EmailCollisionError,
     GOOGLE_AUTH_URL,
@@ -1178,7 +1182,14 @@ async def gcal_callback(
             "myaccount.google.com/permissions and try again.",
         )
 
-    await gcal_sync.enable_sync_for_user(db, user_id, refresh_token)
+    try:
+        await gcal_sync.enable_sync_for_user(db, user_id, refresh_token)
+    except GcalError as exc:
+        # Google API call failed during setup (e.g. Calendar API not enabled
+        # in the Cloud project → 403). Don't 500 — send the user back to the
+        # app with an error flag so the UI can show a clean message.
+        logger.error("enable_sync_for_user failed for %s: %s", user_id, exc)
+        return RedirectResponse(f"{settings.frontend_url}/?sync=error", status_code=303)
 
     # Kick off backfill in the background — the route returns before it completes.
     from database import get_session_factory
