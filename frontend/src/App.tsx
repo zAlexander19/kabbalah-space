@@ -6,6 +6,7 @@ import EspejoModule from "./espejo";
 import EvolucionModule from "./evolucion";
 import InicioModule from "./inicio";
 import InicioNav from "./inicio/components/InicioNav";
+import SettingsModule from "./settings";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -20,7 +21,7 @@ const SEFIROT = [
   { id: "maljut",  name: "Maljut",  x: 200, y: 750, colorClass: "", textClass: "", description: "El Reino. La acción física y el mundo material." },
 ];
 
-type ViewKey = 'inicio' | 'espejo' | 'admin' | 'calendario' | 'evolucion';
+type ViewKey = 'inicio' | 'espejo' | 'admin' | 'calendario' | 'evolucion' | 'settings';
 
 const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   inicio:     { title: 'Kabbalah Space',          subtitle: 'El conocimiento del universo empieza por adentro.' },
@@ -28,6 +29,7 @@ const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   evolucion:  { title: 'Mi Evolución',            subtitle: 'El movimiento mensual de cada dimensión del alma.' },
   calendario: { title: 'Calendario Cabalístico', subtitle: 'La organización es parte del camino de rectificación. Organiza tu semana y tus dimensiones.' },
   admin:      { title: 'Panel de Administrador', subtitle: 'Gestión de preguntas guía por sefirá.' },
+  settings:   { title: 'Configuración',          subtitle: 'Integraciones con servicios externos.' },
 };
 
 const INTRO_FLAG = 'espejo-intro-done';
@@ -117,6 +119,7 @@ export default function App() {
             {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
             {activeView === 'evolucion' && <EvolucionModule />}
+            {activeView === 'settings' && <SettingsModule />}
             {activeView === 'espejo' && (
               <EspejoModule
                 sefirot={SEFIROT}
