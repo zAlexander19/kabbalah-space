@@ -120,3 +120,84 @@ async def test_disconnect_wipes_user_columns(
     assert user.gcal_sync_enabled is False
     assert user.google_calendar_id is None
     assert user.google_refresh_token_enc is None
+
+
+from models import Actividad
+from datetime import datetime, timezone
+
+
+@pytest.mark.asyncio
+async def test_status_returns_counts(
+    client, db_session, fkey, monkeypatch,
+):
+    user, headers = await _login_google_user(client, db_session, fkey, monkeypatch)
+    user.gcal_sync_enabled = True
+    user.google_calendar_id = "cal_abc"
+    await db_session.commit()
+
+    # 2 pending, 1 error, 3 synced
+    for i in range(2):
+        db_session.add(Actividad(usuario_id=user.id, titulo=f"P{i}",
+            inicio=datetime(2026,5,15,8,0,tzinfo=timezone.utc),
+            fin=datetime(2026,5,15,9,0,tzinfo=timezone.utc),
+            sync_status="pending"))
+    db_session.add(Actividad(usuario_id=user.id, titulo="E",
+        inicio=datetime(2026,5,15,8,0,tzinfo=timezone.utc),
+        fin=datetime(2026,5,15,9,0,tzinfo=timezone.utc),
+        sync_status="error"))
+    for i in range(3):
+        db_session.add(Actividad(usuario_id=user.id, titulo=f"S{i}",
+            inicio=datetime(2026,5,15,8,0,tzinfo=timezone.utc),
+            fin=datetime(2026,5,15,9,0,tzinfo=timezone.utc),
+            sync_status="synced"))
+    await db_session.commit()
+
+    r = await client.get("/sync/status", headers=headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["enabled"] is True
+    assert body["pending_count"] == 2
+    assert body["error_count"] == 1
+    assert body["calendar_name"] == "Kabbalah Space"
+
+
+@pytest.mark.asyncio
+async def test_status_disabled_user(
+    client, db_session, fkey, monkeypatch,
+):
+    user, headers = await _login_google_user(client, db_session, fkey, monkeypatch)
+    r = await client.get("/sync/status", headers=headers)
+    body = r.json()
+    assert body["enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_retry_sync_resets_status_and_schedules(
+    client, db_session, fkey, monkeypatch,
+):
+    user, headers = await _login_google_user(client, db_session, fkey, monkeypatch)
+    from fernet import encrypt_token
+    user.gcal_sync_enabled = True
+    user.google_calendar_id = "cal_abc"
+    user.google_refresh_token_enc = encrypt_token("1//rtok", fkey)
+    await db_session.commit()
+
+    act = Actividad(usuario_id=user.id, titulo="X",
+        inicio=datetime(2026,5,15,8,0,tzinfo=timezone.utc),
+        fin=datetime(2026,5,15,9,0,tzinfo=timezone.utc),
+        sync_status="error")
+    db_session.add(act); await db_session.commit(); await db_session.refresh(act)
+
+    with respx.mock:
+        respx.post(GOOGLE_TOKEN_URL).mock(return_value=httpx.Response(200, json={"access_token": "ya29"}))
+        respx.post(f"{CALENDAR_API_BASE}/calendars/cal_abc/events").mock(
+            return_value=httpx.Response(200, json={"id": "evt_retry"}),
+        )
+
+        r = await client.post(f"/actividades/{act.id}/retry-sync", headers=headers)
+        assert r.status_code == 200
+
+    await db_session.refresh(act)
+    # BackgroundTask runs synchronously in tests
+    assert act.sync_status == "synced"
+    assert act.gcal_event_id == "evt_retry"

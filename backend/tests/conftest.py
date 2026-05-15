@@ -41,13 +41,21 @@ async def db_session(session_maker) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(session_maker) -> AsyncGenerator[AsyncClient, None]:
-    """HTTP client with get_db overridden to share the test engine."""
+async def client(session_maker, monkeypatch) -> AsyncGenerator[AsyncClient, None]:
+    """HTTP client with get_db overridden to share the test engine.
+
+    Also patches database.get_session_factory (used by BackgroundTasks in
+    gcal-sync endpoints) so background tasks hit the same in-memory DB.
+    """
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         async with session_maker() as s:
             yield s
 
     app.dependency_overrides[get_db] = override_get_db
+
+    import database
+    monkeypatch.setattr(database, "AsyncSessionLocal", session_maker)
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

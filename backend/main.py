@@ -5,11 +5,11 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from dateutil.rrule import rrulestr
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy import and_, delete
+from sqlalchemy import and_, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -1123,4 +1123,83 @@ async def gcal_disconnect(
     if not settings.gcal_sync_configured:
         raise HTTPException(503)
     await gcal_sync.disable_sync_for_user(db, user.id)
+    return {"ok": True}
+
+
+class SyncStatusOut(BaseModel):
+    enabled: bool
+    calendar_name: Optional[str] = None
+    last_sync_at: Optional[datetime] = None
+    pending_count: int
+    error_count: int
+
+
+@app.get("/sync/status", response_model=SyncStatusOut)
+async def sync_status(
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    pending = (await db.execute(
+        select(func.count(Actividad.id)).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "pending",
+        )
+    )).scalar() or 0
+    errors = (await db.execute(
+        select(func.count(Actividad.id)).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "error",
+        )
+    )).scalar() or 0
+    last = (await db.execute(
+        select(Actividad.fecha_actualizacion).where(
+            Actividad.usuario_id == user.id,
+            Actividad.sync_status == "synced",
+        ).order_by(Actividad.fecha_actualizacion.desc()).limit(1)
+    )).scalar()
+
+    return SyncStatusOut(
+        enabled=user.gcal_sync_enabled,
+        calendar_name="Kabbalah Space" if user.gcal_sync_enabled else None,
+        last_sync_at=last,
+        pending_count=pending,
+        error_count=errors,
+    )
+
+
+@app.post("/sync/backfill")
+async def sync_backfill(
+    background_tasks: BackgroundTasks,
+    user: Usuario = Depends(get_current_user),
+):
+    if not user.gcal_sync_enabled:
+        raise HTTPException(400, "Sync not enabled")
+    from database import get_session_factory
+    background_tasks.add_task(gcal_sync.backfill_user, get_session_factory(), user.id)
+    return {"ok": True, "scheduled": True}
+
+
+@app.post("/actividades/{actividad_id}/retry-sync")
+async def retry_actividad_sync(
+    actividad_id: str,
+    background_tasks: BackgroundTasks,
+    user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    actividad = (await db.execute(
+        select(Actividad).where(Actividad.id == actividad_id, Actividad.usuario_id == user.id)
+    )).scalars().first()
+    if not actividad:
+        raise HTTPException(404)
+    if not user.gcal_sync_enabled:
+        raise HTTPException(400, "Sync not enabled")
+
+    actividad.sync_status = "pending"
+    await db.commit()
+
+    from database import get_session_factory
+    if actividad.gcal_event_id:
+        background_tasks.add_task(gcal_sync.update_actividad, get_session_factory(), user.id, actividad_id)
+    else:
+        background_tasks.add_task(gcal_sync.push_actividad, get_session_factory(), user.id, actividad_id)
     return {"ok": True}
