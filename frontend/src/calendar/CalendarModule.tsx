@@ -14,6 +14,7 @@ import SefirotTree from './components/SefirotTree';
 import SefirotLegend from './components/SefirotLegend';
 import ActivityPanel from './components/ActivityPanel';
 import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
+import GcalSyncCard from './components/GcalSyncCard';
 
 type Scope = 'one' | 'series';
 type ScopePending = { activity: Activity; mode: 'edit' | 'delete' } | null;
@@ -124,6 +125,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   return (
+    <div className="w-full flex flex-col gap-6 md:gap-8">
     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
       <div className={`lg:col-span-7 xl:col-span-7 2xl:col-span-8 w-full min-w-0 bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl relative ${panelOpen ? 'z-[60]' : 'z-10'}`}>
         <CalendarToolbar
@@ -202,6 +204,9 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         onChoose={handleScopeChosen}
         onCancel={() => setScopeDialog(null)}
       />
+    </div>
+
+      <GcalSyncCard />
     </div>
   );
 }

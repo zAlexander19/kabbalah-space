@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../auth';
-import { useGcalStatus, useGcalSync } from '../sync';
+import { useAuth } from '../../auth';
+import { useGcalStatus, useGcalSync } from '../../sync';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-export default function GcalSettingsCard() {
+export default function GcalSyncCard() {
   const auth = useAuth();
   const { status, refetch } = useGcalStatus(auth.status === 'authenticated');
   const { connect, disconnect, backfill, working } = useGcalSync();

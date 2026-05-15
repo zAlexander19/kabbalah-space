@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import KabbalahLogo from './KabbalahLogo';
 import { useAuth } from '../../auth';
 
-export type InicioNavTarget = 'inicio' | 'espejo' | 'calendario' | 'evolucion' | 'settings';
+export type InicioNavTarget = 'inicio' | 'espejo' | 'calendario' | 'evolucion';
 
 type Props = {
   onNavigate: (target: InicioNavTarget) => void;
@@ -153,20 +153,6 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                       </div>
                     </div>
 
-                    <div className="h-px bg-stone-800/70" />
-
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onNavigate('settings');
-                      }}
-                      className="w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[16px]" aria-hidden="true">settings</span>
-                      Configuración
-                    </button>
                     <div className="h-px bg-stone-800/70" />
 
                     <button
