@@ -5,10 +5,13 @@ import type { SefiraEvolucion } from '../types';
 import MiniArbolMes from './MiniArbolMes';
 
 const W = 1100;
-const H = 460;
+const H = 500;
 const PL = 60;
 const PR = 40;
-const PT = 30;
+// Extra top padding so the promedio number (rendered above each
+// circle in MiniArbolMes) doesn't get clipped when a month sits near
+// the top of the chart.
+const PT = 70;
 const PB = 60;
 
 type MonthlyAggregate = {

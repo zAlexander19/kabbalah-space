@@ -128,19 +128,17 @@ export default function MiniArbolMes({
         })}
       </g>
 
-      {/* Promedio general — large number centered over the tree. */}
+      {/* Promedio general — number floating ABOVE the circle so it
+          doesn't overlap the tree below. */}
       <text
         x={0}
-        y={r * 0.55}
+        y={-(r + 10)}
         textAnchor="middle"
         fill={empty ? 'rgba(255, 245, 228, 0.3)' : '#fff5e4'}
         fontFamily="Newsreader, serif"
         fontSize={r * 0.55}
         fontWeight={500}
-        style={{
-          textShadow: empty ? 'none' : '0 0 8px rgba(0,0,0,0.8)',
-          pointerEvents: 'none',
-        }}
+        style={{ pointerEvents: 'none' }}
       >
         {empty ? '—' : promedioGeneral!.toFixed(1)}
       </text>
