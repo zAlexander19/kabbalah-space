@@ -93,18 +93,37 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
       : PL + CIRCLE_INSET + (i / (n - 1)) * circleRowW;
   const yFor = (v: number) => PT + innerH - ((v - 1) / 9) * innerH;
 
-  // Build the line path connecting only points with a valid promedio.
-  // Gaps are bridged visually so the line still flows across a missing
-  // month (shown by the empty circle on top).
+  // Build the line by drawing one segment per pair of consecutive valid
+  // months. Each segment starts at the EDGE of the source circle and ends
+  // at the EDGE of the destination circle, so the line visually connects
+  // the spheres instead of passing behind them.
   const linePoints = months
     .map((m, i) => ({ x: xFor(i), y: m.promedio === null ? null : yFor(m.promedio) }))
     .filter((p): p is { x: number; y: number } => p.y !== null);
 
-  const linePath = linePoints.length === 0
-    ? ''
-    : linePoints
-        .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`)
-        .join(' ');
+  const r = circleSize / 2;
+  const linePath = (() => {
+    if (linePoints.length < 2) return '';
+    const segments: string[] = [];
+    for (let i = 0; i < linePoints.length - 1; i++) {
+      const a = linePoints[i];
+      const b = linePoints[i + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      // Circles overlap or touch — skip the segment, it would be a stub
+      // or render inside the circles.
+      if (len <= 2 * r) continue;
+      const nx = dx / len;
+      const ny = dy / len;
+      const x1 = a.x + r * nx;
+      const y1 = a.y + r * ny;
+      const x2 = b.x - r * nx;
+      const y2 = b.y - r * ny;
+      segments.push(`M${x1.toFixed(2)},${y1.toFixed(2)} L${x2.toFixed(2)},${y2.toFixed(2)}`);
+    }
+    return segments.join(' ');
+  })();
 
   const gridScores = [1, 3, 5, 7, 9];
 
