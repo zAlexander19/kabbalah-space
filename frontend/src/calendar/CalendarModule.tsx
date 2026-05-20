@@ -49,7 +49,14 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     setPanelOpen(true);
   }
 
+  // True when the user is mid-creation: the panel is open and there is no
+  // activity being edited. In this state any other click on the calendar
+  // (slot or event) is ignored — only the X / Cancel / Crear buttons in
+  // the panel can dismiss the in-progress form.
+  const creatingInProgress = panelOpen && editing === null;
+
   function openSlot(start: Date, end: Date) {
+    if (creatingInProgress) return;
     const overlap = activities.find(a => new Date(a.inicio) < end && new Date(a.fin) > start);
     if (overlap) {
       openEvent(overlap);
@@ -72,6 +79,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   function openEvent(a: Activity) {
+    if (creatingInProgress) return;
     if (a.serie_id) {
       setScopeDialog({ activity: a, mode: 'edit' });
       return;
@@ -114,13 +122,18 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     setFilterId(prev => prev === id ? null : id);
   }
 
-  function handleSaved() {
+  function closePanel() {
     setPanelOpen(false);
+    setPendingSlot(null);
+  }
+
+  function handleSaved() {
+    closePanel();
     reload();
   }
 
   function handleDeleted() {
-    setPanelOpen(false);
+    closePanel();
     reload();
   }
 
@@ -159,7 +172,14 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
           <ViewMorph view={view}>
             {view === 'semana' && (
-              <WeekView date={anchor} activities={filteredActivities} onSlotClick={openSlot} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
+              <WeekView
+                date={anchor}
+                activities={filteredActivities}
+                onSlotClick={openSlot}
+                onEventClick={openEvent}
+                gcalEnabled={gcalEnabled}
+                pendingSlot={editing === null ? pendingSlot : null}
+              />
             )}
             {view === 'mes' && (
               <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
@@ -192,7 +212,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         editing={editing}
         initialSlot={pendingSlot}
         scope={scope}
-        onClose={() => setPanelOpen(false)}
+        onClose={closePanel}
         onSaved={handleSaved}
         onDeleted={handleDeleted}
         onRequestDeleteScope={requestDeleteScopeFromForm}

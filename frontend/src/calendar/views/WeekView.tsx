@@ -18,9 +18,10 @@ type Props = {
   onSlotClick?: (start: Date, end: Date) => void;
   onEventClick?: (a: Activity) => void;
   gcalEnabled?: boolean;
+  pendingSlot?: { start: Date; end: Date } | null;
 };
 
-export default function WeekView({ date, activities, onSlotClick, onEventClick, gcalEnabled = false }: Props) {
+export default function WeekView({ date, activities, onSlotClick, onEventClick, gcalEnabled = false, pendingSlot }: Props) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -62,6 +63,14 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
     const height = heightHrs * HOUR_HEIGHT - 4;
     return { top, height, left: 4, right: 4 };
   }
+
+  function ghostStyle(slot: { start: Date; end: Date }): React.CSSProperties {
+    const top = (slot.start.getHours() - HOUR_START) * HOUR_HEIGHT + (slot.start.getMinutes() / 60) * HOUR_HEIGHT;
+    const heightHrs = Math.max(0.5, (slot.end.getTime() - slot.start.getTime()) / 3600000);
+    return { top, height: heightHrs * HOUR_HEIGHT - 4, left: 4, right: 4 };
+  }
+
+  const pendingDayKey = pendingSlot ? format(pendingSlot.start, 'yyyy-MM-dd') : null;
 
   return (
     <div className="grid" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
@@ -127,6 +136,28 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
                     gcalEnabled={gcalEnabled}
                   />
                 ))}
+              </AnimatePresence>
+              <AnimatePresence>
+                {pendingDayKey === dayKey && pendingSlot && (
+                  <motion.div
+                    key="ghost"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute rounded-md pointer-events-none flex items-center justify-center overflow-hidden"
+                    style={{
+                      ...ghostStyle(pendingSlot),
+                      border: `1.5px dashed ${ink.ember}`,
+                      background: 'rgba(233, 195, 73, 0.10)',
+                      boxShadow: `0 0 0 1px rgba(233, 195, 73, 0.18) inset, 0 0 18px rgba(233, 195, 73, 0.15)`,
+                    }}
+                  >
+                    <span className="text-[10px] italic uppercase tracking-[0.14em] text-amber-200/90">
+                      Nueva actividad
+                    </span>
+                  </motion.div>
+                )}
               </AnimatePresence>
               {isToday && nowOffsetPx >= 0 && dayIdx === todayIdx && (
                 <motion.div
