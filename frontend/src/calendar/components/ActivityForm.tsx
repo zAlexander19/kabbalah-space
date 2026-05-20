@@ -119,6 +119,10 @@ export default function ActivityForm({
 
   const gated = useGatedSave(performCreate);
 
+  // When `editing` flips (idle → edit, edit → idle), load or clear the
+  // text/sefirot/rrule fields. This effect deliberately does NOT depend
+  // on initialSlot so that mid-create slot reclicks don't wipe the user's
+  // typed title/description/sefirot.
   useEffect(() => {
     if (editing) {
       const s = new Date(editing.inicio);
@@ -130,19 +134,24 @@ export default function ActivityForm({
       setEndTime(hm(e));
       setSelected(editing.sefirot.map(x => x.id));
       setRrule(editing.rrule ?? null);
-    } else if (initialSlot) {
-      setDate(ymd(initialSlot.start));
-      setStartTime(hm(initialSlot.start));
-      setEndTime(hm(initialSlot.end));
-      setTitle('');
-      setDescription('');
-      setSelected([]);
-      setRrule(null);
-    } else if (initialDate) {
-      setDate(ymd(initialDate));
     }
     setError('');
     setConfirmDelete(false);
+  }, [editing]);
+
+  // When the user clicks a different slot in the calendar while a create
+  // is in progress, the parent passes a new initialSlot. Sync the date/time
+  // fields (so the form matches the ghost preview) but keep title, desc,
+  // sefirot and rrule intact.
+  useEffect(() => {
+    if (editing) return;
+    if (initialSlot) {
+      setDate(ymd(initialSlot.start));
+      setStartTime(hm(initialSlot.start));
+      setEndTime(hm(initialSlot.end));
+    } else if (initialDate) {
+      setDate(ymd(initialDate));
+    }
   }, [editing, initialDate, initialSlot]);
 
   function toggle(id: string) {

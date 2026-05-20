@@ -49,14 +49,27 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     setPanelOpen(true);
   }
 
-  // True when the user is mid-creation: the panel is open and there is no
-  // activity being edited. In this state any other click on the calendar
-  // (slot or event) is ignored — only the X / Cancel / Crear buttons in
-  // the panel can dismiss the in-progress form.
-  const creatingInProgress = panelOpen && editing === null;
+  // Two distinct in-panel states. Used to gate which calendar interactions
+  // are allowed without losing the user's in-progress work.
+  const inCreateMode = panelOpen && editing === null;
+  const inEditMode   = panelOpen && editing !== null;
 
   function openSlot(start: Date, end: Date) {
-    if (creatingInProgress) return;
+    // Editing an existing activity: ignore slot clicks — the user must
+    // exit edit mode via the form buttons.
+    if (inEditMode) return;
+
+    // Creating: just move the ghost (and the form's date/time follows),
+    // but KEEP whatever the user already typed in the form. Skip the
+    // overlap → openEvent shortcut so a click never turns into "switch
+    // to editing" while a create is in flight.
+    if (inCreateMode) {
+      setPendingSlot({ start, end });
+      return;
+    }
+
+    // Idle: starting a fresh create. If the click lands on top of an
+    // existing event, jump to editing that event instead.
     const overlap = activities.find(a => new Date(a.inicio) < end && new Date(a.fin) > start);
     if (overlap) {
       openEvent(overlap);
@@ -79,7 +92,9 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   function openEvent(a: Activity) {
-    if (creatingInProgress) return;
+    // Don't switch to editing while a create is in progress — the user
+    // must finish or cancel the create first.
+    if (inCreateMode) return;
     if (a.serie_id) {
       setScopeDialog({ activity: a, mode: 'edit' });
       return;
