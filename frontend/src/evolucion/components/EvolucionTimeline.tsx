@@ -138,7 +138,8 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
           />
         )}
 
-        {/* Mini-tree circles at each month */}
+        {/* Mini-tree circles at each month — y follows the promedio so
+            the circle sits on the line. */}
         {months.map((m, i) => {
           const x = xFor(i);
           const y = m.promedio === null ? PT + innerH - 10 : yFor(m.promedio);
@@ -151,19 +152,27 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
                 onClick={() => onMonthClick(m.mes)}
                 layoutId={`mini-${m.mes}`}
               />
-              <text
-                x={0} y={circleSize / 2 + 22}
-                textAnchor="middle"
-                fill="rgba(168, 162, 158, 0.85)"
-                fontSize={11}
-                fontFamily="ui-sans-serif, system-ui"
-                letterSpacing="0.12em"
-              >
-                {shortMonthLabel(m.mes)}
-              </text>
             </g>
           );
         })}
+
+        {/* X-axis: month labels in a fixed row at the chart's bottom edge,
+            not under each circle (circles float at varying Y depending on
+            the score). */}
+        {months.map((m, i) => (
+          <text
+            key={`xlabel-${m.mes}`}
+            x={xFor(i)}
+            y={H - PB / 2 + 4}
+            textAnchor="middle"
+            fill="rgba(168, 162, 158, 0.85)"
+            fontSize={11}
+            fontFamily="ui-sans-serif, system-ui"
+            letterSpacing="0.12em"
+          >
+            {shortMonthLabel(m.mes)}
+          </text>
+        ))}
       </svg>
     </div>
   );
