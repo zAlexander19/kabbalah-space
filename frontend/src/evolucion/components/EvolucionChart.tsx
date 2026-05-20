@@ -121,7 +121,7 @@ export default function EvolucionChart({ data, metrics }: Props) {
           layoutKey={`${data.sefira_id}-ia`}
         />
         <EvolucionLine
-          values={actividadesVals.map(v => (v === 0 ? null : v))}
+          values={actividadesVals}
           color="#86efac"
           visible={metrics.actividades}
           width={W} height={H}
