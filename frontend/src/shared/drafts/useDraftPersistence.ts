@@ -36,30 +36,44 @@ export function useDraftPersistence<T>(scope: string, key: string, value: T): Dr
   const [hydrated] = useState<T | null>(() => readDraft<T>(scope, key, initialOwnerRef.current));
 
   const timerRef = useRef<number | null>(null);
+  // Flag set by clear() to prevent the unmount/effect-cleanup cycle from
+  // re-writing the draft we just deleted (which would resurrect it on the
+  // next mount).
+  const justClearedRef = useRef(false);
 
   // Debounced write. Re-runs whenever value or owner changes. The cleanup
   // function flushes any pending write synchronously so a refresh / unmount
   // mid-debounce doesn't lose the latest value.
   useEffect(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    // A new value cycle starts — re-arm the flush on the next cleanup.
+    justClearedRef.current = false;
     timerRef.current = window.setTimeout(() => {
       writeDraft(scope, key, value, ownerId);
+      timerRef.current = null;
     }, DEBOUNCE_MS);
     return () => {
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
-        // Flush synchronously on cleanup — covers the "user types then
-        // refreshes within DEBOUNCE_MS" case (browsers fire effect cleanups
-        // on unload).
-        writeDraft(scope, key, value, ownerId);
       }
+      // If clear() was just called, the draft is intentionally gone —
+      // do NOT re-write it on the way out.
+      if (justClearedRef.current) return;
+      // Flush synchronously on cleanup — covers the "user types then
+      // refreshes within DEBOUNCE_MS" case (browsers fire effect cleanups
+      // on unload).
+      writeDraft(scope, key, value, ownerId);
     };
   }, [scope, key, value, ownerId]);
 
   const clear = useCallback(() => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     clearDraft(scope, key);
+    justClearedRef.current = true;
   }, [scope, key]);
 
   // Cheap structural compare — for the maps/objects we'll be persisting,

@@ -69,6 +69,10 @@ export default function ActivityForm({
   );
 
   // Apply the rehydrated draft once on mount, only when creating new.
+  // Date/time fields are hydrated ONLY when there's no explicit slot click —
+  // a slot click is a strong "create at this time" signal from the user and
+  // the draft's stored time (which may be stale from a previous session)
+  // must not override it.
   const draftHydratedRef = useRef(false);
   useEffect(() => {
     if (draftHydratedRef.current) return;
@@ -77,12 +81,14 @@ export default function ActivityForm({
     draftHydratedRef.current = true;
     setTitle(hydratedDraft.title);
     setDescription(hydratedDraft.description);
-    setDate(hydratedDraft.date);
-    setStartTime(hydratedDraft.startTime);
-    setEndTime(hydratedDraft.endTime);
     setSelected(hydratedDraft.selected);
     setRrule(hydratedDraft.rrule);
-  }, [hydratedDraft, isNew]);
+    if (!initialSlot) {
+      setDate(hydratedDraft.date);
+      setStartTime(hydratedDraft.startTime);
+      setEndTime(hydratedDraft.endTime);
+    }
+  }, [hydratedDraft, isNew, initialSlot]);
 
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
