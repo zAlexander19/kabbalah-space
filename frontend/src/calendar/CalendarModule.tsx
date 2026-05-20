@@ -127,6 +127,19 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     }
   }
 
+  // Triggered from the kebab menu on an activity chip. For series, defer
+  // to the scope dialog (delete one vs. delete entire series). For
+  // singles, the chip itself already required a confirm-click, so we
+  // delete directly here.
+  function deleteFromMenu(a: Activity) {
+    if (inCreateMode || inEditMode) return;
+    if (a.serie_id) {
+      setScopeDialog({ activity: a, mode: 'delete' });
+      return;
+    }
+    void deleteWithScope(a.id, 'one');
+  }
+
   function requestDeleteScopeFromForm() {
     if (!editing) return;
     setPanelOpen(false);
@@ -192,12 +205,20 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
                 activities={filteredActivities}
                 onSlotClick={openSlot}
                 onEventClick={openEvent}
+                onEventDelete={deleteFromMenu}
                 gcalEnabled={gcalEnabled}
                 pendingSlot={editing === null ? pendingSlot : null}
               />
             )}
             {view === 'mes' && (
-              <MonthView date={anchor} activities={filteredActivities} onDayClick={openDay} onEventClick={openEvent} gcalEnabled={gcalEnabled} />
+              <MonthView
+                date={anchor}
+                activities={filteredActivities}
+                onDayClick={openDay}
+                onEventClick={openEvent}
+                onEventDelete={deleteFromMenu}
+                gcalEnabled={gcalEnabled}
+              />
             )}
             {view === 'anio' && (
               <YearView date={anchor} activities={activities} onMonthClick={openMonth} />
