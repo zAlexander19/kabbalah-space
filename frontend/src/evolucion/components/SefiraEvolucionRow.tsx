@@ -10,6 +10,9 @@ type Props = {
   selected: boolean;
   metrics: Metrics;
   onSelect: () => void;
+  /** When set, the displayed numeric values come from that month instead
+   *  of the latest non-empty bucket. */
+  pinnedMonth?: string;
 };
 
 function buildSparklinePath(values: (number | null)[], width: number, height: number): string {
@@ -28,11 +31,17 @@ function buildSparklinePath(values: (number | null)[], width: number, height: nu
   return path.trim();
 }
 
-export default function SefiraEvolucionRow({ data, selected, metrics, onSelect }: Props) {
+export default function SefiraEvolucionRow({ data, selected, metrics, onSelect, pinnedMonth }: Props) {
   const color = SEFIRA_COLORS[data.sefira_id] ?? '#a3a3a3';
-  const lastBucket = [...data.meses].reverse().find(m => m.score_usuario !== null || m.score_ia !== null);
+  // When a month is pinned (drill-down from month view), show that month's
+  // numbers — otherwise the last bucket with data, so the sidebar reads
+  // as a sensible "current state" snapshot when browsing freely.
+  const pinnedBucket = pinnedMonth ? data.meses.find(m => m.mes === pinnedMonth) : undefined;
+  const lastBucket = pinnedBucket
+    ?? [...data.meses].reverse().find(m => m.score_usuario !== null || m.score_ia !== null);
   const lastUsuario = lastBucket?.score_usuario ?? null;
   const lastIa = lastBucket?.score_ia ?? null;
+  const lastActividades = lastBucket?.actividades ?? 0;
 
   const usuarioVals = data.meses.map(m => m.score_usuario);
   const iaVals = data.meses.map(m => m.score_ia);
@@ -58,6 +67,9 @@ export default function SefiraEvolucionRow({ data, selected, metrics, onSelect }
           )}
           {metrics.ia && (
             <span className="text-amber-200/90">{lastIa !== null ? lastIa.toFixed(1) : '—'}</span>
+          )}
+          {metrics.actividades && (
+            <span className="text-emerald-300/90">{lastActividades}</span>
           )}
         </div>
       </div>

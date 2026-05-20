@@ -241,6 +241,7 @@ export default function EvolucionModule() {
           selectedId={selectedId}
           metrics={metrics}
           onSelect={setSelectedId}
+          pinnedMonth={pinnedMonth ?? undefined}
         />
       </div>
 
