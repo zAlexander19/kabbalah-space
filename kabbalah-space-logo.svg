@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" role="img" aria-label="Kabbalah Space">
+  <defs>
+    <radialGradient id="ks-tiferet" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F2D27A"/>
+      <stop offset="55%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#9A7C1F"/>
+    </radialGradient>
+    <radialGradient id="ks-star" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#FBE9A8"/>
+      <stop offset="55%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#A37F1A"/>
+    </radialGradient>
+    <linearGradient id="ks-halo" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#A98CF5" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#6C3FE2" stop-opacity=".25"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Árbol de la Vida -->
+  <g transform="translate(40,18)">
+    <!-- halo sutil -->
+    <ellipse cx="100" cy="115" rx="115" ry="135" fill="url(#ks-halo)"/>
+    <!-- 22 senderos (líneas que conectan las 10 sefirot) -->
+    <g stroke="#1A1140" stroke-width="2" fill="none" stroke-linecap="round">
+      <!-- columna central -->
+      <line x1="100" y1="14" x2="100" y2="115"/>
+      <line x1="100" y1="115" x2="100" y2="200"/>
+      <line x1="100" y1="200" x2="100" y2="232"/>
+      <!-- columna izquierda (severidad) -->
+      <line x1="40"  y1="40"  x2="40"  y2="170"/>
+      <!-- columna derecha (misericordia) -->
+      <line x1="160" y1="40"  x2="160" y2="170"/>
+      <!-- diagonales superiores -->
+      <line x1="100" y1="14"  x2="40"  y2="40"/>
+      <line x1="100" y1="14"  x2="160" y2="40"/>
+      <line x1="40"  y1="40"  x2="160" y2="40"/>
+      <line x1="40"  y1="40"  x2="100" y2="115"/>
+      <line x1="160" y1="40"  x2="100" y2="115"/>
+      <!-- centro -->
+      <line x1="40"  y1="40"  x2="160" y2="115"/>
+      <line x1="160" y1="40"  x2="40"  y2="115"/>
+      <line x1="40"  y1="115" x2="160" y2="115"/>
+      <line x1="40"  y1="115" x2="100" y2="115"/>
+      <line x1="160" y1="115" x2="100" y2="115"/>
+      <!-- inferior -->
+      <line x1="40"  y1="115" x2="40"  y2="170"/>
+      <line x1="160" y1="115" x2="160" y2="170"/>
+      <line x1="40"  y1="115" x2="100" y2="200"/>
+      <line x1="160" y1="115" x2="100" y2="200"/>
+      <line x1="40"  y1="170" x2="100" y2="200"/>
+      <line x1="160" y1="170" x2="100" y2="200"/>
+      <line x1="40"  y1="170" x2="160" y2="170"/>
+    </g>
+    <!-- Sefirot (10) -->
+    <!-- Keter -->
+    <circle cx="100" cy="14"  r="12" fill="#1A1140"/>
+    <circle cx="100" cy="14"  r="6"  fill="#FBF8F1"/>
+    <!-- Bina (izq) y Jojma (der) -->
+    <circle cx="40"  cy="40"  r="11" fill="#6C3FE2"/>
+    <circle cx="160" cy="40"  r="11" fill="#6C3FE2"/>
+    <!-- Guebura y Jesed -->
+    <circle cx="40"  cy="115" r="11" fill="#6C3FE2"/>
+    <circle cx="160" cy="115" r="11" fill="#6C3FE2"/>
+    <!-- Tiferet (corazón, dorado) -->
+    <circle cx="100" cy="115" r="15" fill="url(#ks-tiferet)"/>
+    <circle cx="100" cy="115" r="15" fill="none" stroke="#1A1140" stroke-width="1.5"/>
+    <!-- Hod y Netsaj -->
+    <circle cx="40"  cy="170" r="11" fill="#6C3FE2"/>
+    <circle cx="160" cy="170" r="11" fill="#6C3FE2"/>
+    <!-- Yesod -->
+    <circle cx="100" cy="200" r="11" fill="#6C3FE2"/>
+    <!-- Maljut -->
+    <circle cx="100" cy="232" r="12" fill="#1A1140"/>
+    <circle cx="100" cy="232" r="6"  fill="#FBF8F1"/>
+  </g>
+
+  <!-- Wordmark: Kabbalah ✦ Space -->
+  <g transform="translate(280,0)">
+    <text x="0" y="135"
+          font-family="Cormorant Garamond, Garamond, 'Times New Roman', serif"
+          font-weight="600" font-size="92" fill="#1A1140" letter-spacing="1">Kabbalah</text>
+
+    <!-- Estrella dorada -->
+    <g transform="translate(280,160)">
+      <!-- resplandor -->
+      <circle r="22" fill="#D4AF37" opacity=".10"/>
+      <!-- 5 puntas -->
+      <polygon points="0,-22 5.2,-7.1 21,-6.8 8.4,2.7 12.9,17.8 0,8.8 -12.9,17.8 -8.4,2.7 -21,-6.8 -5.2,-7.1"
+               fill="url(#ks-star)" stroke="#1A1140" stroke-width="1.4" stroke-linejoin="round"/>
+    </g>
+
+    <text x="0" y="225"
+          font-family="Cormorant Garamond, Garamond, 'Times New Roman', serif"
+          font-style="italic" font-weight="500" font-size="80" fill="#6C3FE2" letter-spacing="0.5">Space</text>
+  </g>
+</svg>
