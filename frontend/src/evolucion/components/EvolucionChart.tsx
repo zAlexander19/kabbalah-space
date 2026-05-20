@@ -18,6 +18,9 @@ const PB = 28;
 type Props = {
   data: SefiraEvolucion;
   metrics: Metrics;
+  /** If set, render a vertical accent line at this month and keep its
+   *  tooltip visible without requiring a mouse hover. */
+  pinnedMonth?: string;
 };
 
 function shortMonthLabel(mesKey: string): string {
@@ -25,9 +28,14 @@ function shortMonthLabel(mesKey: string): string {
   return format(d, 'MMM', { locale: es }).toUpperCase();
 }
 
-export default function EvolucionChart({ data, metrics }: Props) {
+export default function EvolucionChart({ data, metrics, pinnedMonth }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const pinnedIdx = useMemo(
+    () => (pinnedMonth ? data.meses.findIndex(m => m.mes === pinnedMonth) : -1),
+    [pinnedMonth, data.meses],
+  );
+  const activeIdx = hoverIdx !== null ? hoverIdx : (pinnedIdx >= 0 ? pinnedIdx : null);
 
   const color = SEFIRA_COLORS[data.sefira_id] ?? '#a3a3a3';
   const labels = useMemo(() => data.meses.map(m => shortMonthLabel(m.mes)), [data.meses]);
@@ -86,8 +94,8 @@ export default function EvolucionChart({ data, metrics }: Props) {
   }
 
   // Tooltip x in pixel coords (relative to the SVG container), converted from SVG x
-  const tooltipPxX = hoverIdx !== null && svgRef.current
-    ? (xFor(hoverIdx) / W) * svgRef.current.getBoundingClientRect().width
+  const tooltipPxX = activeIdx !== null && svgRef.current
+    ? (xFor(activeIdx) / W) * svgRef.current.getBoundingClientRect().width
     : 0;
 
   return (
@@ -132,9 +140,9 @@ export default function EvolucionChart({ data, metrics }: Props) {
           strokeDash="4 4"
         />
 
-        {hoverIdx !== null && (
+        {activeIdx !== null && (
           <line
-            x1={xFor(hoverIdx)} x2={xFor(hoverIdx)}
+            x1={xFor(activeIdx)} x2={xFor(activeIdx)}
             y1={PT} y2={H - PB}
             stroke="rgba(253,230,138,0.25)"
             strokeWidth={1}
@@ -144,9 +152,9 @@ export default function EvolucionChart({ data, metrics }: Props) {
       </svg>
 
       <AnimatePresence>
-        {hoverIdx !== null && (
+        {activeIdx !== null && (
           <EvolucionTooltip
-            bucket={data.meses[hoverIdx]}
+            bucket={data.meses[activeIdx]}
             x={tooltipPxX}
             color={color}
           />
