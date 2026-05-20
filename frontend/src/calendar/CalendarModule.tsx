@@ -92,9 +92,17 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   }
 
   function openEvent(a: Activity) {
-    // Don't switch to editing while a create is in progress — the user
-    // must finish or cancel the create first.
+    // Chip body click: don't switch to editing while a create is in
+    // progress — the user must finish or cancel the create first.
     if (inCreateMode) return;
+    openEventForce(a);
+  }
+
+  function openEventForce(a: Activity) {
+    // Kebab "Editar" menu: explicit intent from the user — proceed even
+    // if there's a create in progress. The form's draft persistence
+    // saves the create's content so re-opening it later restores the
+    // typed fields.
     if (a.serie_id) {
       setScopeDialog({ activity: a, mode: 'edit' });
       return;
@@ -207,6 +215,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
                 activities={filteredActivities}
                 onSlotClick={openSlot}
                 onEventClick={openEvent}
+                onEventEdit={openEventForce}
                 onEventDelete={deleteFromMenu}
                 gcalEnabled={gcalEnabled}
                 pendingSlot={editing === null ? pendingSlot : null}
@@ -218,6 +227,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
                 activities={filteredActivities}
                 onDayClick={openDay}
                 onEventClick={openEvent}
+                onEventEdit={openEventForce}
                 onEventDelete={deleteFromMenu}
                 gcalEnabled={gcalEnabled}
               />

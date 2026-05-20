@@ -17,12 +17,13 @@ type Props = {
   activities: Activity[];
   onSlotClick?: (start: Date, end: Date) => void;
   onEventClick?: (a: Activity) => void;
+  onEventEdit?: (a: Activity) => void;
   onEventDelete?: (a: Activity) => void;
   gcalEnabled?: boolean;
   pendingSlot?: { start: Date; end: Date } | null;
 };
 
-export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventDelete, gcalEnabled = false, pendingSlot }: Props) {
+export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventEdit, onEventDelete, gcalEnabled = false, pendingSlot }: Props) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -134,7 +135,7 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
                     variant="week"
                     style={eventStyle(act)}
                     onClick={onEventClick}
-                    onEdit={onEventClick}
+                    onEdit={onEventEdit ?? onEventClick}
                     onDelete={onEventDelete}
                     gcalEnabled={gcalEnabled}
                   />
