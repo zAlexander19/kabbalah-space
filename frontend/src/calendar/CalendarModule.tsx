@@ -130,9 +130,11 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   // Triggered from the kebab menu on an activity chip. For series, defer
   // to the scope dialog (delete one vs. delete entire series). For
   // singles, the chip itself already required a confirm-click, so we
-  // delete directly here.
+  // delete directly here. Note: no guard against inCreateMode/inEditMode
+  // — the calendar grid lifts to z-60 while the panel is open, so chips
+  // remain clickable; users legitimately delete via the kebab while a
+  // panel is on screen, and deleteWithScope already closes it on success.
   function deleteFromMenu(a: Activity) {
-    if (inCreateMode || inEditMode) return;
     if (a.serie_id) {
       setScopeDialog({ activity: a, mode: 'delete' });
       return;
