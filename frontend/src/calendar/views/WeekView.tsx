@@ -62,15 +62,6 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
     const top = (startD.getHours() - HOUR_START) * HOUR_HEIGHT + (startD.getMinutes() / 60) * HOUR_HEIGHT;
     const heightHrs = Math.max(0.5, (endD.getTime() - startD.getTime()) / 3600000);
     const height = heightHrs * HOUR_HEIGHT - 4;
-    // eslint-disable-next-line no-console
-    console.log('[cal] render event', {
-      titulo: act.titulo,
-      inicio_raw: act.inicio,
-      parsedLocal: startD.toString(),
-      hourLocal: startD.getHours(),
-      minLocal: startD.getMinutes(),
-      topPx: top,
-    });
     return { top, height, left: 4, right: 4 };
   }
 

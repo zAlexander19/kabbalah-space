@@ -136,14 +136,6 @@ export default function GcalSyncCard() {
           <div className="flex gap-3 mt-5 flex-wrap">
             <button
               type="button"
-              onClick={() => { void backfill().then(refetch); }}
-              disabled={working}
-              className="ks-btn-ghost"
-            >
-              Re-sincronizar todo
-            </button>
-            <button
-              type="button"
               onClick={() => setConfirmingDisconnect(true)}
               disabled={working}
               className="ks-btn-ghost"

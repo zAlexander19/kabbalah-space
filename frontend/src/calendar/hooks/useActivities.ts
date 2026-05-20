@@ -53,20 +53,6 @@ export function useActivities(range: DateRange) {
         fin: attachUtcIfNaive(a.fin),
       }));
 
-      // eslint-disable-next-line no-console
-      console.log('[cal] fetched activities', {
-        tzOffsetMin: new Date().getTimezoneOffset(),
-        count: normalized.length,
-        first: normalized[0]
-          ? {
-              titulo: normalized[0].titulo,
-              inicio_raw: actData[0].inicio,
-              inicio_normalized: normalized[0].inicio,
-              inicio_local: new Date(normalized[0].inicio).toString(),
-            }
-          : null,
-      });
-
       setActivities(normalized);
       setVolume(volData.volumen ?? []);
     } catch (err) {
