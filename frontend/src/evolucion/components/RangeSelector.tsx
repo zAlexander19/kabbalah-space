@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import type { RangeOption } from '../types';
 import { ink } from '../../shared/tokens';
 
-const OPTIONS: { key: RangeOption; label: string }[] = [
+const BASE_OPTIONS: { key: RangeOption; label: string }[] = [
   { key: 3,      label: '3M' },
   { key: 6,      label: '6M' },
   { key: 12,     label: '12M' },
@@ -12,12 +12,18 @@ const OPTIONS: { key: RangeOption; label: string }[] = [
 type Props = {
   value: RangeOption;
   onChange: (v: RangeOption) => void;
+  /** When true, prepend a "MES" option to the selector. Only meaningful
+   *  when the caller has a specific month pinned to drill into. */
+  includeMes?: boolean;
 };
 
-export default function RangeSelector({ value, onChange }: Props) {
+export default function RangeSelector({ value, onChange, includeMes = false }: Props) {
+  const options = includeMes
+    ? [{ key: 'mes' as RangeOption, label: 'Mes' }, ...BASE_OPTIONS]
+    : BASE_OPTIONS;
   return (
     <div className="relative inline-flex items-center rounded-xl bg-[#20242b] border border-stone-700/45 p-1">
-      {OPTIONS.map(opt => (
+      {options.map(opt => (
         <button
           key={String(opt.key)}
           type="button"

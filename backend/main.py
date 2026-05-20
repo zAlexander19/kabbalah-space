@@ -458,6 +458,26 @@ class SefiraEvolucion(BaseModel):
     meses: list[MesBucket]
 
 
+class SemanaBucket(BaseModel):
+    semana: int          # 1-based week index within the month (1..5)
+    label: str           # "S1", "S2", ...
+    desde: str           # ISO date "YYYY-MM-DD"
+    hasta: str           # ISO date "YYYY-MM-DD" (inclusive)
+    actividades: int
+
+
+class SefiraSemanas(BaseModel):
+    sefira_id: str
+    sefira_nombre: str
+    mes: str             # "YYYY-MM"
+    score_usuario: Optional[float] = None
+    score_ia: Optional[float] = None
+    reflexiones: int
+    respuestas: int
+    actividades: int     # total in the month
+    semanas: list[SemanaBucket]
+
+
 def _months_back(today: datetime, count: int) -> list[str]:
     """Return YYYY-MM keys for the last `count` months, oldest first."""
     keys: list[str] = []
@@ -689,6 +709,115 @@ async def espejo_evolucion(
             meses=buckets,
         ))
     return out
+
+
+@app.get("/espejo/evolucion/{sefira_id}/semanas", response_model=SefiraSemanas)
+async def espejo_evolucion_semanas(
+    sefira_id: str,
+    mes: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    """Per-week breakdown for one sefirá in a given month.
+
+    Returns weekly activity counts (one bucket per ~7-day chunk of the
+    month) plus the month-level score_usuario / score_ia averages, which
+    the frontend renders as flat reference lines on top of the weekly
+    actividades curve.
+    """
+    sefira = (await db.execute(
+        select(Sefira).where(Sefira.id == sefira_id)
+    )).scalars().first()
+    if sefira is None:
+        raise HTTPException(status_code=404, detail="Sefira no encontrada")
+
+    try:
+        anio, mes_num = (int(p) for p in mes.split("-"))
+        mes_inicio = datetime(anio, mes_num, 1)
+    except (ValueError, IndexError):
+        raise HTTPException(status_code=400, detail="Mes inválido")
+
+    if mes_num == 12:
+        mes_fin = datetime(anio + 1, 1, 1)
+    else:
+        mes_fin = datetime(anio, mes_num + 1, 1)
+    dias_en_mes = (mes_fin - mes_inicio).days
+
+    regs = (await db.execute(
+        select(RegistroDiario).where(
+            RegistroDiario.sefira_id == sefira_id,
+            RegistroDiario.usuario_id == user.id,
+        )
+    )).scalars().all()
+
+    respuestas_rows = (await db.execute(
+        select(RespuestaPregunta.fecha_registro)
+        .join(PreguntaSefira, PreguntaSefira.id == RespuestaPregunta.pregunta_id)
+        .where(
+            PreguntaSefira.sefira_id == sefira_id,
+            RespuestaPregunta.usuario_id == user.id,
+        )
+    )).scalars().all()
+
+    actividad_inicios = (await db.execute(
+        select(Actividad.inicio)
+        .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
+        .where(
+            ActividadSefira.sefira_id == sefira_id,
+            Actividad.usuario_id == user.id,
+        )
+    )).scalars().all()
+
+    def _in_month(fecha: datetime) -> bool:
+        if fecha.tzinfo is not None:
+            fecha = fecha.astimezone(timezone.utc).replace(tzinfo=None)
+        return mes_inicio <= fecha < mes_fin
+
+    month_regs = [r for r in regs if _in_month(r.fecha_registro)]
+    usuarios = [r.puntuacion_usuario for r in month_regs if r.puntuacion_usuario is not None]
+    ias = [r.puntuacion_ia for r in month_regs if r.puntuacion_ia is not None]
+
+    respuestas_count = sum(1 for f in respuestas_rows if _in_month(f))
+
+    # Bucket activities by (day-1) // 7 → 0..4
+    n_buckets = (dias_en_mes + 6) // 7  # 4 or 5
+    actividades_por_semana = [0] * n_buckets
+    for fecha in actividad_inicios:
+        if not _in_month(fecha):
+            continue
+        f = fecha
+        if f.tzinfo is not None:
+            f = f.astimezone(timezone.utc).replace(tzinfo=None)
+        idx = (f.day - 1) // 7
+        if idx >= n_buckets:
+            idx = n_buckets - 1
+        actividades_por_semana[idx] += 1
+
+    semanas: list[SemanaBucket] = []
+    for i in range(n_buckets):
+        desde_dia = i * 7 + 1
+        hasta_dia = min((i + 1) * 7, dias_en_mes)
+        desde = mes_inicio.replace(day=desde_dia).date().isoformat()
+        hasta = mes_inicio.replace(day=hasta_dia).date().isoformat()
+        semanas.append(SemanaBucket(
+            semana=i + 1,
+            label=f"S{i + 1}",
+            desde=desde,
+            hasta=hasta,
+            actividades=actividades_por_semana[i],
+        ))
+
+    return SefiraSemanas(
+        sefira_id=sefira.id,
+        sefira_nombre=sefira.nombre,
+        mes=mes,
+        score_usuario=round(sum(usuarios) / len(usuarios), 1) if usuarios else None,
+        score_ia=round(sum(ias) / len(ias), 1) if ias else None,
+        reflexiones=len(month_regs),
+        respuestas=respuestas_count,
+        actividades=sum(actividades_por_semana),
+        semanas=semanas,
+    )
 
 
 @app.post("/respuestas")

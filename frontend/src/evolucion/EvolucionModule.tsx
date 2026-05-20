@@ -5,10 +5,12 @@ import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Metrics, RangeOption } from './types';
 import { useEvolucion } from './hooks/useEvolucion';
+import { useEvolucionMes } from './hooks/useEvolucionMes';
 import RangeSelector from './components/RangeSelector';
 import MetricToggle from './components/MetricToggle';
 import SefiraEvolucionList from './components/SefiraEvolucionList';
 import EvolucionChart from './components/EvolucionChart';
+import MesChart from './components/MesChart';
 import EvolucionTimeline from './components/EvolucionTimeline';
 import ArbolMesGrande, { type MesMetric } from './components/ArbolMesGrande';
 
@@ -93,6 +95,10 @@ export default function EvolucionModule() {
   function handleSefiraClickFromMonth(sefiraId: string) {
     setSelectedId(sefiraId);
     setView('sefira');
+    // Drill-down lands on the weekly "MES" view by default — that's the
+    // natural follow-up to "I'm looking at this month's tree, show me
+    // this dimension within this month".
+    setRange('mes');
   }
 
   function handleBackToTimeline() {
@@ -233,7 +239,7 @@ export default function EvolucionModule() {
       <div className="lg:col-span-4 w-full bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-5 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs uppercase tracking-[0.16em] text-stone-300">Dimensiones</h3>
-          <RangeSelector value={range} onChange={setRange} />
+          <RangeSelector value={range} onChange={setRange} includeMes={pinnedMonth !== null} />
         </div>
         {error && <p className="text-red-300 text-sm mb-3">{error}</p>}
         <SefiraEvolucionList
@@ -252,7 +258,9 @@ export default function EvolucionModule() {
               {selected?.sefira_nombre ?? '—'}
             </h2>
             <p className="text-[10px] uppercase tracking-[0.16em] text-stone-400 mt-1">
-              Evolución mensual
+              {range === 'mes' && pinnedMonth
+                ? `Detalle semanal — ${monthLabel(pinnedMonth)}`
+                : 'Evolución mensual'}
             </p>
           </div>
           <MetricToggle value={metrics} onChange={setMetrics} />
@@ -260,19 +268,31 @@ export default function EvolucionModule() {
 
         <AnimatePresence mode="wait">
           {selected ? (
-            <motion.div
-              key={selected.sefira_id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, ease }}
-            >
-              <EvolucionChart
-                data={selected}
-                metrics={metrics}
-                pinnedMonth={pinnedMonth ?? undefined}
-              />
-            </motion.div>
+            range === 'mes' && pinnedMonth ? (
+              <motion.div
+                key={`mes-${selected.sefira_id}-${pinnedMonth}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease }}
+              >
+                <MesChartContainer sefiraId={selected.sefira_id} mes={pinnedMonth} metrics={metrics} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key={selected.sefira_id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease }}
+              >
+                <EvolucionChart
+                  data={selected}
+                  metrics={metrics}
+                  pinnedMonth={pinnedMonth ?? undefined}
+                />
+              </motion.div>
+            )
           ) : (
             <motion.p
               key="empty"
@@ -288,6 +308,19 @@ export default function EvolucionModule() {
       </div>
     </div>
   );
+}
+
+function MesChartContainer({ sefiraId, mes, metrics }: { sefiraId: string; mes: string; metrics: Metrics }) {
+  const { data, loading, error } = useEvolucionMes(sefiraId, mes);
+  if (error) return <p className="text-red-300 text-sm py-6 text-center">{error}</p>;
+  if (loading || !data) {
+    return (
+      <p className="text-stone-400 text-sm font-serif italic text-center py-12">
+        Cargando…
+      </p>
+    );
+  }
+  return <MesChart data={data} metrics={metrics} />;
 }
 
 // Single-select pill toggle for the month-detail view. Picks which metric

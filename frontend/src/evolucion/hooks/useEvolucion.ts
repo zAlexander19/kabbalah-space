@@ -18,7 +18,10 @@ export function useEvolucion(range: RangeOption) {
     setLoading(true);
     setError('');
     try {
-      const meses = RANGE_TO_MESES[range];
+      // 'mes' is the weekly drill-down — it's served by /semanas, not
+      // by this endpoint. We still fetch 12m here so the sidebar
+      // sparklines stay populated underneath the MES chart.
+      const meses = range === 'mes' ? RANGE_TO_MESES[12] : RANGE_TO_MESES[range];
       const res = await apiFetch(`/espejo/evolucion?meses=${meses}`);
       if (!res.ok) throw new Error('No se pudo cargar la evolución');
       setData(await res.json());
