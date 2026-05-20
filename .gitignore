@@ -50,6 +50,9 @@ pnpm-debug.log*
 *.sqlite
 *.sqlite3
 backend/kabbalah.db
+# DB snapshots taken manually before destructive ops (wipes, migrations).
+kabbalah.db.*
+backend/kabbalah.db.*
 
 # ---------- Secrets / config ----------
 .env
@@ -76,6 +79,14 @@ Desktop.ini
 *.sln
 *.ntvs*
 *.njsproj
+
+# Claude Code per-machine config (permissions, hooks, etc.).
+.claude/
+
+# ---------- Local tool output ----------
+# graphify generates a knowledge graph of the codebase into this folder.
+# It's a local artifact — regenerate locally with `graphify update .`.
+graphify-out/
 
 # ---------- Build / coverage ----------
 build/
