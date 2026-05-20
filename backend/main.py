@@ -449,6 +449,7 @@ class MesBucket(BaseModel):
     score_ia: Optional[float] = None
     reflexiones: int = 0
     respuestas: int = 0
+    actividades: int = 0
 
 
 class SefiraEvolucion(BaseModel):
@@ -650,6 +651,24 @@ async def espejo_evolucion(
             key = f"{fecha.year:04d}-{fecha.month:02d}"
             respuestas_por_mes[key] = respuestas_por_mes.get(key, 0) + 1
 
+        # Conteo de actividades del calendario taggeadas con esta sefirá,
+        # agrupadas por mes (basadas en Actividad.inicio).
+        actividad_inicios = (await db.execute(
+            select(Actividad.inicio)
+            .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
+            .where(
+                ActividadSefira.sefira_id == s.id,
+                Actividad.usuario_id == user.id,
+            )
+        )).scalars().all()
+
+        actividades_por_mes: dict[str, int] = {}
+        for fecha in actividad_inicios:
+            if fecha.tzinfo is not None:
+                fecha = fecha.astimezone(timezone.utc).replace(tzinfo=None)
+            key = f"{fecha.year:04d}-{fecha.month:02d}"
+            actividades_por_mes[key] = actividades_por_mes.get(key, 0) + 1
+
         buckets: list[MesBucket] = []
         for mes_key in mes_keys:
             month_regs = regs_por_mes.get(mes_key, [])
@@ -661,6 +680,7 @@ async def espejo_evolucion(
                 score_ia=round(sum(ias) / len(ias), 1) if ias else None,
                 reflexiones=len(month_regs),
                 respuestas=respuestas_por_mes.get(mes_key, 0),
+                actividades=actividades_por_mes.get(mes_key, 0),
             ))
 
         out.append(SefiraEvolucion(

@@ -1,18 +1,13 @@
-import { motion } from 'framer-motion';
 import type { Metrics } from '../types';
 import { ink } from '../../shared/tokens';
 
-const OPTIONS: { key: 'ambos' | 'usuario' | 'ia'; label: string }[] = [
-  { key: 'ambos',   label: 'Ambos' },
-  { key: 'usuario', label: 'Usuario' },
-  { key: 'ia',      label: 'IA' },
-];
+type Key = keyof Metrics;
 
-function activeMode(m: Metrics): 'ambos' | 'usuario' | 'ia' {
-  if (m.usuario && m.ia) return 'ambos';
-  if (m.usuario) return 'usuario';
-  return 'ia';
-}
+const OPTIONS: { key: Key; label: string; color: string; dashed?: boolean }[] = [
+  { key: 'usuario',     label: 'Usuario',     color: '#94a3b8' },
+  { key: 'ia',          label: 'IA',          color: ink.ember },
+  { key: 'actividades', label: 'Actividades', color: '#86efac', dashed: true },
+];
 
 type Props = {
   value: Metrics;
@@ -20,35 +15,39 @@ type Props = {
 };
 
 export default function MetricToggle({ value, onChange }: Props) {
-  const mode = activeMode(value);
-
-  function pick(key: 'ambos' | 'usuario' | 'ia') {
-    if (key === 'ambos')   onChange({ usuario: true,  ia: true });
-    if (key === 'usuario') onChange({ usuario: true,  ia: false });
-    if (key === 'ia')      onChange({ usuario: false, ia: true });
+  function toggle(key: Key) {
+    onChange({ ...value, [key]: !value[key] });
   }
 
   return (
-    <div className="relative inline-flex items-center rounded-xl bg-[#20242b] border border-stone-700/45 p-1">
-      {OPTIONS.map(opt => (
-        <button
-          key={opt.key}
-          type="button"
-          onClick={() => pick(opt.key)}
-          className="relative px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.12em] z-10 transition-colors"
-          style={{ color: mode === opt.key ? '#1c1917' : '#d6d3d1' }}
-        >
-          {mode === opt.key && (
-            <motion.span
-              layoutId="evolucion-metric-pill"
-              className="absolute inset-0 rounded-lg"
-              style={{ background: ink.ember }}
-              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+    <div className="inline-flex items-center gap-1.5 flex-wrap">
+      {OPTIONS.map(opt => {
+        const active = value[opt.key];
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => toggle(opt.key)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.12em] border transition-colors"
+            style={{
+              borderColor: active ? opt.color : 'rgba(120,120,120,0.4)',
+              background: active ? `${opt.color}22` : 'transparent',
+              color: active ? '#f5f5f5' : '#a8a29e',
+            }}
+            aria-pressed={active}
+          >
+            <span
+              className="block w-3 h-0.5"
+              style={{
+                background: active ? opt.color : 'rgba(120,120,120,0.6)',
+                borderTop: opt.dashed ? `1.5px ${active ? 'dashed' : 'dashed'} ${active ? opt.color : 'rgba(120,120,120,0.6)'}` : undefined,
+                height: opt.dashed ? 0 : undefined,
+              }}
             />
-          )}
-          <span className="relative">{opt.label}</span>
-        </button>
-      ))}
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

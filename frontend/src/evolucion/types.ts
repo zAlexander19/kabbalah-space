@@ -4,6 +4,7 @@ export type MesBucket = {
   score_ia: number | null;
   reflexiones: number;
   respuestas: number;
+  actividades: number;
 };
 
 export type SefiraEvolucion = {
@@ -15,6 +16,7 @@ export type SefiraEvolucion = {
 export type Metrics = {
   usuario: boolean;
   ia: boolean;
+  actividades: boolean;
 };
 
 export type RangeOption = 3 | 6 | 12 | 'todo';

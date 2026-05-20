@@ -34,12 +34,20 @@ export default function EvolucionTooltip({ bucket, x, color }: Props) {
           {bucket.score_usuario !== null ? bucket.score_usuario.toFixed(1) : '—'}
         </span>
       </div>
-      <div className="flex items-center justify-between gap-3 text-[11px] mb-2">
+      <div className="flex items-center justify-between gap-3 text-[11px] mb-1">
         <span className="flex items-center gap-1.5 text-stone-300">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-300" /> IA
         </span>
         <span className="tabular-nums text-amber-200/90">
           {bucket.score_ia !== null ? bucket.score_ia.toFixed(1) : '—'}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-3 text-[11px] mb-2">
+        <span className="flex items-center gap-1.5 text-stone-300">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#86efac' }} /> Actividades
+        </span>
+        <span className="tabular-nums" style={{ color: '#86efac' }}>
+          {bucket.actividades}
         </span>
       </div>
       <div className="text-[9px] text-stone-500 uppercase tracking-wider border-t border-stone-800/70 pt-1.5">

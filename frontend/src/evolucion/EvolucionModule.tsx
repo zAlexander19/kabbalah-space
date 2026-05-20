@@ -11,7 +11,7 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 export default function EvolucionModule() {
   const [range, setRange] = useState<RangeOption>(12);
-  const [metrics, setMetrics] = useState<Metrics>({ usuario: true, ia: true });
+  const [metrics, setMetrics] = useState<Metrics>({ usuario: true, ia: true, actividades: true });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, loading, error } = useEvolucion(range);

@@ -11,6 +11,12 @@ type Props = {
   paddingTop: number;
   paddingBottom: number;
   layoutKey: string;
+  /** Min value mapped to the chart's BOTTOM edge. Defaults to 1 (score scale). */
+  scaleMin?: number;
+  /** Max value mapped to the chart's TOP edge. Defaults to 10 (score scale). */
+  scaleMax?: number;
+  /** SVG dash array for the stroke. Omit for solid. */
+  strokeDash?: string;
 };
 
 function buildPath(values: (number | null)[], xFor: (i: number) => number, yFor: (v: number) => number): string {
@@ -29,6 +35,7 @@ function buildPath(values: (number | null)[], xFor: (i: number) => number, yFor:
 export default function EvolucionLine({
   values, color, visible, width, height,
   paddingLeft, paddingRight, paddingTop, paddingBottom, layoutKey,
+  scaleMin = 1, scaleMax = 10, strokeDash,
 }: Props) {
   if (!visible) return null;
 
@@ -36,7 +43,8 @@ export default function EvolucionLine({
   const innerH = height - paddingTop - paddingBottom;
   const xFor = (i: number) =>
     values.length === 1 ? paddingLeft + innerW / 2 : paddingLeft + (i / (values.length - 1)) * innerW;
-  const yFor = (v: number) => paddingTop + innerH - ((v - 1) / 9) * innerH;
+  const range = Math.max(1e-6, scaleMax - scaleMin);
+  const yFor = (v: number) => paddingTop + innerH - ((v - scaleMin) / range) * innerH;
 
   const path = buildPath(values, xFor, yFor);
 
@@ -50,6 +58,7 @@ export default function EvolucionLine({
         strokeWidth={2.2}
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeDasharray={strokeDash}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
         transition={{

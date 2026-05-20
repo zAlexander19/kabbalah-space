@@ -33,6 +33,16 @@ export default function EvolucionChart({ data, metrics }: Props) {
   const labels = useMemo(() => data.meses.map(m => shortMonthLabel(m.mes)), [data.meses]);
   const usuarioVals = useMemo(() => data.meses.map(m => m.score_usuario), [data.meses]);
   const iaVals = useMemo(() => data.meses.map(m => m.score_ia), [data.meses]);
+  const actividadesVals = useMemo(() => data.meses.map(m => m.actividades), [data.meses]);
+
+  // Activities are an absolute count (0..N), not a 1-10 score, so we
+  // normalize the line to its own range so the curve's shape reads
+  // alongside the score lines without overflowing them. The tooltip
+  // shows the raw count.
+  const actividadesMax = useMemo(
+    () => Math.max(1, ...actividadesVals),
+    [actividadesVals],
+  );
 
   const innerW = W - PL - PR;
   const xFor = (i: number) =>
@@ -51,7 +61,10 @@ export default function EvolucionChart({ data, metrics }: Props) {
 
   function handleLeave() { setHoverIdx(null); }
 
-  const allEmpty = usuarioVals.every(v => v === null) && iaVals.every(v => v === null);
+  const allEmpty =
+    usuarioVals.every(v => v === null) &&
+    iaVals.every(v => v === null) &&
+    actividadesVals.every(v => v === 0);
 
   if (allEmpty) {
     return (
@@ -99,6 +112,17 @@ export default function EvolucionChart({ data, metrics }: Props) {
           width={W} height={H}
           paddingLeft={PL} paddingRight={PR} paddingTop={PT} paddingBottom={PB}
           layoutKey={`${data.sefira_id}-ia`}
+        />
+        <EvolucionLine
+          values={actividadesVals.map(v => (v === 0 ? null : v))}
+          color="#86efac"
+          visible={metrics.actividades}
+          width={W} height={H}
+          paddingLeft={PL} paddingRight={PR} paddingTop={PT} paddingBottom={PB}
+          layoutKey={`${data.sefira_id}-actividades`}
+          scaleMin={0}
+          scaleMax={actividadesMax}
+          strokeDash="4 4"
         />
 
         {hoverIdx !== null && (
