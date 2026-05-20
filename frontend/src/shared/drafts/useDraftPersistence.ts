@@ -44,10 +44,18 @@ export function useDraftPersistence<T>(scope: string, key: string, value: T): Dr
   // Debounced write. Re-runs whenever value or owner changes. The cleanup
   // function flushes any pending write synchronously so a refresh / unmount
   // mid-debounce doesn't lose the latest value.
+  //
+  // Once clear() has been called within this hook's lifetime, ALL future
+  // writes are inhibited — including effect re-runs that happen between
+  // the clear() and unmount (e.g. parent renders new props during the
+  // panel's exit animation). The ref is local to this hook instance, so
+  // the next mount starts fresh.
   useEffect(() => {
+    if (justClearedRef.current) {
+      // Already cleared — don't schedule new writes, don't flush on cleanup.
+      return;
+    }
     if (timerRef.current) window.clearTimeout(timerRef.current);
-    // A new value cycle starts — re-arm the flush on the next cleanup.
-    justClearedRef.current = false;
     timerRef.current = window.setTimeout(() => {
       writeDraft(scope, key, value, ownerId);
       timerRef.current = null;
@@ -57,8 +65,8 @@ export function useDraftPersistence<T>(scope: string, key: string, value: T): Dr
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      // If clear() was just called, the draft is intentionally gone —
-      // do NOT re-write it on the way out.
+      // If clear() was called between effect runs, skip the synchronous
+      // flush — otherwise we'd resurrect the draft we just deleted.
       if (justClearedRef.current) return;
       // Flush synchronously on cleanup — covers the "user types then
       // refreshes within DEBOUNCE_MS" case (browsers fire effect cleanups
