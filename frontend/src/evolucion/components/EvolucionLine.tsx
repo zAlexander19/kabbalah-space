@@ -48,24 +48,44 @@ export default function EvolucionLine({
 
   const path = buildPath(values, xFor, yFor);
 
+  // framer-motion's pathLength animation hijacks strokeDasharray under the
+  // hood — so if the caller asked for a dashed line we can't ALSO animate
+  // the draw. Fall back to a plain opacity fade-in for dashed strokes.
+  const isDashed = !!strokeDash;
+
   return (
     <g>
-      <motion.path
-        key={layoutKey + '-path'}
-        d={path}
-        fill="none"
-        stroke={color}
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray={strokeDash}
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{
-          pathLength: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-          opacity:    { duration: 0.2 },
-        }}
-      />
+      {isDashed ? (
+        <motion.path
+          key={layoutKey + '-path'}
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={strokeDash}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        />
+      ) : (
+        <motion.path
+          key={layoutKey + '-path'}
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{
+            pathLength: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+            opacity:    { duration: 0.2 },
+          }}
+        />
+      )}
       {values.map((v, i) => {
         if (v === null) return null;
         return (
