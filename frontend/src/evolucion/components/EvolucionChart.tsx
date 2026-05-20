@@ -33,16 +33,23 @@ export default function EvolucionChart({ data, metrics }: Props) {
   const labels = useMemo(() => data.meses.map(m => shortMonthLabel(m.mes)), [data.meses]);
   const usuarioVals = useMemo(() => data.meses.map(m => m.score_usuario), [data.meses]);
   const iaVals = useMemo(() => data.meses.map(m => m.score_ia), [data.meses]);
-  const actividadesVals = useMemo(() => data.meses.map(m => m.actividades), [data.meses]);
+  // Coerce undefined / NaN to 0 — older backends or stale cache may not
+  // include the `actividades` field, in which case Math.max would yield
+  // NaN and the line would render with NaN cy attributes (silently
+  // collapsing all dots to y=0 in SVG).
+  const actividadesVals = useMemo(
+    () => data.meses.map(m => (Number.isFinite(m.actividades) ? m.actividades : 0)),
+    [data.meses],
+  );
 
   // Activities are an absolute count (0..N), not a 1-10 score, so we
   // normalize the line to its own range so the curve's shape reads
   // alongside the score lines without overflowing them. The tooltip
   // shows the raw count.
-  const actividadesMax = useMemo(
-    () => Math.max(1, ...actividadesVals),
-    [actividadesVals],
-  );
+  const actividadesMax = useMemo(() => {
+    const m = Math.max(1, ...actividadesVals);
+    return Number.isFinite(m) ? m : 1;
+  }, [actividadesVals]);
 
   const innerW = W - PL - PR;
   const xFor = (i: number) =>
