@@ -49,11 +49,16 @@ def actividad_to_event(actividad: Actividad, sefirot: Iterable[Sefira]) -> dict:
     first_sefira_id = sefirot_list[0].id if sefirot_list else ""
     color_id = SEFIRA_COLOR_ID.get(first_sefira_id, DEFAULT_COLOR_ID)
 
+    # Google Calendar requires an explicit `timeZone` field on start/end
+    # whenever the event has a `recurrence` (RRULE). It's optional for
+    # plain dateTime events with an offset, but harmless to include in
+    # both cases. We send UTC because normalize_datetime in main.py
+    # converts everything to UTC before persisting.
     event: dict = {
         "summary": actividad.titulo,
         "description": description,
-        "start": {"dateTime": _iso(actividad.inicio)},
-        "end":   {"dateTime": _iso(actividad.fin)},
+        "start": {"dateTime": _iso(actividad.inicio), "timeZone": "UTC"},
+        "end":   {"dateTime": _iso(actividad.fin),   "timeZone": "UTC"},
         "colorId": color_id,
     }
     if actividad.rrule:

@@ -32,7 +32,21 @@ def test_single_activity_basic_fields():
     assert event["summary"] == "Meditacion matutina"
     assert event["start"]["dateTime"] == "2026-05-15T08:00:00+00:00"
     assert event["end"]["dateTime"] == "2026-05-15T09:00:00+00:00"
+    # Google requires an explicit timeZone on recurring events; we send
+    # it on all events for consistency.
+    assert event["start"]["timeZone"] == "UTC"
+    assert event["end"]["timeZone"] == "UTC"
     assert "recurrence" not in event
+
+
+def test_recurring_event_includes_timezone():
+    """Google returns 400 'Missing time zone definition' when an event
+    with `recurrence` lacks an explicit timeZone field."""
+    act = _act(serie_id="series-1", rrule="FREQ=WEEKLY;BYDAY=MO")
+    event = actividad_to_event(act, [_sef("jesed", "Jésed")])
+    assert event["start"]["timeZone"] == "UTC"
+    assert event["end"]["timeZone"] == "UTC"
+    assert event["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=MO"]
 
 
 def test_description_includes_sefirot_tagline():

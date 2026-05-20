@@ -387,11 +387,13 @@ async def backfill_user(db_factory: DbFactory, usuario_id: str) -> None:
     """
     async with db_factory() as db:
         # Mark all series children as 'skipped' upfront — they don't need pushes.
+        # Includes rows in 'error' so a Reintentar after a series failure
+        # re-classifies children correctly.
         await db.execute(
             update(Actividad)
             .where(
                 Actividad.usuario_id == usuario_id,
-                Actividad.sync_status == "pending",
+                Actividad.sync_status.in_(["pending", "error"]),
                 Actividad.serie_id.is_not(None),
                 Actividad.rrule.is_(None),
             )
@@ -399,10 +401,13 @@ async def backfill_user(db_factory: DbFactory, usuario_id: str) -> None:
         )
         await db.commit()
 
+        # Backfill retries everything that needs syncing: rows not yet
+        # synced ('pending') plus prior failures ('error'). push_actividad
+        # overwrites sync_status on the next attempt.
         rows = (await db.execute(
             select(Actividad.id).where(
                 Actividad.usuario_id == usuario_id,
-                Actividad.sync_status == "pending",
+                Actividad.sync_status.in_(["pending", "error"]),
             ).order_by(Actividad.inicio)
         )).scalars().all()
 
