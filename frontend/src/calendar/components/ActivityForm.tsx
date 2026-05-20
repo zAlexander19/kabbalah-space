@@ -98,8 +98,19 @@ export default function ActivityForm({
       setConfirmError('Debes seleccionar al menos una sefirá');
       throw new Error('Debes seleccionar al menos una sefirá');
     }
-    const startIso = new Date(`${date}T${startTime}:00`).toISOString();
-    const endIso = new Date(`${date}T${endTime}:00`).toISOString();
+    const startLocal = `${date}T${startTime}:00`;
+    const endLocal = `${date}T${endTime}:00`;
+    const startIso = new Date(startLocal).toISOString();
+    const endIso = new Date(endLocal).toISOString();
+    // eslint-disable-next-line no-console
+    console.log('[cal] POST /actividades payload', {
+      formFields: { date, startTime, endTime },
+      tzOffsetMin: new Date().getTimezoneOffset(),
+      startLocal,
+      endLocal,
+      startIso,
+      endIso,
+    });
     const payload = {
       titulo: title,
       descripcion: description,

@@ -7,6 +7,18 @@ function dateToYmd(d: Date): string {
   return offset.toISOString().slice(0, 10);
 }
 
+// The backend strips timezone info from DateTime columns before persisting
+// (see normalize_datetime in main.py). When Pydantic serializes a naive
+// datetime, the JSON has no Z or offset suffix → the browser's `new Date()`
+// would interpret it as LOCAL time, not UTC, and the activity would render
+// shifted by the user's timezone offset (e.g. created at 2am local but
+// rendered at 6am). Attaching 'Z' at the API boundary tells the browser
+// "this is UTC", which round-trips correctly back to the user's local hour.
+function attachUtcIfNaive(iso: string): string {
+  if (/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) return iso;
+  return iso + 'Z';
+}
+
 export function useActivities(range: DateRange) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [volume, setVolume] = useState<VolumeItem[]>([]);
@@ -33,7 +45,29 @@ export function useActivities(range: DateRange) {
 
       const actData = await actRes.json();
       const volData = await volRes.json();
-      setActivities(actData);
+
+      // Normalize naive ISO datetimes from backend → UTC.
+      const normalized: Activity[] = actData.map((a: Activity) => ({
+        ...a,
+        inicio: attachUtcIfNaive(a.inicio),
+        fin: attachUtcIfNaive(a.fin),
+      }));
+
+      // eslint-disable-next-line no-console
+      console.log('[cal] fetched activities', {
+        tzOffsetMin: new Date().getTimezoneOffset(),
+        count: normalized.length,
+        first: normalized[0]
+          ? {
+              titulo: normalized[0].titulo,
+              inicio_raw: actData[0].inicio,
+              inicio_normalized: normalized[0].inicio,
+              inicio_local: new Date(normalized[0].inicio).toString(),
+            }
+          : null,
+      });
+
+      setActivities(normalized);
       setVolume(volData.volumen ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando datos');
