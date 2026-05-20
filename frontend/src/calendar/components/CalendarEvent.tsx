@@ -166,6 +166,10 @@ export default function CalendarEvent({
           background: `${color}33`,
           borderLeft: `2px solid ${color}`,
           ...recurringBorder,
+          // Lift the whole chip above sibling chips while the kebab menu
+          // is open — otherwise the popover (which lives inside the chip)
+          // can be hidden behind other activities further down the column.
+          zIndex: menuOpen ? 40 : undefined,
         }}
       >
         <div className="flex items-center gap-1 min-w-0 pr-5">
@@ -203,7 +207,12 @@ export default function CalendarEvent({
       whileHover={{ x: 1 }}
       onClick={(e) => { e.stopPropagation(); handleChipClick(); }}
       className="relative rounded-sm px-1.5 py-0.5 cursor-pointer text-[10px] text-stone-100 group"
-      style={{ background: `${color}33`, borderLeft: `2px solid ${color}`, ...recurringBorder }}
+      style={{
+        background: `${color}33`,
+        borderLeft: `2px solid ${color}`,
+        ...recurringBorder,
+        zIndex: menuOpen ? 40 : undefined,
+      }}
     >
       <span className="flex items-center gap-1 min-w-0 pr-4">
         <span className="truncate">{activity.titulo}</span>
