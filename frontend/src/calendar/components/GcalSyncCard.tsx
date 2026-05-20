@@ -10,12 +10,14 @@ export default function GcalSyncCard() {
   const { status, refetch } = useGcalStatus(auth.status === 'authenticated');
   const { connect, disconnect, backfill, working } = useGcalSync();
   const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [errorsOpen, setErrorsOpen] = useState(false);
 
   const isGoogleUser = auth.status === 'authenticated' && auth.user?.provider === 'google';
   const isAnonymous = auth.status === 'anonymous';
   const enabled = status?.enabled === true;
   const errorCount = status?.error_count ?? 0;
   const pendingCount = status?.pending_count ?? 0;
+  const recentErrors = status?.recent_errors ?? [];
   const backfillInProgress = enabled && pendingCount > 0;
 
   return (
@@ -53,40 +55,42 @@ export default function GcalSyncCard() {
         </button>
       )}
 
-      {isGoogleUser && enabled && backfillInProgress && (
+      {isGoogleUser && enabled && (
         <div>
-          <p className="text-sm text-ink mb-3">
-            Sincronizando {pendingCount} {pendingCount === 1 ? 'actividad' : 'actividades'}…
-          </p>
-          <div className="w-full h-1 bg-stone-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gold"
-              initial={{ width: '15%' }}
-              animate={{ width: '85%' }}
-              transition={{ duration: 5, ease, repeat: Infinity, repeatType: 'reverse' }}
-            />
-          </div>
-          {status?.last_sync_at && (
-            <p className="ks-eyebrow text-stone-500 mt-3">
-              Última actividad subida: {formatRelative(status.last_sync_at)}
-            </p>
+          {backfillInProgress ? (
+            <>
+              <p className="text-sm text-ink mb-3">
+                Sincronizando {pendingCount} {pendingCount === 1 ? 'actividad' : 'actividades'}…
+              </p>
+              <div className="w-full h-1 bg-stone-800 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gold"
+                  initial={{ width: '15%' }}
+                  animate={{ width: '85%' }}
+                  transition={{ duration: 5, ease, repeat: Infinity, repeatType: 'reverse' }}
+                />
+              </div>
+              {status?.last_sync_at && (
+                <p className="ks-eyebrow text-stone-500 mt-3">
+                  Última actividad subida: {formatRelative(status.last_sync_at)}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="ks-body text-sm text-gold mb-2">
+                ✓ Sincronizado · {status?.last_sync_at
+                  ? `última actividad subida ${formatRelative(status.last_sync_at)}`
+                  : 'sin actividad reciente'}
+              </p>
+              <p className="ks-body text-sm mb-5">
+                Calendario: <span className="text-ink-glow">"{status?.calendar_name ?? 'Kabbalah Space'}"</span> en tu Google Calendar
+              </p>
+            </>
           )}
-        </div>
-      )}
-
-      {isGoogleUser && enabled && !backfillInProgress && (
-        <div>
-          <p className="ks-body text-sm text-gold mb-2">
-            ✓ Sincronizado · {status?.last_sync_at
-              ? `última actividad subida ${formatRelative(status.last_sync_at)}`
-              : 'sin actividad reciente'}
-          </p>
-          <p className="ks-body text-sm mb-5">
-            Calendario: <span className="text-ink-glow">"{status?.calendar_name ?? 'Kabbalah Space'}"</span> en tu Google Calendar
-          </p>
 
           {errorCount > 0 && (
-            <div className="mb-5 p-3 rounded-md border border-amber-500/40 bg-amber-500/10">
+            <div className="mt-5 p-3 rounded-md border border-amber-500/40 bg-amber-500/10">
               <p className="text-sm text-amber-200">
                 {errorCount} {errorCount === 1 ? 'actividad no sincronizó' : 'actividades no sincronizaron'}.
                 <button
@@ -100,11 +104,50 @@ export default function GcalSyncCard() {
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button type="button" onClick={() => { void backfill().then(refetch); }} className="ks-btn-ghost">
+          {recentErrors.length > 0 && (
+            <div className="mt-5 rounded-md border border-stone-700/40 bg-stone-950/40">
+              <button
+                type="button"
+                onClick={() => setErrorsOpen(o => !o)}
+                className="w-full px-3 py-2 flex items-center justify-between text-left"
+                aria-expanded={errorsOpen}
+              >
+                <span className="ks-eyebrow text-stone-300">
+                  Últimos errores de sync ({recentErrors.length})
+                </span>
+                <span className={`text-stone-400 text-xs transition-transform ${errorsOpen ? 'rotate-180' : ''}`}>▾</span>
+              </button>
+              {errorsOpen && (
+                <div className="max-h-60 overflow-y-auto px-3 pb-3 space-y-2">
+                  {recentErrors.map((e, i) => (
+                    <div key={`${e.at}-${i}`} className="text-[11px] border-l-2 border-red-500/40 pl-2 py-0.5">
+                      <p className="text-stone-400">
+                        <span className="text-red-300">{e.where}</span>
+                        <span className="ml-2 text-stone-500">· {formatRelative(e.at)}</span>
+                      </p>
+                      <p className="text-stone-300 font-mono break-all">{e.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 mt-5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => { void backfill().then(refetch); }}
+              disabled={working}
+              className="ks-btn-ghost"
+            >
               Re-sincronizar todo
             </button>
-            <button type="button" onClick={() => setConfirmingDisconnect(true)} className="ks-btn-ghost">
+            <button
+              type="button"
+              onClick={() => setConfirmingDisconnect(true)}
+              disabled={working}
+              className="ks-btn-ghost"
+            >
               Desconectar Google
             </button>
           </div>

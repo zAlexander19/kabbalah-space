@@ -8,6 +8,8 @@ never breaks the user's request).
 from __future__ import annotations
 
 import logging
+from collections import deque
+from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +29,33 @@ from models import Actividad, Usuario
 logger = logging.getLogger(__name__)
 
 CALENDAR_NAME = "Kabbalah Space"
+
+# ---- in-memory error log per user (ring buffer) -----------------------
+# Surfaces recent sync failures to the frontend via /sync/status so the
+# user can see WHAT went wrong, not just that error_count > 0. Lost on
+# process restart, which is fine — errors are transient diagnostic info.
+MAX_ERRORS_PER_USER = 10
+_RECENT_ERRORS: dict[str, deque[dict]] = {}
+
+
+def _log_sync_error(usuario_id: str, where: str, exc: Exception) -> None:
+    """Record a failure for later display. Always also logs to stdout."""
+    msg = f"{type(exc).__name__}: {str(exc)[:300]}"
+    logger.error("[gcal_sync] %s for user=%s: %s", where, usuario_id, msg)
+    buf = _RECENT_ERRORS.setdefault(usuario_id, deque(maxlen=MAX_ERRORS_PER_USER))
+    buf.append({
+        "at": datetime.now(timezone.utc).isoformat(),
+        "where": where,
+        "message": msg,
+    })
+
+
+def get_recent_errors(usuario_id: str) -> list[dict]:
+    return list(_RECENT_ERRORS.get(usuario_id, ()))
+
+
+def clear_recent_errors(usuario_id: str) -> None:
+    _RECENT_ERRORS.pop(usuario_id, None)
 
 
 async def enable_sync_for_user(db: AsyncSession, usuario_id: str, refresh_token: str) -> None:
@@ -122,6 +151,7 @@ async def disable_sync_for_user(db: AsyncSession, usuario_id: str) -> None:
         .values(gcal_event_id=None, sync_status="pending")
     )
     await db.commit()
+    clear_recent_errors(usuario_id)
     logger.info("Sync disabled for user %s", usuario_id)
 
 
@@ -195,7 +225,7 @@ async def push_actividad(db_factory: DbFactory, usuario_id: str, actividad_id: s
             await disable_sync_for_user(db, usuario_id)
             return
         except Exception as exc:
-            logger.error("push_actividad setup failed for %s/%s: %s", usuario_id, actividad_id, exc)
+            _log_sync_error(usuario_id, f"push setup ({actividad_id})", exc)
             return
 
         actividad, sefirot = await _load_actividad_with_sefirot(db, actividad_id, usuario_id)
@@ -227,10 +257,10 @@ async def push_actividad(db_factory: DbFactory, usuario_id: str, actividad_id: s
                 actividad.gcal_event_id = result["id"]
                 actividad.sync_status = "synced"
             except GcalError as exc:
-                logger.error("push_actividad retry-after-recreate failed: %s", exc)
+                _log_sync_error(usuario_id, f"push retry-after-recreate ({actividad_id})", exc)
                 actividad.sync_status = "error"
         except GcalError as exc:
-            logger.error("push_actividad failed for %s: %s", actividad_id, exc)
+            _log_sync_error(usuario_id, f"push insert ({actividad_id})", exc)
             actividad.sync_status = "error"
 
         await db.commit()
@@ -255,7 +285,7 @@ async def update_actividad(db_factory: DbFactory, usuario_id: str, actividad_id:
             await disable_sync_for_user(db, usuario_id)
             return
         except Exception as exc:
-            logger.error("update_actividad setup failed: %s", exc)
+            _log_sync_error(usuario_id, f"update setup ({actividad_id})", exc)
             return
 
         actividad, sefirot = await _load_actividad_with_sefirot(db, actividad_id, usuario_id)
@@ -273,7 +303,7 @@ async def update_actividad(db_factory: DbFactory, usuario_id: str, actividad_id:
                 actividad.gcal_event_id = result["id"]
                 actividad.sync_status = "synced"
             except GcalError as exc:
-                logger.error("update_actividad insert fallback failed: %s", exc)
+                _log_sync_error(usuario_id, f"update insert-fallback ({actividad_id})", exc)
                 actividad.sync_status = "error"
             await db.commit()
             return
@@ -300,10 +330,10 @@ async def update_actividad(db_factory: DbFactory, usuario_id: str, actividad_id:
                 actividad.gcal_event_id = result["id"]
                 actividad.sync_status = "synced"
             except GcalError as exc:
-                logger.error("update_actividad re-insert failed: %s", exc)
+                _log_sync_error(usuario_id, f"update re-insert ({actividad_id})", exc)
                 actividad.sync_status = "error"
         except GcalError as exc:
-            logger.error("update_actividad failed: %s", exc)
+            _log_sync_error(usuario_id, f"update PUT ({actividad_id})", exc)
             actividad.sync_status = "error"
 
         await db.commit()
@@ -320,7 +350,7 @@ async def delete_actividad(db_factory: DbFactory, usuario_id: str, gcal_event_id
             await disable_sync_for_user(db, usuario_id)
             return
         except Exception as exc:
-            logger.error("delete_actividad setup failed: %s", exc)
+            _log_sync_error(usuario_id, "delete setup", exc)
             return
 
         try:
@@ -334,7 +364,7 @@ async def delete_actividad(db_factory: DbFactory, usuario_id: str, gcal_event_id
         except GcalNotFoundError:
             pass
         except GcalError as exc:
-            logger.error("delete_actividad failed: %s", exc)
+            _log_sync_error(usuario_id, f"delete event ({gcal_event_id})", exc)
 
 
 import asyncio

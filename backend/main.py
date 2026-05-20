@@ -1210,12 +1210,19 @@ async def gcal_disconnect(
     return {"ok": True}
 
 
+class SyncErrorOut(BaseModel):
+    at: str
+    where: str
+    message: str
+
+
 class SyncStatusOut(BaseModel):
     enabled: bool
     calendar_name: Optional[str] = None
     last_sync_at: Optional[datetime] = None
     pending_count: int
     error_count: int
+    recent_errors: list[SyncErrorOut] = []
 
 
 @app.get("/sync/status", response_model=SyncStatusOut)
@@ -1242,12 +1249,17 @@ async def sync_status(
         ).order_by(Actividad.fecha_actualizacion.desc()).limit(1)
     )).scalar()
 
+    # In-memory ring buffer populated by gcal_sync when any Google call fails.
+    # Reversed so the most recent error is first.
+    recent = list(reversed(gcal_sync.get_recent_errors(user.id)))
+
     return SyncStatusOut(
         enabled=user.gcal_sync_enabled,
         calendar_name="Kabbalah Space" if user.gcal_sync_enabled else None,
         last_sync_at=last,
         pending_count=pending,
         error_count=errors,
+        recent_errors=[SyncErrorOut(**e) for e in recent],
     )
 
 
