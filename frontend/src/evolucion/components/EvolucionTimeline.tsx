@@ -13,6 +13,10 @@ const PR = 40;
 // the top of the chart.
 const PT = 70;
 const PB = 60;
+// Horizontal inset for the circles, so the leftmost sphere doesn't
+// overlap the Y-axis labels (which live at x ≈ PL-10) and the rightmost
+// doesn't escape past the chart's right edge.
+const CIRCLE_INSET = 60;
 
 type MonthlyAggregate = {
   mes: string;
@@ -76,13 +80,17 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
   const innerH = H - PT - PB;
   const n = months.length;
 
-  // Circle sizing: leave at least 12px breathing room between centers,
-  // capped at 80px diameter for the larger ranges (3M/6M).
-  const spacing = n === 1 ? innerW : innerW / (n - 1);
+  // Circle row width: the inset shrinks the area where circle centers
+  // can sit, leaving room on both sides so they never overlap the
+  // Y-axis labels or the right edge.
+  const circleRowW = innerW - 2 * CIRCLE_INSET;
+  const spacing = n === 1 ? circleRowW : circleRowW / (n - 1);
   const circleSize = Math.min(80, Math.max(40, spacing * 0.78));
 
   const xFor = (i: number) =>
-    n === 1 ? PL + innerW / 2 : PL + (i / (n - 1)) * innerW;
+    n === 1
+      ? PL + innerW / 2
+      : PL + CIRCLE_INSET + (i / (n - 1)) * circleRowW;
   const yFor = (v: number) => PT + innerH - ((v - 1) / 9) * innerH;
 
   // Build the line path connecting only points with a valid promedio.
