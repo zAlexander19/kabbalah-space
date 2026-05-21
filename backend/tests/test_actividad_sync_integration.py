@@ -73,6 +73,20 @@ async def test_create_series_pushes_only_master(
 ):
     user, headers = await _setup_synced_user(client, db_session, fkey, monkeypatch)
 
+    # Recurrences are premium-only — grant the user an active Subscription.
+    from billing.models import Subscription
+    from datetime import timedelta
+    db_session.add(Subscription(
+        usuario_id=user.id,
+        status="active",
+        plan="monthly",
+        lemonsqueezy_subscription_id=f"ls-test-{user.id}",
+        lemonsqueezy_customer_id=f"lc-test-{user.id}",
+        current_period_start=datetime.now(timezone.utc),
+        current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+    ))
+    await db_session.commit()
+
     with respx.mock:
         respx.post(GOOGLE_TOKEN_URL).mock(return_value=httpx.Response(200, json={"access_token": "ya29"}))
         insert_route = respx.post(f"{CALENDAR_API_BASE}/calendars/cal_abc/events").mock(

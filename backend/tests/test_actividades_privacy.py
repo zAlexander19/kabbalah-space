@@ -32,9 +32,25 @@ async def test_post_actividad_persists_usuario_id(client: AsyncClient, seed_sefi
     # Tested for now: the endpoint accepted the request.
 
 
-async def test_post_actividad_with_rrule_persists_usuario_id(client: AsyncClient, seed_sefirot, two_users):
+async def test_post_actividad_with_rrule_persists_usuario_id(
+    client: AsyncClient, seed_sefirot, two_users, db_session,
+):
     """Recurring series — every materialized instance must carry usuario_id."""
     alice = two_users["alice"]
+
+    # Recurrences are premium-only — grant Alice an active Subscription.
+    from billing.models import Subscription
+    db_session.add(Subscription(
+        usuario_id=alice["id"],
+        status="active",
+        plan="monthly",
+        lemonsqueezy_subscription_id=f"ls-test-{alice['id']}",
+        lemonsqueezy_customer_id=f"lc-test-{alice['id']}",
+        current_period_start=datetime.now(timezone.utc),
+        current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+    ))
+    await db_session.commit()
+
     payload = _payload()
     payload["rrule"] = "FREQ=WEEKLY;COUNT=3"
     r = await client.post("/actividades", json=payload, headers=alice["headers"])

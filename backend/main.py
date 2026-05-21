@@ -50,6 +50,9 @@ app = FastAPI()
 from llm import KSpaceAi
 kspace_ai = KSpaceAi(provider=settings.llm_provider, api_key=settings.gemini_api_key)
 
+# Premium tier limits
+FREE_ACTIVIDAD_LIMIT = 10
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -1193,8 +1196,14 @@ async def create_actividad(
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
 
+    # --- Premium gating: recurrencias son premium-only ---
+    if not user.is_premium and payload.rrule:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "premium_required", "reason": "recurrence_premium"},
+        )
+
     # --- Premium gating: free users can have at most 10 active (pendiente) actividades ---
-    FREE_ACTIVIDAD_LIMIT = 10
     if not user.is_premium:
         active_count = (await db.execute(
             select(func.count(Actividad.id)).where(
