@@ -15,6 +15,7 @@ import SefirotLegend from './components/SefirotLegend';
 import ActivityPanel from './components/ActivityPanel';
 import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
 import GcalSyncCard from './components/GcalSyncCard';
+import CalendarioIaLectura from './components/CalendarioIaLectura';
 
 type Scope = 'one' | 'series';
 type ScopePending = { activity: Activity; mode: 'edit' | 'delete' } | null;
@@ -190,6 +191,8 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         />
 
         {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
+
+        <CalendarioIaLectura refreshKey={undefined} />
 
         <div className="border border-stone-700/40 rounded-2xl p-4 bg-[#0e1014] relative overflow-hidden">
           {loading && (
