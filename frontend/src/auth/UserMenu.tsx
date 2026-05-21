@@ -155,7 +155,7 @@ function KsaiToggleRow() {
       <div className="min-w-0 flex-1">
         <p className="text-xs text-stone-200">Evaluación KSpace-AI</p>
         <p className="text-[10px] text-stone-500 leading-snug mt-0.5">
-          Tus reflexiones son evaluadas automáticamente y el Calendario muestra una lectura mensual.
+          Tus reflexiones son evaluadas automáticamente y el Calendario muestra una lectura mensual. Esto afecta solo a las próximas reflexiones.
         </p>
       </div>
       <button

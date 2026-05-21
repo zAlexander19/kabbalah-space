@@ -113,9 +113,14 @@ export default function CalendarioIaLectura({ refreshKey }: Props) {
         )}
 
         {data.status === 'disabled' && (
-          <p className="text-stone-400 text-sm leading-relaxed font-serif pr-6">
-            {data.message}
-          </p>
+          <div className="pr-6">
+            <p className="text-stone-400 text-sm leading-relaxed font-serif">
+              {data.message}
+            </p>
+            <p className="text-[11px] text-amber-200/70 mt-2">
+              Abrí el menú de tu cuenta (arriba a la derecha) y activá <span className="font-medium">Evaluación KSpace-AI</span>.
+            </p>
+          </div>
         )}
       </motion.div>
     </AnimatePresence>

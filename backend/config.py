@@ -34,10 +34,6 @@ class Settings(BaseSettings):
     llm_provider: str = "stub"
     gemini_api_key: str = ""
 
-    @property
-    def ksai_configured(self) -> bool:
-        return self.llm_provider == "gemini" and bool(self.gemini_api_key)
-
     # ---------- Google OAuth (used by issue #24) ----------
     google_client_id: str = ""
     google_client_secret: str = ""

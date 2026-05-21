@@ -210,13 +210,13 @@ async def startup():
             result = await session.execute(select(Sefira))
             if not result.scalars().first():
                 sefirot_initials = [
-                    {"id": "keter", "nombre": "Keter", "pilar": "Central", "descripcion": "La Corona."},
-                    {"id": "jojma", "nombre": "Jojma", "pilar": "Derecho", "descripcion": "La Sabiduria."},
-                    {"id": "bina", "nombre": "Bina", "pilar": "Izquierdo", "descripcion": "El Entendimiento."},
-                    {"id": "jesed", "nombre": "Jesed", "pilar": "Derecho", "descripcion": "La Misericordia."},
-                    {"id": "gevura", "nombre": "Guebura", "pilar": "Izquierdo", "descripcion": "La Severidad."},
-                    {"id": "tiferet", "nombre": "Tiferet", "pilar": "Central", "descripcion": "La Belleza."},
-                    {"id": "netzaj", "nombre": "Netsaj", "pilar": "Derecho", "descripcion": "La Victoria."},
+                    {"id": "keter", "nombre": "Kéter", "pilar": "Central", "descripcion": "La Corona."},
+                    {"id": "jojma", "nombre": "Jojmá", "pilar": "Derecho", "descripcion": "La Sabiduria."},
+                    {"id": "bina", "nombre": "Biná", "pilar": "Izquierdo", "descripcion": "El Entendimiento."},
+                    {"id": "jesed", "nombre": "Jésed", "pilar": "Derecho", "descripcion": "La Misericordia."},
+                    {"id": "gevura", "nombre": "Gueburá", "pilar": "Izquierdo", "descripcion": "La Severidad."},
+                    {"id": "tiferet", "nombre": "Tiféret", "pilar": "Central", "descripcion": "La Belleza."},
+                    {"id": "netzaj", "nombre": "Nétsaj", "pilar": "Derecho", "descripcion": "La Victoria."},
                     {"id": "hod", "nombre": "Hod", "pilar": "Izquierdo", "descripcion": "El Esplendor."},
                     {"id": "yesod", "nombre": "Yesod", "pilar": "Central", "descripcion": "El Fundamento."},
                     {"id": "maljut", "nombre": "Maljut", "pilar": "Central", "descripcion": "El Reino."}
