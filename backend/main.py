@@ -45,6 +45,7 @@ from auth import (
 )
 from billing.reflexiones_libres import router as reflexiones_libres_router
 from billing.routers import router as billing_router
+from billing.webhooks import router as webhooks_router
 
 settings = get_settings()
 app = FastAPI()
@@ -68,6 +69,7 @@ app.add_middleware(
 
 app.include_router(reflexiones_libres_router)
 app.include_router(billing_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/health")
