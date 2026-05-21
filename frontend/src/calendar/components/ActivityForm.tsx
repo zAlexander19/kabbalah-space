@@ -17,6 +17,7 @@ type Props = {
   onCancel: () => void;
   onDeleted?: () => void;
   onRequestDeleteScope?: () => void;
+  onActividadCreada?: (actividadId: string) => void;
 };
 
 function ymd(d: Date): string {
@@ -33,7 +34,7 @@ function hm(d: Date): string {
 
 export default function ActivityForm({
   sefirot, editing, initialDate, initialSlot, scope = 'one',
-  onSaved, onCancel, onDeleted, onRequestDeleteScope,
+  onSaved, onCancel, onDeleted, onRequestDeleteScope, onActividadCreada,
 }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -118,6 +119,10 @@ export default function ActivityForm({
       const msg = data.detail ?? 'No se pudo guardar';
       setConfirmError(msg);
       throw new Error(msg);
+    }
+    const created: { id: string }[] = await res.json().catch(() => []);
+    if (created.length > 0 && onActividadCreada) {
+      onActividadCreada(created[0].id);
     }
     clearActivityDraft();
     onSaved();

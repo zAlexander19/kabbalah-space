@@ -17,10 +17,11 @@ type Props = {
   onSaved: () => void;
   onDeleted: () => void;
   onRequestDeleteScope?: () => void;
+  onActividadCreada?: (actividadId: string) => void;
 };
 
 export default function ActivityPanel({
-  open, sefirot, editing, initialSlot, scope, onClose, onSaved, onDeleted, onRequestDeleteScope,
+  open, sefirot, editing, initialSlot, scope, onClose, onSaved, onDeleted, onRequestDeleteScope, onActividadCreada,
 }: Props) {
   const [mountForm, setMountForm] = useState(false);
 
@@ -93,6 +94,7 @@ export default function ActivityPanel({
                 onCancel={onClose}
                 onDeleted={onDeleted}
                 onRequestDeleteScope={onRequestDeleteScope}
+                onActividadCreada={onActividadCreada}
               />
             ) : (
               <div className="flex-1" />

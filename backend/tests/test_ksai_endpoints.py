@@ -242,6 +242,7 @@ async def test_felicitacion_show_si_sefira_floja_singular(
     )
     body = r.json()
     assert body["show"] is True
+    assert body["sefira_id"] == "tiferet"
     assert body["sefira_nombre"] == "Tiféret"
     assert body["count"] == 1
     assert body["message"] == "Bien, agregaste 1 actividad a tu Tiféret. Te lo agradecerá."

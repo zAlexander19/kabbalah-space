@@ -3,6 +3,7 @@ import { startOfMonth } from 'date-fns';
 import type { SefiraNode, Activity } from './types';
 import { useCalendarRange } from './hooks/useCalendarRange';
 import { useActivities } from './hooks/useActivities';
+import { useFelicitacion } from './hooks/useFelicitacion';
 import { apiFetch } from '../auth';
 import { useGcalStatus } from '../sync';
 import CalendarToolbar from './components/CalendarToolbar';
@@ -16,6 +17,7 @@ import ActivityPanel from './components/ActivityPanel';
 import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
 import GcalSyncCard from './components/GcalSyncCard';
 import CalendarioIaLectura from './components/CalendarioIaLectura';
+import FelicitacionToast from './components/FelicitacionToast';
 
 type Scope = 'one' | 'series';
 type ScopePending = { activity: Activity; mode: 'edit' | 'delete' } | null;
@@ -30,6 +32,13 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
   const { activities, volume, loading, error, reload } = useActivities(range);
   const { status: gcalStatus } = useGcalStatus(true);
   const gcalEnabled = gcalStatus?.enabled === true;
+  const { felicitacion, trigger, dismiss } = useFelicitacion();
+  const [actividadCreadaCount, setActividadCreadaCount] = useState(0);
+
+  function handleActividadCreada(actividadId: string) {
+    void trigger(actividadId);
+    setActividadCreadaCount(c => c + 1);
+  }
 
   const [filterId, setFilterId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -192,7 +201,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
         {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
 
-        <CalendarioIaLectura refreshKey={undefined} />
+        <CalendarioIaLectura refreshKey={actividadCreadaCount} />
 
         <div className="border border-stone-700/40 rounded-2xl p-4 bg-[#0e1014] relative overflow-hidden">
           {loading && (
@@ -267,6 +276,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         onSaved={handleSaved}
         onDeleted={handleDeleted}
         onRequestDeleteScope={requestDeleteScopeFromForm}
+        onActividadCreada={handleActividadCreada}
       />
 
       <RecurrenceScopeDialog
@@ -279,5 +289,6 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
       <GcalSyncCard />
     </div>
+    <FelicitacionToast felicitacion={felicitacion} onDismiss={dismiss} />
   );
 }

@@ -940,6 +940,7 @@ class FelicitacionRequest(BaseModel):
 
 class FelicitacionResponse(BaseModel):
     show: bool
+    sefira_id: Optional[str] = None
     sefira_nombre: Optional[str] = None
     count: Optional[int] = None
     message: Optional[str] = None
@@ -1037,6 +1038,7 @@ async def ia_calendario_felicitacion(
 
     return FelicitacionResponse(
         show=True,
+        sefira_id=floja[0],
         sefira_nombre=nombre,
         count=count,
         message=message,
