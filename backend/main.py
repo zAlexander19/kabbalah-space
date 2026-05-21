@@ -52,6 +52,8 @@ kspace_ai = KSpaceAi(provider=settings.llm_provider, api_key=settings.gemini_api
 
 # Premium tier limits
 FREE_ACTIVIDAD_LIMIT = 10
+FREE_COOLDOWN_DAYS = 30
+PREMIUM_COOLDOWN_DAYS = 7
 
 app.add_middleware(
     CORSMiddleware,
@@ -549,7 +551,8 @@ async def get_respuestas_estado(
         last_dt = last.fecha_registro
         if last_dt.tzinfo is not None:
             last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
-        next_avail = last_dt + timedelta(days=30)
+        cooldown_days = PREMIUM_COOLDOWN_DAYS if user.is_premium else FREE_COOLDOWN_DAYS
+        next_avail = last_dt + timedelta(days=cooldown_days)
         bloqueada = next_avail > today
         dias = max(0, (next_avail.date() - today.date()).days) if bloqueada else None
         out.append(PreguntaConEstado(
@@ -1068,7 +1071,8 @@ async def save_respuesta(
         last_dt = last.fecha_registro
         if last_dt.tzinfo is not None:
             last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
-        next_available = last_dt + timedelta(days=30)
+        cooldown_days = PREMIUM_COOLDOWN_DAYS if user.is_premium else FREE_COOLDOWN_DAYS
+        next_available = last_dt + timedelta(days=cooldown_days)
         if next_available > datetime.utcnow():
             raise HTTPException(
                 status_code=409,
