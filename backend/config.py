@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     fernet_key: str = ""
     gcal_redirect_uri: str = "http://localhost:8000/sync/google/callback"
 
+    # ---------- Lemonsqueezy (premium / billing) ----------
+    lemonsqueezy_api_key: str = ""
+    lemonsqueezy_store_id: str = ""
+    lemonsqueezy_variant_monthly: str = ""
+    lemonsqueezy_variant_yearly: str = ""
+    lemonsqueezy_webhook_secret: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -55,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def gcal_sync_configured(self) -> bool:
         return bool(self.fernet_key) and self.google_oauth_configured
+
+    @property
+    def lemonsqueezy_configured(self) -> bool:
+        return bool(self.lemonsqueezy_api_key and self.lemonsqueezy_store_id)
 
 
 @lru_cache(maxsize=1)
