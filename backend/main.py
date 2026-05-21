@@ -843,6 +843,97 @@ async def espejo_evolucion_semanas(
     )
 
 
+class WeakSefiraOut(BaseModel):
+    id: str
+    nombre: str
+    score: float
+
+
+class LecturaResponse(BaseModel):
+    status: str  # "weak" | "balanced" | "no_data" | "disabled"
+    weak_sefirot: list[WeakSefiraOut]
+    message: Optional[str] = None
+
+
+@app.get("/ia/calendario/lectura", response_model=LecturaResponse)
+async def ia_calendario_lectura(
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    if not user.ksai_enabled:
+        return LecturaResponse(
+            status="disabled",
+            weak_sefirot=[],
+            message="Activá KSpace-AI en tu perfil para ver la lectura mensual.",
+        )
+
+    # Definir el rango del mes corriente (UTC).
+    now = datetime.utcnow()
+    mes_inicio = datetime(now.year, now.month, 1)
+    if now.month == 12:
+        mes_fin = datetime(now.year + 1, 1, 1)
+    else:
+        mes_fin = datetime(now.year, now.month + 1, 1)
+
+    sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
+    regs = (await db.execute(
+        select(RegistroDiario).where(
+            RegistroDiario.usuario_id == user.id,
+            RegistroDiario.fecha_registro >= mes_inicio,
+            RegistroDiario.fecha_registro < mes_fin,
+        )
+    )).scalars().all()
+
+    if not regs:
+        return LecturaResponse(
+            status="no_data",
+            weak_sefirot=[],
+            message="Aún sin reflexiones este mes. Cuando reflexiones, KSpace-AI empezará a leer tu árbol.",
+        )
+
+    # Promedio por sefirá: (user + ia) / 2 sobre las reflexiones del mes
+    promedio_por_sefira: dict[str, float] = {}
+    for s in sefirot:
+        s_regs = [r for r in regs if r.sefira_id == s.id]
+        if not s_regs:
+            continue
+        vals = []
+        for r in s_regs:
+            u_score = r.puntuacion_usuario
+            i_score = r.puntuacion_ia
+            if u_score is None and i_score is None:
+                continue
+            if u_score is None:
+                vals.append(float(i_score))
+            elif i_score is None:
+                vals.append(float(u_score))
+            else:
+                vals.append((float(u_score) + float(i_score)) / 2.0)
+        if vals:
+            promedio_por_sefira[s.id] = sum(vals) / len(vals)
+
+    weak: list[WeakSefiraOut] = []
+    sefira_by_id = {s.id: s for s in sefirot}
+    for sefira_id, prom in sorted(promedio_por_sefira.items(), key=lambda kv: kv[1]):
+        if prom < 5.0:
+            weak.append(WeakSefiraOut(
+                id=sefira_id,
+                nombre=sefira_by_id[sefira_id].nombre,
+                score=round(prom, 1),
+            ))
+
+    if not weak:
+        return LecturaResponse(
+            status="balanced",
+            weak_sefirot=[],
+            message="Tu árbol está balanceado este mes.",
+        )
+
+    pairs = [(w.nombre, w.score) for w in weak]
+    message = await kspace_ai.generate_calendar_reading(pairs)
+    return LecturaResponse(status="weak", weak_sefirot=weak, message=message)
+
+
 @app.post("/respuestas")
 async def save_respuesta(
     rep: RespuestaCreate,
