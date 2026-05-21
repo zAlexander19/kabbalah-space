@@ -114,6 +114,22 @@ async def me(user: Usuario = Depends(get_current_user)):
     return user
 
 
+class KsaiToggleRequest(BaseModel):
+    enabled: bool
+
+
+@app.patch("/usuarios/me/ksai", response_model=UserOut)
+async def patch_ksai_toggle(
+    payload: KsaiToggleRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    user.ksai_enabled = payload.enabled
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 # ---------------------------------------------------------------- GOOGLE OAUTH
 
 def _redirect_to_frontend(s: Settings, fragment: str) -> RedirectResponse:
@@ -974,6 +990,26 @@ async def create_actividad(
     if payload.fin <= payload.inicio:
         raise HTTPException(status_code=422, detail="La fecha de fin debe ser mayor a la fecha de inicio")
     await validate_sefirot_ids(db, payload.sefirot_ids)
+
+    # --- Premium gating: free users can have at most 10 active (pendiente) actividades ---
+    FREE_ACTIVIDAD_LIMIT = 10
+    if not user.is_premium:
+        active_count = (await db.execute(
+            select(func.count(Actividad.id)).where(
+                Actividad.usuario_id == user.id,
+                Actividad.estado == "pendiente",
+            )
+        )).scalar() or 0
+        if active_count >= FREE_ACTIVIDAD_LIMIT:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "premium_required",
+                    "reason": "actividad_limit",
+                    "current": active_count,
+                    "max": FREE_ACTIVIDAD_LIMIT,
+                },
+            )
 
     if payload.rrule:
         try:
