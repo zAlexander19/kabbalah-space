@@ -4,6 +4,8 @@ from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Inde
 
 from sqlalchemy.sql import func
 
+from sqlalchemy.orm import relationship
+
 from database import Base
 
 
@@ -45,6 +47,19 @@ class Usuario(Base):
     __table_args__ = (
         Index("ix_usuarios_provider_provider_id", "provider", "provider_id"),
     )
+
+    # Premium subscription (1:1). Lazy-load joined so reading is_premium does
+    # not require an explicit JOIN at every call site.
+    subscription = relationship("Subscription", uselist=False, backref="usuario", lazy="joined")
+
+    @property
+    def is_premium(self) -> bool:
+        """True if user has a Subscription with status in (trial, active).
+
+        Source of truth for premium gating. Do NOT cache this on the usuarios
+        table — webhooks can lag and the boolean gets stale.
+        """
+        return self.subscription is not None and self.subscription.status in ("trial", "active")
 
 
 
