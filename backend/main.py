@@ -1101,7 +1101,11 @@ async def save_respuesta(
         if next_available > datetime.utcnow():
             raise HTTPException(
                 status_code=409,
-                detail=f"Esta pregunta vuelve a estar disponible el {next_available.date().isoformat()}",
+                detail={
+                    "error": "cooldown_active",
+                    "reason": "respuesta_cooldown",
+                    "next_available": next_available.date().isoformat(),
+                },
             )
 
     nueva_res = RespuestaPregunta(

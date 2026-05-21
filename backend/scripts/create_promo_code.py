@@ -3,8 +3,12 @@
 Usage:
     python scripts/create_promo_code.py --code LAUNCH7 --trial-days 7 --max-uses 100 --expires 2026-12-31
     python scripts/create_promo_code.py --code FRIENDS --trial-days 7
-    python scripts/create_promo_code.py --code UNLIMITED --trial-days 14 --max-uses 0
-        (max-uses=0 means unlimited; argparse stores as None internally)
+    python scripts/create_promo_code.py --code UNLIMITED --trial-days 14
+
+Notes:
+    --max-uses 0 (or omitted) means unlimited uses.
+    --expires unset means no expiration.
+    --code is automatically uppercased.
 """
 import argparse
 import asyncio
@@ -16,6 +20,7 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from database import engine
@@ -41,11 +46,19 @@ async def main():
         expires_at = datetime.strptime(args.expires, "%Y-%m-%d").replace(tzinfo=timezone.utc)
 
     max_uses = args.max_uses if args.max_uses and args.max_uses > 0 else None
+    code_upper = args.code.upper()
 
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
     async with session_maker() as session:
+        existing = (await session.execute(
+            select(PromoCode).where(PromoCode.code == code_upper)
+        )).scalars().first()
+        if existing is not None:
+            print(f"ERROR: promo code '{code_upper}' already exists (id={existing.id})")
+            sys.exit(2)
+
         promo = PromoCode(
-            code=args.code.upper(),
+            code=code_upper,
             trial_days=args.trial_days,
             max_uses=max_uses,
             expires_at=expires_at,

@@ -69,6 +69,18 @@ async def handle_subscription_created(payload: dict, db: AsyncSession):
         logger.warning("subscription_created missing usuario_id in custom_data; ignoring")
         return
 
+    # Application-level idempotency: if Lemonsqueezy ever delivers two
+    # subscription_created events with different event_ids but the same
+    # subscription_id (a known retry edge case), skip the second one to avoid
+    # hitting the UNIQUE constraint on lemonsqueezy_subscription_id.
+    existing = await _find_sub(db, payload["data"]["id"])
+    if existing is not None:
+        logger.info(
+            "subscription_created duplicate for sub_id=%s (already in DB); skipping",
+            payload["data"]["id"],
+        )
+        return
+
     now = datetime.now(timezone.utc)
     period_start = _parse_ls_dt(attrs["created_at"]) if attrs.get("created_at") else now
     period_end = _parse_ls_dt(attrs["renews_at"]) if attrs.get("renews_at") else now
@@ -86,8 +98,13 @@ async def handle_subscription_created(payload: dict, db: AsyncSession):
     )
     db.add(sub)
 
-    prefs = EmailPreferences(usuario_id=usuario_id)
-    db.add(prefs)
+    # If prefs row already exists (e.g., partial replay), skip the duplicate insert
+    existing_prefs = (await db.execute(
+        select(EmailPreferences).where(EmailPreferences.usuario_id == usuario_id)
+    )).scalars().first()
+    if existing_prefs is None:
+        prefs = EmailPreferences(usuario_id=usuario_id)
+        db.add(prefs)
 
     promo_code = custom.get("promo_code")
     if promo_code:
