@@ -54,6 +54,7 @@ kspace_ai = KSpaceAi(provider=settings.llm_provider, api_key=settings.gemini_api
 FREE_ACTIVIDAD_LIMIT = 10
 FREE_COOLDOWN_DAYS = 30
 PREMIUM_COOLDOWN_DAYS = 7
+FREE_HISTORICO_MONTHS = 12
 
 app.add_middleware(
     CORSMiddleware,
@@ -663,6 +664,8 @@ async def espejo_evolucion(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
+    if not user.is_premium:
+        meses = min(meses, FREE_HISTORICO_MONTHS)
     sefirot = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
     today = datetime.utcnow()
     mes_keys = _months_back(today, meses)
@@ -765,6 +768,21 @@ async def espejo_evolucion_semanas(
         mes_inicio = datetime(anio, mes_num, 1)
     except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Mes inválido")
+
+    if not user.is_premium:
+        # 12 calendar months back, anchored to first-of-month
+        now = datetime.utcnow()
+        cutoff_year = now.year
+        cutoff_month = now.month - FREE_HISTORICO_MONTHS
+        while cutoff_month <= 0:
+            cutoff_month += 12
+            cutoff_year -= 1
+        cutoff = datetime(cutoff_year, cutoff_month, 1)
+        if mes_inicio < cutoff:
+            raise HTTPException(
+                status_code=402,
+                detail={"error": "premium_required", "reason": "historico_premium"},
+            )
 
     if mes_num == 12:
         mes_fin = datetime(anio + 1, 1, 1)
