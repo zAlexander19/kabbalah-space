@@ -49,4 +49,5 @@ async def test_evaluate_skips_kspaceai_when_user_disabled(
     mock.assert_not_called()
     # El feedback es el hardcodeado-stub o el genérico
     data = r.json()
-    assert "ai_score" in data
+    assert data["ai_score"] is None
+    assert "KSpace-AI desactivado" in data["feedback"]

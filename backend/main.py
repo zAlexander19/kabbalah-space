@@ -354,7 +354,7 @@ class EvaluationRequest(BaseModel):
     score: float
 
 class EvaluationResponse(BaseModel):
-    ai_score: float
+    ai_score: Optional[float] = None
     feedback: str
 
 @app.post("/evaluate", response_model=EvaluationResponse)
@@ -370,15 +370,15 @@ async def evaluate(
             user_score=request.score,
         )
     else:
-        # KSpace-AI desactivado por el usuario: feedback genérico, score = self-report
-        ai_score = float(request.score)
+        # KSpace-AI desactivado: no se evalúa con IA, puntuacion_ia queda null
+        ai_score = None
         feedback = "KSpace-AI desactivado. Tu reflexión quedó guardada."
 
     registro = RegistroDiario(
         sefira_id=request.sefira_id,
         reflexion_texto=request.text,
         puntuacion_usuario=int(round(request.score)),
-        puntuacion_ia=int(round(ai_score)),
+        puntuacion_ia=int(round(ai_score)) if ai_score is not None else None,
         usuario_id=user.id,
     )
     db.add(registro)
