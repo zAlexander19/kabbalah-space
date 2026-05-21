@@ -207,7 +207,20 @@ LLM_PROVIDER=gemini  # o "stub" para desarrollo sin API key
 
 Agregar columna `ksai_enabled BOOLEAN DEFAULT TRUE NOT NULL` a la tabla `usuarios` vía Alembic. Los usuarios existentes quedan opt-in por default; pueden desactivarlo desde el perfil.
 
-## 8. Out of scope (no se hace en esta vuelta)
+## 8. Costos estimados
+
+Gemini 2.5 Flash pricing público: $0.30 / 1M tokens input, $2.50 / 1M tokens output.
+
+| Llamada | Tokens aprox (in + out) | Frecuencia mensual / user | Costo / user / mes |
+|---|---|---|---|
+| `/evaluate` | 500 + 150 | ~30 (1 reflexión/día) | ~$0.03 |
+| `/ia/calendario/lectura` | 300 + 100 | ~120 (3-5 entradas/día al Calendario) | ~$0.06 |
+| Felicitación | 0 (template) | N/A | $0 |
+| **Total** | | | **~$0.10 USD** |
+
+Para 100 usuarios activos: ~$10/mes. Google AI Studio ofrece free tier generoso (RPM gratis) — durante desarrollo y los primeros usuarios el costo real es $0. Sin cache deliberadamente (decisión del usuario al revisar el spec) — si el costo se vuelve un problema, se agrega cache diario en una futura iteración.
+
+## 9. Out of scope (no se hace en esta vuelta)
 
 - Cacheado de la lectura del Calendario (hoy se llama al LLM cada entrada al módulo). Si se vuelve un problema de costo, se cachea por día.
 - Insights en Mi Evolución (otros módulos).
