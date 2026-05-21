@@ -43,6 +43,7 @@ from auth import (
     verify_password,
     verify_state_token,
 )
+from billing.reflexiones_libres import router as reflexiones_libres_router
 
 settings = get_settings()
 app = FastAPI()
@@ -63,6 +64,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(reflexiones_libres_router)
 
 
 @app.get("/health")
