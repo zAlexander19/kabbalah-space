@@ -5,6 +5,7 @@ export interface User {
   email: string;
   nombre: string;
   provider: AuthProvider;
+  ksai_enabled: boolean;
 }
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
