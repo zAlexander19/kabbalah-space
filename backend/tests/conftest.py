@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from database import Base, get_db
 from main import app
 from models import PreguntaSefira, Sefira
+from billing.models import Subscription  # Ensure Subscription is in the registry
 
 
 @pytest_asyncio.fixture
@@ -124,3 +125,34 @@ async def google_user(db_session: AsyncSession):
     await db_session.commit()
     await db_session.refresh(u)
     return u
+
+
+@pytest_asyncio.fixture
+async def free_user_headers(client: AsyncClient) -> dict:
+    """Auth headers for a fresh email user without subscription (free tier)."""
+    bundle = await register_and_login(client, "free@example.com", "secret123", "Free")
+    return bundle["headers"]
+
+
+@pytest_asyncio.fixture
+async def premium_user_headers(client: AsyncClient, db_session) -> dict:
+    """Auth headers for a user with an active Subscription row (premium tier)."""
+    from datetime import datetime, timedelta, timezone
+    from billing.models import Subscription
+
+    bundle = await register_and_login(client, "premium@example.com", "secret123", "Premium")
+    user_id = bundle["id"]
+
+    sub = Subscription(
+        usuario_id=user_id,
+        status="active",
+        plan="monthly",
+        lemonsqueezy_subscription_id=f"ls-test-{user_id}",
+        lemonsqueezy_customer_id=f"lc-test-{user_id}",
+        current_period_start=datetime.now(timezone.utc),
+        current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+    )
+    db_session.add(sub)
+    await db_session.commit()
+
+    return bundle["headers"]
