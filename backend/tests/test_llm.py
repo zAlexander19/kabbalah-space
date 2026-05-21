@@ -63,6 +63,43 @@ async def test_evaluate_reflection_falls_back_on_exception():
     assert "KSpace-AI no está disponible" in feedback
 
 
+@pytest.mark.asyncio
+async def test_calendar_reading_calls_gemini_and_returns_text():
+    fake_client = MagicMock()
+    fake_resp = MagicMock()
+    fake_resp.text = "Tu Tiféret está en 4.2 — buscás más equilibrio que del que disponés."
+    fake_client.aio.models.generate_content = MagicMock(
+        return_value=_async_return(fake_resp)
+    )
+
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    text = await svc.generate_calendar_reading([("Tiféret", 4.2), ("Yesod", 3.8)])
+
+    assert text is not None
+    assert "Tiféret" in text
+
+
+@pytest.mark.asyncio
+async def test_calendar_reading_empty_input_returns_none():
+    """Sin sefirot débiles, no se llama a Gemini."""
+    fake_client = MagicMock()
+    fake_client.aio.models.generate_content = MagicMock(
+        side_effect=AssertionError("no debería llamarse"),
+    )
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    assert await svc.generate_calendar_reading([]) is None
+
+
+@pytest.mark.asyncio
+async def test_calendar_reading_fallback_on_exception():
+    fake_client = MagicMock()
+    fake_client.aio.models.generate_content = MagicMock(
+        side_effect=Exception("rate limit")
+    )
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    assert await svc.generate_calendar_reading([("Tiféret", 4.2)]) is None
+
+
 def _async_return(value):
     async def _coro():
         return value
