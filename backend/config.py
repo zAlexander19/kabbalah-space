@@ -29,10 +29,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expires_minutes: int = 60 * 24
 
-    # ---------- LLM (used by issue #9) ----------
-    # "stub" | "claude" | "gemini"
+    # ---------- LLM / KSpace-AI ----------
+    # "stub" | "gemini"
     llm_provider: str = "stub"
-    llm_api_key: str = ""
+    gemini_api_key: str = ""
+
+    @property
+    def ksai_configured(self) -> bool:
+        return self.llm_provider == "gemini" and bool(self.gemini_api_key)
 
     # ---------- Google OAuth (used by issue #24) ----------
     google_client_id: str = ""
