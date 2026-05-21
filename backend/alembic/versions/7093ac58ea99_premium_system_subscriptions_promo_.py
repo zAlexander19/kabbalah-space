@@ -43,18 +43,19 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
     op.create_index("ix_subscriptions_status", "subscriptions", ["status"])
-    op.create_index("ix_subscriptions_ls_id", "subscriptions", ["lemonsqueezy_subscription_id"], unique=True)
+    op.create_index("ix_subscriptions_lemonsqueezy_subscription_id", "subscriptions", ["lemonsqueezy_subscription_id"], unique=True)
 
     op.create_table(
         "promo_codes",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("code", sa.String(length=64), nullable=False, unique=True),
+        sa.Column("code", sa.String(length=64), nullable=False),
         sa.Column("trial_days", sa.Integer(), nullable=False, server_default="7"),
         sa.Column("max_uses", sa.Integer(), nullable=True),
         sa.Column("uses_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
+    op.create_index("ix_promo_codes_code", "promo_codes", ["code"], unique=True)
 
     op.create_table(
         "email_preferences",
@@ -93,8 +94,9 @@ def downgrade() -> None:
     op.drop_table("reflexiones_libres")
     op.drop_table("webhook_events")
     op.drop_table("email_preferences")
+    op.drop_index("ix_promo_codes_code", table_name="promo_codes")
     op.drop_table("promo_codes")
-    op.drop_index("ix_subscriptions_ls_id", table_name="subscriptions")
+    op.drop_index("ix_subscriptions_lemonsqueezy_subscription_id", table_name="subscriptions")
     op.drop_index("ix_subscriptions_status", table_name="subscriptions")
     op.drop_table("subscriptions")
     op.drop_column("usuarios", "timezone")
