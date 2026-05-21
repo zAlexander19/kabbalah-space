@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { useAuth } from './AuthContext';
+import { useKsaiToggle } from './useKsaiToggle';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -120,6 +121,11 @@ export function UserMenu() {
 
                   <div className="h-px bg-stone-800/70" />
 
+                  <div className="px-4 py-3 border-t border-stone-800/70">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-stone-500 mb-2">Configuración</div>
+                    <KsaiToggleRow />
+                  </div>
+
                   <button
                     type="button"
                     role="menuitem"
@@ -138,6 +144,36 @@ export function UserMenu() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function KsaiToggleRow() {
+  const { enabled, setEnabled, saving } = useKsaiToggle();
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-stone-200">Evaluación KSpace-AI</p>
+        <p className="text-[10px] text-stone-500 leading-snug mt-0.5">
+          Tus reflexiones son evaluadas automáticamente y el Calendario muestra una lectura mensual.
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={saving}
+        onClick={() => void setEnabled(!enabled)}
+        className={`relative inline-flex h-5 w-9 rounded-full transition-colors shrink-0 ${
+          enabled ? 'bg-amber-300/70' : 'bg-stone-700'
+        } ${saving ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-stone-950 shadow transform transition-transform mt-0.5 ${
+            enabled ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
     </div>
   );
 }

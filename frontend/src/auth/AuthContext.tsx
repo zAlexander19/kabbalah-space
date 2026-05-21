@@ -149,6 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous');
   }, []);
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...patch } : prev);
+  }, []);
+
   const clearOAuthError = useCallback(() => setOauthError(null), []);
   const openLoginModal = useCallback((triggeredBy: 'gated-save' | 'manual' = 'manual') => {
     setLastTriggeredBy(triggeredBy);
@@ -174,11 +178,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     startGoogleOAuth,
     logout,
     gatedSaveSignal,
+    updateUser,
   }), [
     user, status, oauthError, clearOAuthError,
     googleOAuthEnabled, isLoginModalOpen, openLoginModal, closeLoginModal,
     loginWithEmail, registerWithEmail, startGoogleOAuth, logout,
-    gatedSaveSignal,
+    gatedSaveSignal, updateUser,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
