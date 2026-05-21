@@ -40,6 +40,7 @@ class Usuario(Base):
     google_refresh_token_enc = Column(Text, nullable=True)
     google_calendar_id       = Column(String(255), nullable=True)
     gcal_sync_enabled        = Column(Boolean, nullable=False, default=False, server_default="false")
+    ksai_enabled             = Column(Boolean, nullable=False, default=True, server_default="true")
 
     __table_args__ = (
         Index("ix_usuarios_provider_provider_id", "provider", "provider_id"),
