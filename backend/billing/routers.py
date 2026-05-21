@@ -2,7 +2,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user
@@ -74,3 +74,35 @@ async def billing_portal(
         settings, current_user.subscription.lemonsqueezy_customer_id
     )
     return {"portal_url": url}
+
+
+class SubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    status: str
+    plan: str
+    current_period_end: str
+    trial_ends_at: Optional[str] = None
+    canceled_at: Optional[str] = None
+
+
+class StatusResponse(BaseModel):
+    tier: str  # 'free' | 'premium'
+    subscription: Optional[SubscriptionOut] = None
+
+
+@router.get("/status", response_model=StatusResponse)
+async def billing_status(current_user: Usuario = Depends(get_current_user)):
+    if not current_user.is_premium:
+        return {"tier": "free", "subscription": None}
+    sub = current_user.subscription
+    return {
+        "tier": "premium",
+        "subscription": {
+            "status": sub.status,
+            "plan": sub.plan,
+            "current_period_end": sub.current_period_end.isoformat(),
+            "trial_ends_at": sub.trial_ends_at.isoformat() if sub.trial_ends_at else None,
+            "canceled_at": sub.canceled_at.isoformat() if sub.canceled_at else None,
+        },
+    }

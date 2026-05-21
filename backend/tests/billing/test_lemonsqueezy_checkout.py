@@ -112,3 +112,29 @@ async def test_checkout_uses_yearly_variant_when_yearly_plan(
     body = route.calls[0].request.read().decode()
     assert "v-yearly" in body
     assert "v-monthly" not in body
+
+
+# ---------------- Task 18: GET /billing/status ----------------
+
+@pytest.mark.asyncio
+async def test_status_returns_free_for_user_without_sub(client, free_user_headers):
+    r = await client.get("/billing/status", headers=free_user_headers)
+    assert r.status_code == 200
+    assert r.json() == {"tier": "free", "subscription": None}
+
+
+@pytest.mark.asyncio
+async def test_status_returns_premium_for_active_sub(client, premium_user_headers):
+    r = await client.get("/billing/status", headers=premium_user_headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["tier"] == "premium"
+    assert body["subscription"]["status"] == "active"
+    assert body["subscription"]["plan"] == "monthly"
+    assert body["subscription"]["current_period_end"] is not None
+
+
+@pytest.mark.asyncio
+async def test_status_requires_auth(client):
+    r = await client.get("/billing/status")
+    assert r.status_code == 401
