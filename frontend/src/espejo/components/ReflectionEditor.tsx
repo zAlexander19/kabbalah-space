@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { apiFetch } from '../../auth';
+import { apiFetch, useAuth } from '../../auth';
 
 type Props = {
   sefiraId: string;
@@ -11,6 +11,8 @@ type Props = {
 type Feedback = { score: number; text: string };
 
 export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Props) {
+  const auth = useAuth();
+  const ksaiEnabled = auth.user?.ksai_enabled ?? true;
   const [score, setScore] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -72,6 +74,11 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
           placeholder="Detallá cómo esta energía se manifiesta en tus decisiones o bloqueos..."
           className="w-full min-h-[120px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors"
         />
+        <p className="text-[10px] text-stone-500 mt-1 italic">
+          {ksaiEnabled
+            ? 'Tu reflexión es evaluada por KSpace-AI.'
+            : 'KSpace-AI desactivado. Activalo en tu perfil para evaluación automática.'}
+        </p>
       </div>
 
       <button
