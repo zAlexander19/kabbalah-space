@@ -23,8 +23,14 @@ async def validate_promo_code(db: AsyncSession, code: str) -> PromoCode:
     )).scalars().first()
     if promo is None:
         raise PromoCodeError("promo code not found")
-    if promo.expires_at and promo.expires_at < datetime.now(timezone.utc):
-        raise PromoCodeError("promo code expired")
+    if promo.expires_at:
+        # SQLite + aiosqlite strips tzinfo on round-trip; coerce to UTC-aware
+        # so the comparison never crashes regardless of backend.
+        expires_at = promo.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise PromoCodeError("promo code expired")
     if promo.max_uses is not None and (promo.uses_count or 0) >= promo.max_uses:
         raise PromoCodeError("promo code exhausted")
     return promo
