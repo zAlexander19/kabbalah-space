@@ -47,6 +47,9 @@ from auth import (
 settings = get_settings()
 app = FastAPI()
 
+from llm import KSpaceAi
+kspace_ai = KSpaceAi(provider=settings.llm_provider, api_key=settings.gemini_api_key)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -360,12 +363,16 @@ async def evaluate(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
-    await asyncio.sleep(1)
-    ai_score = min(10.0, max(1.0, request.score + random.choice([-1.5, -0.5, 0.0, 0.5, 1.5])))
-    feedback = (
-        f"Análisis del Espejo Cognitivo para {request.sefira}:\n"
-        f"El texto '[...]' denota una energia particular que requirio un ajuste aurico."
-    )
+    if user.ksai_enabled:
+        ai_score, feedback = await kspace_ai.evaluate_reflection(
+            sefira_nombre=request.sefira,
+            texto=request.text,
+            user_score=request.score,
+        )
+    else:
+        # KSpace-AI desactivado por el usuario: feedback genérico, score = self-report
+        ai_score = float(request.score)
+        feedback = "KSpace-AI desactivado. Tu reflexión quedó guardada."
 
     registro = RegistroDiario(
         sefira_id=request.sefira_id,
