@@ -934,6 +934,115 @@ async def ia_calendario_lectura(
     return LecturaResponse(status="weak", weak_sefirot=weak, message=message)
 
 
+class FelicitacionRequest(BaseModel):
+    actividad_id: str
+
+
+class FelicitacionResponse(BaseModel):
+    show: bool
+    sefira_nombre: Optional[str] = None
+    count: Optional[int] = None
+    message: Optional[str] = None
+
+
+@app.post("/ia/calendario/felicitacion", response_model=FelicitacionResponse)
+async def ia_calendario_felicitacion(
+    payload: FelicitacionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    # 1. Buscar la actividad y verificar ownership
+    act = (await db.execute(
+        select(Actividad).where(
+            Actividad.id == payload.actividad_id,
+            Actividad.usuario_id == user.id,
+        )
+    )).scalars().first()
+    if act is None:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+
+    # 2. Sefirot taggeadas
+    sefirot_ids = (await db.execute(
+        select(ActividadSefira.sefira_id).where(ActividadSefira.actividad_id == act.id)
+    )).scalars().all()
+    if not sefirot_ids:
+        return FelicitacionResponse(show=False)
+
+    # 3. Rango del mes corriente (UTC)
+    now = datetime.utcnow()
+    mes_inicio = datetime(now.year, now.month, 1)
+    if now.month == 12:
+        mes_fin = datetime(now.year + 1, 1, 1)
+    else:
+        mes_fin = datetime(now.year, now.month + 1, 1)
+
+    # 4. Promedio por sefirá taggeada → quedarse con la más floja con promedio < 5
+    regs = (await db.execute(
+        select(RegistroDiario).where(
+            RegistroDiario.usuario_id == user.id,
+            RegistroDiario.sefira_id.in_(sefirot_ids),
+            RegistroDiario.fecha_registro >= mes_inicio,
+            RegistroDiario.fecha_registro < mes_fin,
+        )
+    )).scalars().all()
+
+    promedios: dict[str, float] = {}
+    for sid in sefirot_ids:
+        s_regs = [r for r in regs if r.sefira_id == sid]
+        if not s_regs:
+            continue
+        vals = []
+        for r in s_regs:
+            u_s, i_s = r.puntuacion_usuario, r.puntuacion_ia
+            if u_s is None and i_s is None:
+                continue
+            if u_s is None:
+                vals.append(float(i_s))
+            elif i_s is None:
+                vals.append(float(u_s))
+            else:
+                vals.append((float(u_s) + float(i_s)) / 2.0)
+        if vals:
+            promedios[sid] = sum(vals) / len(vals)
+
+    floja = None  # (sefira_id, promedio)
+    for sid, prom in promedios.items():
+        if prom < 5.0 and (floja is None or prom < floja[1]):
+            floja = (sid, prom)
+
+    if floja is None:
+        return FelicitacionResponse(show=False)
+
+    # 5. Contar actividades del mes para la sefirá elegida
+    count = (await db.execute(
+        select(func.count())
+        .select_from(Actividad)
+        .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
+        .where(
+            Actividad.usuario_id == user.id,
+            ActividadSefira.sefira_id == floja[0],
+            Actividad.inicio >= mes_inicio,
+            Actividad.inicio < mes_fin,
+        )
+    )).scalar_one()
+
+    # 6. Nombre de la sefirá + template
+    sefira_obj = (await db.execute(
+        select(Sefira).where(Sefira.id == floja[0])
+    )).scalars().first()
+    nombre = sefira_obj.nombre if sefira_obj else floja[0]
+
+    actividad_palabra = "actividad" if count == 1 else "actividades"
+    message = f"Bien, agregaste {count} {actividad_palabra} a tu {nombre}. Te lo agradecerá."
+
+    return FelicitacionResponse(
+        show=True,
+        sefira_nombre=nombre,
+        count=count,
+        message=message,
+    )
+
+
 @app.post("/respuestas")
 async def save_respuesta(
     rep: RespuestaCreate,
