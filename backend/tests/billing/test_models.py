@@ -54,3 +54,27 @@ def test_email_preferences_defaults():
     cols = {c.name: c for c in inspect(EmailPreferences).columns}
     for col in ("weekly_summary", "monthly_summary", "imbalance_alerts", "reflection_reminders"):
         assert cols[col].server_default.arg == "true"
+
+
+def test_subscription_updated_at_has_onupdate():
+    """Subscription.updated_at must auto-update via onupdate=func.now()."""
+    from sqlalchemy import inspect
+    cols = {c.name: c for c in inspect(Subscription).columns}
+    assert cols["updated_at"].onupdate is not None, "updated_at missing onupdate"
+
+
+def test_email_preferences_updated_at_has_onupdate():
+    """EmailPreferences.updated_at must auto-update via onupdate=func.now()."""
+    from sqlalchemy import inspect
+    cols = {c.name: c for c in inspect(EmailPreferences).columns}
+    assert cols["updated_at"].onupdate is not None, "updated_at missing onupdate"
+
+
+def test_webhook_event_has_unique_constraint():
+    """WebhookEvent must have UniqueConstraint(provider, event_id) for idempotency."""
+    from sqlalchemy import UniqueConstraint as UC
+    uc = [c for c in WebhookEvent.__table__.constraints
+          if isinstance(c, UC) and c.name == "uq_webhook_provider_event"]
+    assert len(uc) == 1, "missing uq_webhook_provider_event UniqueConstraint"
+    cols = sorted([c.name for c in uc[0].columns])
+    assert cols == ["event_id", "provider"]

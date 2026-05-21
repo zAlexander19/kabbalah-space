@@ -80,7 +80,7 @@ def upgrade() -> None:
     op.create_table(
         "reflexiones_libres",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("usuario_id", sa.String(length=36), sa.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column("usuario_id", sa.String(length=36), sa.ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False),
         sa.Column("tipo", sa.String(length=20), nullable=False),
         sa.Column("sefira_id", sa.String(length=50), sa.ForeignKey("sefirot.id"), nullable=True),
         sa.Column("contenido", sa.Text(), nullable=False),

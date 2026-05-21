@@ -5,7 +5,7 @@ usuarios and subscriptions (status in trial|active). Do NOT denormalize an
 is_premium boolean on usuarios — webhooks can lag and the bool gets stale.
 """
 import uuid
-from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.sql import func
 
 from database import Base
@@ -20,7 +20,7 @@ class Subscription(Base):
 
     id = Column(String(36), primary_key=True, default=_uuid)
     usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, unique=True)
-    status = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False, index=True)
     plan = Column(String(20), nullable=False)
     lemonsqueezy_subscription_id = Column(String(64), nullable=False, unique=True, index=True)
     lemonsqueezy_customer_id = Column(String(64), nullable=False)
@@ -71,8 +71,12 @@ class ReflexionLibre(Base):
     __tablename__ = "reflexiones_libres"
 
     id = Column(String(36), primary_key=True, default=_uuid)
-    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    usuario_id = Column(String(36), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
     tipo = Column(String(20), nullable=False)
     sefira_id = Column(String(50), ForeignKey("sefirot.id"), nullable=True)
     contenido = Column(Text, nullable=False)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_reflexiones_libres_usuario_fecha", "usuario_id", "fecha_creacion"),
+    )

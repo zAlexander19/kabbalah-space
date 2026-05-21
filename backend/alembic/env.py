@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_settings  # noqa: E402
 from database import Base  # noqa: E402
 import models  # noqa: F401, E402  - register models on Base.metadata
+import billing.models  # noqa: F401, E402 — register tables on Base.metadata for autogenerate
 
 # Alembic Config object, exposes values from alembic.ini.
 config = context.config
