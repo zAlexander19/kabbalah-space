@@ -26,7 +26,7 @@ export default function SefiraHeader({ resumen, description }: Props) {
         />
         <Stat
           big={resumen.score_ia_promedio !== null ? `IA ${resumen.score_ia_promedio}` : '—'}
-          label="Score promedio"
+          label="Score IA"
           extra={resumen.score_ia_ultimos.length >= 2 ? <Sparkline values={resumen.score_ia_ultimos} /> : null}
         />
         <Stat

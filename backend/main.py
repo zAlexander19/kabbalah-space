@@ -639,7 +639,11 @@ async def espejo_resumen(
         )).scalars().all()
 
         ia_scores = [r.puntuacion_ia for r in regs if r.puntuacion_ia is not None]
-        score_promedio = round(sum(ia_scores) / len(ia_scores), 1) if ia_scores else None
+        # score_ia_promedio mantiene el nombre por compat con el front, pero
+        # ahora devuelve el ÚLTIMO score IA (no el promedio histórico) para
+        # ser consistente con el chip "IA" del modal "Tus respuestas". El
+        # promedio histórico vive en /espejo/evolucion para tracking.
+        score_promedio = float(ia_scores[0]) if ia_scores else None
         ultimos = [r.puntuacion_ia for r in regs[:8] if r.puntuacion_ia is not None][::-1]
 
         ultima = regs[0] if regs else None
