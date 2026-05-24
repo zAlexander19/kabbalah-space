@@ -6,6 +6,10 @@ import EspejoModule from "./espejo";
 import EvolucionModule from "./evolucion";
 import InicioModule from "./inicio";
 import InicioNav from "./inicio/components/InicioNav";
+import { PremiumGateProvider, useGate } from "./premium/PremiumGateContext";
+import { PremiumGate } from "./premium/PremiumGate";
+import { PremiumPage } from "./premium/PremiumPage";
+import { setPaymentRequiredHandler } from "./auth/api";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -20,7 +24,7 @@ const SEFIROT = [
   { id: "maljut",  name: "Maljut",  x: 200, y: 750, colorClass: "", textClass: "", description: "El Reino. La acción física y el mundo material." },
 ];
 
-type ViewKey = 'inicio' | 'espejo' | 'admin' | 'calendario' | 'evolucion';
+type ViewKey = 'inicio' | 'espejo' | 'admin' | 'calendario' | 'evolucion' | 'premium' | 'cuenta';
 
 const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   inicio:     { title: 'Kabbalah Space',          subtitle: 'El conocimiento del universo empieza por adentro.' },
@@ -28,6 +32,8 @@ const VIEW_TITLES: Record<ViewKey, { title: string; subtitle: string }> = {
   evolucion:  { title: 'Mi Evolución',            subtitle: 'El movimiento mensual de cada dimensión del alma.' },
   calendario: { title: 'Calendario Cabalístico', subtitle: 'La organización es parte del camino de rectificación. Organiza tu semana y tus dimensiones.' },
   admin:      { title: 'Panel de Administrador', subtitle: 'Gestión de preguntas guía por sefirá.' },
+  premium:    { title: 'Premium',                 subtitle: 'Profundizá tu práctica con las herramientas completas.' },
+  cuenta:     { title: 'Mi cuenta',              subtitle: 'Suscripción, datos personales y preferencias.' },
 };
 
 const INTRO_FLAG = 'espejo-intro-done';
@@ -39,10 +45,24 @@ function shouldPlayIntro(): boolean {
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-export default function App() {
+function AppInner() {
   const [activeView, setActiveView] = useState<ViewKey>('inicio');
   const [pageRevealed, setPageRevealed] = useState<boolean>(() => !shouldPlayIntro());
   const [introPlaying, setIntroPlaying] = useState<boolean>(() => shouldPlayIntro());
+
+  const gate = useGate();
+
+  useEffect(() => {
+    setPaymentRequiredHandler((err) => {
+      gate.openGate({ reason: err.reason, detail: err });
+    });
+    return () => {
+      // Reset to noop on unmount (prevents stale closures keeping old `gate` ref)
+      setPaymentRequiredHandler(() => {
+        /* noop */
+      });
+    };
+  }, [gate]);
 
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
@@ -69,6 +89,7 @@ export default function App() {
   const current = VIEW_TITLES[activeView];
 
   return (
+    <>
     <div className="min-h-screen bg-[#070709] text-stone-300 font-body relative overflow-hidden">
       {/* Background cosmic gradients */}
       <motion.div
@@ -84,7 +105,11 @@ export default function App() {
       </motion.div>
 
       <InicioNav
-        activeView={activeView === 'admin' ? 'inicio' : activeView}
+        activeView={
+          activeView === 'admin' || activeView === 'premium' || activeView === 'cuenta'
+            ? 'inicio'
+            : activeView
+        }
         onNavigate={(target) => setActiveView(target)}
       />
 
@@ -115,6 +140,7 @@ export default function App() {
 
           <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
             {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
+            {activeView === 'premium' && <PremiumPage />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
             {activeView === 'evolucion' && <EvolucionModule />}
             {activeView === 'espejo' && (
@@ -130,5 +156,15 @@ export default function App() {
         </main>
       )}
     </div>
+    <PremiumGate onNavigateToPremium={() => setActiveView('premium')} />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <PremiumGateProvider>
+      <AppInner />
+    </PremiumGateProvider>
   );
 }
