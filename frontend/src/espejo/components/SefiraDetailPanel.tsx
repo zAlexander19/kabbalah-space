@@ -6,6 +6,7 @@ import LastReflection from './LastReflection';
 import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
 import HistoryList from './HistoryList';
+import IaRespuestasDiagnostic from './IaRespuestasDiagnostic';
 import { apiFetch } from '../../auth';
 import { ConfirmSaveDialog, clearDraft, useGatedSave } from '../../shared/drafts';
 
@@ -148,6 +149,13 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
             onSeeAnswers={() => setModalOpen(true)}
           />
         )}
+      </Section>
+
+      <Section>
+        <IaRespuestasDiagnostic
+          sefiraId={resumen.sefira_id}
+          hasAnswers={preguntas.some(p => !!p.ultima_respuesta)}
+        />
       </Section>
 
       {registros.length > 1 && (
