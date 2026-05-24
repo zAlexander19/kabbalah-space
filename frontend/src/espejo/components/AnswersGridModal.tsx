@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -31,6 +31,15 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   // Latest registro with an IA score (regardless of whether it has text).
   const latestIaEntry = registros.find(r => r.puntuacion_ia !== null);
   const latestIaScore = latestIaEntry?.puntuacion_ia ?? null;
+
+  // Si ya hay una reflexión guardada, el form arranca oculto. El usuario
+  // puede abrirlo manualmente con el botón "Hacer otra reflexión", y se
+  // vuelve a cerrar después de guardar.
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
+  // a colapsar el editor.
+  useEffect(() => { setEditorOpen(false); }, [resumen.sefira_id]);
 
   // ESC closes
   useEffect(() => {
@@ -148,19 +157,37 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                     </div>
                   </div>
 
-                  <div className="h-px bg-stone-800/60" />
-
-                  {/* Input block: ReflectionEditor for writing the next reflection */}
-                  <div>
-                    <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3 text-center">
-                      Nivelación de energía
-                    </h3>
-                    <ReflectionEditor
-                      sefiraId={resumen.sefira_id}
-                      sefiraName={resumen.sefira_nombre}
-                      onSaved={onScoreSaved}
-                    />
-                  </div>
+                  {/* Input block — solo si NO hay reflexión guardada, o si el
+                      usuario eligió escribir una nueva. Después de guardar, se
+                      vuelve a ocultar (el onSaved bajara editorOpen). */}
+                  {!latestReflexion || editorOpen ? (
+                    <>
+                      <div className="h-px bg-stone-800/60" />
+                      <div>
+                        <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3 text-center">
+                          Nivelación de energía
+                        </h3>
+                        <ReflectionEditor
+                          sefiraId={resumen.sefira_id}
+                          sefiraName={resumen.sefira_nombre}
+                          onSaved={() => {
+                            setEditorOpen(false);
+                            onScoreSaved();
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setEditorOpen(true)}
+                        className="text-[10px] uppercase tracking-[0.14em] text-stone-500 hover:text-amber-200 transition-colors"
+                      >
+                        Hacer otra reflexión
+                      </button>
+                    </div>
+                  )}
                 </aside>
               </div>
             </div>
