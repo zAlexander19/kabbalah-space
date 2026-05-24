@@ -8,6 +8,7 @@ import RotatingReflectionPreview from './components/RotatingReflectionPreview';
 import EmptyState from './components/EmptyState';
 import SefiraDetailPanel from './components/SefiraDetailPanel';
 import EspejoIntro from './components/EspejoIntro';
+import { ReflexionLibreEditor } from './ReflexionLibreEditor';
 
 type Props = {
   sefirot: SefiraNode[];
@@ -37,6 +38,7 @@ export default function EspejoModule({
   const { summary, reload: reloadSummary } = useEspejoSummary();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { preguntas, registros, reload: reloadSefira } = useSefiraData(selectedId);
+  const [libreEditorOpen, setLibreEditorOpen] = useState(false);
 
   // Defer mount of the rotating card by ~700ms after the intro completes.
   // This prevents a stutter at the moment the intro starts unmounting:
@@ -107,7 +109,20 @@ export default function EspejoModule({
   const TREE_SCALE = isMobile ? 0.7 : 0.95;
   const LEFT_GUTTER = isMobile ? 0 : 180;
   return (
-    <div className="w-full max-w-[1400px] flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
+    <div className="w-full max-w-[1400px] flex flex-col items-stretch gap-4 relative">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setLibreEditorOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-300/10 hover:bg-amber-300/20 border border-amber-300/30 text-amber-100 text-xs tracking-wide transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+            edit_note
+          </span>
+          Nueva reflexión libre
+        </button>
+      </div>
+      <div className="w-full flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
       <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE + LEFT_GUTTER, height: TREE_H * TREE_SCALE }}>
         <div
           className="absolute top-0"
@@ -188,6 +203,16 @@ export default function EspejoModule({
           </AnimatePresence>
         </div>
       </motion.div>
+      </div>
+
+      <ReflexionLibreEditor
+        open={libreEditorOpen}
+        tipo="arbol"
+        onClose={() => setLibreEditorOpen(false)}
+        onSaved={() => {
+          /* could trigger a refresh of reflexión history here */
+        }}
+      />
     </div>
   );
 }
