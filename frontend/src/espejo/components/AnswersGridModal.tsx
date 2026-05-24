@@ -7,6 +7,8 @@ import { es } from 'date-fns/locale';
 import type { PreguntaConEstado, SefiraResumen, Registro } from '../types';
 import ReflectionEditor from './ReflectionEditor';
 import { SEFIRA_COLORS } from '../../shared/tokens';
+import { usePremium } from '../../premium/usePremium';
+import { useGate } from '../../premium/PremiumGateContext';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -33,9 +35,11 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   const latestIaScore = latestIaEntry?.puntuacion_ia ?? null;
 
   // Si ya hay una reflexión guardada, el form arranca oculto. El usuario
-  // puede abrirlo manualmente con el botón "Hacer otra reflexión", y se
-  // vuelve a cerrar después de guardar.
+  // puede abrirlo manualmente con el botón "Hacer otra reflexión" (solo
+  // premium), y se vuelve a cerrar después de guardar.
   const [editorOpen, setEditorOpen] = useState(false);
+  const { isPremium } = usePremium();
+  const gate = useGate();
 
   // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
   // a colapsar el editor.
@@ -178,14 +182,24 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                       </div>
                     </>
                   ) : (
-                    <div className="flex justify-center">
+                    <div className="flex justify-center items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditorOpen(true)}
+                        onClick={() => {
+                          if (isPremium) {
+                            setEditorOpen(true);
+                          } else {
+                            gate.openGate({
+                              reason: 'feature_premium_only',
+                              detail: { error: 'premium_required', reason: 'feature_premium_only' },
+                            });
+                          }
+                        }}
                         className="text-[10px] uppercase tracking-[0.14em] text-stone-500 hover:text-amber-200 transition-colors"
                       >
                         Hacer otra reflexión
                       </button>
+                      {!isPremium && <ModalPremiumPill />}
                     </div>
                   )}
                 </aside>
@@ -235,6 +249,16 @@ function ScoreChip({ label, value, accent }: {
         {value !== null ? value.toFixed(1) : '—'}
       </span>
     </div>
+  );
+}
+
+function ModalPremiumPill() {
+  return (
+    <span
+      className="shrink-0 text-[9px] uppercase tracking-[0.18em] font-medium text-stone-950 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 rounded-full px-2.5 py-[2px] shadow-[0_1px_6px_rgba(233,195,73,0.4)] ring-1 ring-amber-200/40"
+    >
+      Premium
+    </span>
   );
 }
 
