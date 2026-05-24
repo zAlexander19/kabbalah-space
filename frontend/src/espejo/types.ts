@@ -24,7 +24,7 @@ export type PreguntaConEstado = {
 
 export type Registro = {
   id: string;
-  reflexion_texto: string;
+  reflexion_texto: string | null;
   puntuacion_usuario: number | null;
   puntuacion_ia: number | null;
   fecha_registro: string;

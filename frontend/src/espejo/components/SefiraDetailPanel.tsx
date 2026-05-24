@@ -170,6 +170,7 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         onClose={() => setModalOpen(false)}
         preguntas={preguntas}
         resumen={resumen}
+        registros={registros}
         onScoreSaved={onDataChanged}
       />
 

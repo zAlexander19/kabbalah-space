@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-import type { PreguntaConEstado, SefiraResumen } from '../types';
+import type { PreguntaConEstado, SefiraResumen, Registro } from '../types';
 import ReflectionEditor from './ReflectionEditor';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 
@@ -17,11 +17,21 @@ type Props = {
    *  only those with `ultima_respuesta`. */
   preguntas: PreguntaConEstado[];
   resumen: SefiraResumen;
+  registros: Registro[];
   /** Called after a successful score submission so the parent can refetch data. */
   onScoreSaved: () => void;
 };
 
-export default function AnswersGridModal({ open, onClose, preguntas, resumen, onScoreSaved }: Props) {
+export default function AnswersGridModal({ open, onClose, preguntas, resumen, registros, onScoreSaved }: Props) {
+  // Latest registro with a user score / reflexión written.
+  const latestUserEntry = registros.find(r => r.reflexion_texto !== null && r.puntuacion_usuario !== null);
+  const latestUserScore = latestUserEntry?.puntuacion_usuario ?? null;
+  const latestReflexion = latestUserEntry?.reflexion_texto ?? null;
+
+  // Latest registro with an IA score (regardless of whether it has text).
+  const latestIaEntry = registros.find(r => r.puntuacion_ia !== null);
+  const latestIaScore = latestIaEntry?.puntuacion_ia ?? null;
+
   // ESC closes
   useEffect(() => {
     if (!open) return;
@@ -116,9 +126,31 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, on
                   )}
                 </div>
 
-                {/* Sidebar — orb above the scoring widget */}
-                <aside className="lg:col-span-1 space-y-5">
-                  <SefiraOrb sefiraId={resumen.sefira_id} sefiraName={resumen.sefira_nombre} />
+                {/* Sidebar — scores flanking the orb, reflexión, then input */}
+                <aside className="lg:col-span-1 space-y-6">
+                  {/* Display block: scores flanking the orb + reflection below */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center gap-3">
+                      <ScoreChip label="IA" value={latestIaScore} accent="amber" />
+                      <SefiraOrb sefiraId={resumen.sefira_id} sefiraName={resumen.sefira_nombre} />
+                      <ScoreChip label="Usuario" value={latestUserScore} accent="stone" />
+                    </div>
+                    <div className="rounded-xl border border-stone-800/50 bg-stone-950/40 px-4 py-3 min-h-[64px]">
+                      {latestReflexion ? (
+                        <p className="text-stone-200/90 text-sm leading-relaxed font-serif whitespace-pre-wrap italic">
+                          "{latestReflexion}"
+                        </p>
+                      ) : (
+                        <p className="text-stone-500 text-xs italic text-center py-2">
+                          Aún sin reflexión escrita.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-stone-800/60" />
+
+                  {/* Input block: ReflectionEditor for writing the next reflection */}
                   <div>
                     <h3 className="text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3 text-center">
                       Nivelación de energía
@@ -157,6 +189,24 @@ function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: str
           {sefiraName.toUpperCase()}
         </span>
       </div>
+    </div>
+  );
+}
+
+function ScoreChip({ label, value, accent }: {
+  label: string;
+  value: number | null;
+  accent: 'amber' | 'stone';
+}) {
+  const colorClasses = accent === 'amber'
+    ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+    : 'border-stone-700/60 bg-stone-900/40 text-stone-200';
+  return (
+    <div className={`flex flex-col items-center justify-center rounded-xl border px-3 py-2 min-w-[64px] ${colorClasses}`}>
+      <span className="text-[9px] uppercase tracking-[0.18em] text-stone-400">{label}</span>
+      <span className="font-serif text-xl tabular-nums leading-tight mt-0.5">
+        {value !== null ? value.toFixed(1) : '—'}
+      </span>
     </div>
   );
 }
