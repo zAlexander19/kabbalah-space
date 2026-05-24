@@ -156,4 +156,10 @@ async def premium_user_headers(client: AsyncClient, db_session) -> dict:
     db_session.add(sub)
     await db_session.commit()
 
+    # Also seed EmailPreferences (normally done by subscription_created webhook handler)
+    from billing.models import EmailPreferences
+    prefs = EmailPreferences(usuario_id=user_id)
+    db_session.add(prefs)
+    await db_session.commit()
+
     return bundle["headers"]
