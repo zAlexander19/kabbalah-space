@@ -9,6 +9,7 @@ import InicioNav from "./inicio/components/InicioNav";
 import { PremiumGateProvider, useGate } from "./premium/PremiumGateContext";
 import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPage } from "./premium/PremiumPage";
+import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
 
 const SEFIROT = [
@@ -63,6 +64,12 @@ function AppInner() {
       });
     };
   }, [gate]);
+
+  useEffect(() => {
+    const handler = () => setActiveView('cuenta');
+    window.addEventListener('navigate:cuenta', handler);
+    return () => window.removeEventListener('navigate:cuenta', handler);
+  }, []);
 
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
@@ -141,6 +148,7 @@ function AppInner() {
           <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
             {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
             {activeView === 'premium' && <PremiumPage />}
+            {activeView === 'cuenta' && <CuentaPage onNavigateToPremium={() => setActiveView('premium')} />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
             {activeView === 'evolucion' && <EvolucionModule />}
             {activeView === 'espejo' && (

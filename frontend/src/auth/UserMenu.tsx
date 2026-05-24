@@ -131,6 +131,21 @@ export function UserMenu() {
                     role="menuitem"
                     onClick={() => {
                       setOpen(false);
+                      window.dispatchEvent(new CustomEvent('navigate:cuenta'));
+                    }}
+                    className="w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors border-t border-stone-800/70"
+                  >
+                    <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+                      person
+                    </span>
+                    Mi cuenta
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
                       auth.logout();
                     }}
                     className="w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors"
