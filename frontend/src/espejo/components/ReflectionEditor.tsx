@@ -11,10 +11,11 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
   const [score, setScore] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [scoreTouched, setScoreTouched] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim() || submitting) return;
+    if (!text.trim() || !scoreTouched || submitting) return;
     setSubmitting(true);
     try {
       const res = await apiFetch('/evaluate', {
@@ -25,6 +26,7 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
       if (res.ok) {
         setText('');
         setScore(5);
+        setScoreTouched(false);
         onSaved();
       }
     } finally {
@@ -52,7 +54,10 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
           </div>
           <input
             type="range" min={1} max={10} step={0.1} value={score}
-            onChange={e => setScore(parseFloat(e.target.value))}
+            onChange={e => {
+              setScore(parseFloat(e.target.value));
+              setScoreTouched(true);
+            }}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
         </div>
@@ -68,13 +73,15 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
           className="w-full min-h-[120px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors"
         />
         <p className="text-[10px] text-stone-500 mt-1 italic">
-          Esta reflexión queda como nota personal. La IA evalúa tus respuestas a las preguntas guía.
+          {!scoreTouched
+            ? 'Ajustá la nivelación de energía antes de guardar.'
+            : 'Esta reflexión queda como nota personal. La IA evalúa tus respuestas a las preguntas guía.'}
         </p>
       </div>
 
       <button
         type="submit"
-        disabled={submitting || !text.trim()}
+        disabled={submitting || !text.trim() || !scoreTouched}
         className="w-full rounded-xl bg-gradient-to-r from-amber-200/95 to-amber-100 text-stone-900 font-semibold text-xs uppercase tracking-[0.18em] py-3 hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
         {submitting ? <LoadingDots /> : 'Guardar reflexión'}
