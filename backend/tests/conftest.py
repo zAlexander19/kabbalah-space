@@ -18,6 +18,7 @@ from database import Base, get_db
 from main import app
 from models import PreguntaSefira, Sefira
 from billing.models import Subscription  # Ensure Subscription is in the registry
+from emails.models import EmailLog  # noqa: F401 — register email_log for in-memory test DB
 
 
 @pytest_asyncio.fixture
