@@ -349,3 +349,177 @@ async def test_felicitacion_404_actividad_de_otro_usuario(
         headers=alice["headers"],
     )
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_evaluar_respuestas_400_si_no_hay_respuestas(
+    client, db_session, seed_sefirot, two_users,
+):
+    """Sin respuestas en la sefirá → 400."""
+    alice = two_users["alice"]
+    r = await client.post(
+        "/ia/respuestas/evaluar",
+        json={"sefira_id": "tiferet"},
+        headers=alice["headers"],
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_evaluar_respuestas_devuelve_disabled_si_toggle_off(
+    client, db_session, seed_sefirot, two_users,
+):
+    alice = two_users["alice"]
+    # Toggle off
+    from models import Usuario, PreguntaSefira, RespuestaPregunta
+    from sqlalchemy import select
+    u = (await db_session.execute(select(Usuario).where(Usuario.id == alice["id"]))).scalars().first()
+    u.ksai_enabled = False
+    # Add a pregunta + respuesta para que tenga datos (no debería importar)
+    p = PreguntaSefira(sefira_id="tiferet", texto_pregunta="¿Equilibrás?")
+    db_session.add(p)
+    await db_session.flush()
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p.id, respuesta_texto="A veces.",
+    ))
+    await db_session.commit()
+
+    r = await client.post(
+        "/ia/respuestas/evaluar",
+        json={"sefira_id": "tiferet"},
+        headers=alice["headers"],
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ai_score"] is None
+    assert "desactivado" in data["feedback"].lower()
+
+
+@pytest.mark.asyncio
+async def test_evaluar_respuestas_llama_a_kspace_ai_y_guarda(
+    client, db_session, seed_sefirot, two_users,
+):
+    from unittest.mock import patch, AsyncMock
+    from models import PreguntaSefira, RespuestaPregunta, RegistroDiario
+    from sqlalchemy import select
+
+    alice = two_users["alice"]
+    # 2 preguntas + 2 respuestas
+    p1 = PreguntaSefira(sefira_id="tiferet", texto_pregunta="¿Equilibrás?")
+    p2 = PreguntaSefira(sefira_id="tiferet", texto_pregunta="¿Cuándo te sentís en paz?")
+    db_session.add_all([p1, p2])
+    await db_session.flush()
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p1.id, respuesta_texto="A veces.",
+    ))
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p2.id, respuesta_texto="Caminando.",
+    ))
+    await db_session.commit()
+
+    with patch("main.kspace_ai.evaluate_question_answers", new_callable=AsyncMock) as mock:
+        mock.return_value = (7.4, "Hay búsqueda, hay duda.")
+        r = await client.post(
+            "/ia/respuestas/evaluar",
+            json={"sefira_id": "tiferet"},
+            headers=alice["headers"],
+        )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ai_score"] == 7.4
+    assert data["feedback"] == "Hay búsqueda, hay duda."
+
+    # El mock fue llamado con sefira_nombre y la lista de Q&A.
+    mock.assert_awaited_once()
+    args, kwargs = mock.await_args
+    assert kwargs["sefira_nombre"] == "Tiféret"
+    qas = kwargs["qas"]
+    assert len(qas) == 2
+    assert qas[0] == ("¿Equilibrás?", "A veces.")
+    assert qas[1] == ("¿Cuándo te sentís en paz?", "Caminando.")
+
+    # Se creó un RegistroDiario con puntuacion_ia, sin texto, sin user score.
+    rows = (await db_session.execute(
+        select(RegistroDiario).where(
+            RegistroDiario.usuario_id == alice["id"],
+            RegistroDiario.sefira_id == "tiferet",
+        )
+    )).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].puntuacion_ia == 7  # round(7.4) = 7
+    assert rows[0].puntuacion_usuario is None
+    assert rows[0].reflexion_texto is None
+
+
+@pytest.mark.asyncio
+async def test_evaluar_respuestas_usa_solo_ultima_respuesta_por_pregunta(
+    client, db_session, seed_sefirot, two_users,
+):
+    """Si el usuario contestó una pregunta varias veces, se usa la más reciente."""
+    from unittest.mock import patch, AsyncMock
+    from datetime import datetime as dt, timedelta
+    from models import PreguntaSefira, RespuestaPregunta
+
+    alice = two_users["alice"]
+    p = PreguntaSefira(sefira_id="tiferet", texto_pregunta="¿Equilibrás?")
+    db_session.add(p)
+    await db_session.flush()
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p.id, respuesta_texto="Vieja respuesta.",
+        fecha_registro=dt.utcnow() - timedelta(days=5),
+    ))
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p.id, respuesta_texto="Respuesta actual.",
+        fecha_registro=dt.utcnow(),
+    ))
+    await db_session.commit()
+
+    with patch("main.kspace_ai.evaluate_question_answers", new_callable=AsyncMock) as mock:
+        mock.return_value = (5.0, "ok")
+        await client.post(
+            "/ia/respuestas/evaluar",
+            json={"sefira_id": "tiferet"},
+            headers=alice["headers"],
+        )
+
+    args, kwargs = mock.await_args
+    qas = kwargs["qas"]
+    assert len(qas) == 1
+    assert qas[0][1] == "Respuesta actual."
+
+
+@pytest.mark.asyncio
+async def test_evaluar_respuestas_no_guarda_si_llm_falla(
+    client, db_session, seed_sefirot, two_users,
+):
+    """Si el LLM devuelve (None, '') → no insert, mensaje genérico."""
+    from unittest.mock import patch, AsyncMock
+    from models import PreguntaSefira, RespuestaPregunta, RegistroDiario
+    from sqlalchemy import select
+
+    alice = two_users["alice"]
+    p = PreguntaSefira(sefira_id="tiferet", texto_pregunta="?")
+    db_session.add(p)
+    await db_session.flush()
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p.id, respuesta_texto="x",
+    ))
+    await db_session.commit()
+
+    with patch("main.kspace_ai.evaluate_question_answers", new_callable=AsyncMock) as mock:
+        mock.return_value = (None, "")
+        r = await client.post(
+            "/ia/respuestas/evaluar",
+            json={"sefira_id": "tiferet"},
+            headers=alice["headers"],
+        )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ai_score"] is None
+    assert "No pudimos evaluar" in data["feedback"]
+
+    # No se creó RegistroDiario.
+    rows = (await db_session.execute(
+        select(RegistroDiario).where(RegistroDiario.usuario_id == alice["id"])
+    )).scalars().all()
+    assert len(rows) == 0

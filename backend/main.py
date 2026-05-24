@@ -1076,6 +1076,85 @@ async def ia_calendario_felicitacion(
     )
 
 
+class EvaluarRespuestasRequest(BaseModel):
+    sefira_id: str
+
+
+class EvaluarRespuestasResponse(BaseModel):
+    ai_score: Optional[float] = None
+    feedback: str
+
+
+@app.post("/ia/respuestas/evaluar", response_model=EvaluarRespuestasResponse)
+async def ia_respuestas_evaluar(
+    payload: EvaluarRespuestasRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    if not user.ksai_enabled:
+        return EvaluarRespuestasResponse(
+            ai_score=None,
+            feedback="KSpace-AI desactivado. Activalo en tu perfil.",
+        )
+
+    sefira = (await db.execute(
+        select(Sefira).where(Sefira.id == payload.sefira_id)
+    )).scalars().first()
+    if sefira is None:
+        raise HTTPException(status_code=404, detail="Sefira no encontrada")
+
+    # Todas las preguntas de la sefirá
+    preguntas = (await db.execute(
+        select(PreguntaSefira).where(PreguntaSefira.sefira_id == payload.sefira_id)
+        .order_by(PreguntaSefira.fecha_creacion)
+    )).scalars().all()
+
+    # Para cada pregunta, la última respuesta del usuario (si existe).
+    qas: list[tuple[str, str]] = []
+    for p in preguntas:
+        ultima = (await db.execute(
+            select(RespuestaPregunta)
+            .where(
+                RespuestaPregunta.pregunta_id == p.id,
+                RespuestaPregunta.usuario_id == user.id,
+            )
+            .order_by(RespuestaPregunta.fecha_registro.desc())
+            .limit(1)
+        )).scalars().first()
+        if ultima is not None:
+            qas.append((p.texto_pregunta, ultima.respuesta_texto))
+
+    if not qas:
+        raise HTTPException(
+            status_code=400,
+            detail="No hay respuestas para evaluar en esta sefirá.",
+        )
+
+    score, feedback = await kspace_ai.evaluate_question_answers(
+        sefira_nombre=sefira.nombre,
+        qas=qas,
+    )
+
+    if score is None:
+        return EvaluarRespuestasResponse(
+            ai_score=None,
+            feedback="No pudimos evaluar tus respuestas en este momento.",
+        )
+
+    # Guardar como un RegistroDiario con puntuacion_ia.
+    registro = RegistroDiario(
+        usuario_id=user.id,
+        sefira_id=payload.sefira_id,
+        reflexion_texto=None,
+        puntuacion_usuario=None,
+        puntuacion_ia=int(round(score)),
+    )
+    db.add(registro)
+    await db.commit()
+
+    return EvaluarRespuestasResponse(ai_score=score, feedback=feedback)
+
+
 @app.post("/respuestas")
 async def save_respuesta(
     rep: RespuestaCreate,
