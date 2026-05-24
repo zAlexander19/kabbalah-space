@@ -11,10 +11,29 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 from typing import Optional
 
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_json_lenient(raw: str) -> dict:
+    """Parse JSON from a Gemini response that may be wrapped in ```json ... ```
+    markdown fences. Strips the fence then loads. Raises if still not valid JSON.
+    """
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    return json.loads(text)
+
+
+def _gemini_json_config():
+    """GenerateContentConfig forzando JSON. Importación perezosa para no
+    cargar google.genai cuando estamos en modo stub."""
+    from google.genai import types
+    return types.GenerateContentConfig(response_mime_type="application/json")
 
 
 STUB_FEEDBACK = (
@@ -103,14 +122,18 @@ class KSpaceAi:
             resp = await client.aio.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
+                config=_gemini_json_config(),
             )
-            data = json.loads(resp.text)
+            data = _parse_json_lenient(resp.text)
             score = float(data["score"])
             score = max(1.0, min(10.0, score))
             feedback = str(data["feedback"]).strip()
             return score, feedback
         except Exception as e:
-            logger.warning("KSpaceAi.evaluate_reflection fallback to stub: %s", e)
+            logger.warning(
+                "KSpaceAi.evaluate_reflection fallback to stub: %s | raw=%r",
+                e, getattr(resp, "text", None) if "resp" in dir() else None,
+            )
             return self._stub_evaluate(user_score)
 
     async def generate_calendar_reading(
@@ -159,14 +182,19 @@ class KSpaceAi:
             resp = await client.aio.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
+                config=_gemini_json_config(),
             )
-            data = json.loads(resp.text)
+            data = _parse_json_lenient(resp.text)
             score = float(data["score"])
             score = max(1.0, min(10.0, score))
             feedback = str(data["feedback"]).strip()
             return (score, feedback)
         except Exception as e:
-            logger.warning("KSpaceAi.evaluate_question_answers fallback: %s", e)
+            raw = getattr(resp, "text", None) if "resp" in dir() else None
+            logger.warning(
+                "KSpaceAi.evaluate_question_answers fallback: %s | raw=%r",
+                e, raw,
+            )
             return (None, "")
 
     # ---- Stub helpers ----
