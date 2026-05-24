@@ -104,3 +104,64 @@ def _async_return(value):
     async def _coro():
         return value
     return _coro()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_question_answers_stub_mode():
+    """En modo stub, devuelve (None, '') — el frontend muestra mensaje genérico."""
+    svc = KSpaceAi(provider="stub", api_key="")
+    result = await svc.evaluate_question_answers(
+        sefira_nombre="Tiféret",
+        qas=[("¿Cómo balanceás dar y recibir?", "Lo intento día a día.")],
+    )
+    assert result == (None, "")
+
+
+@pytest.mark.asyncio
+async def test_evaluate_question_answers_calls_gemini_and_parses_json():
+    fake_client = MagicMock()
+    fake_resp = MagicMock()
+    fake_resp.text = json.dumps({
+        "score": 6.5,
+        "feedback": "Mostrás conciencia de la tensión sin haberla resuelto.",
+    })
+    fake_client.aio.models.generate_content = MagicMock(
+        return_value=_async_return(fake_resp)
+    )
+
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    score, feedback = await svc.evaluate_question_answers(
+        sefira_nombre="Tiféret",
+        qas=[
+            ("¿Cómo balanceás dar y recibir?", "Doy más de lo que recibo."),
+            ("¿Cuándo te sentís en equilibrio?", "Casi nunca."),
+        ],
+    )
+    assert score == 6.5
+    assert "tensión" in feedback.lower()
+
+
+@pytest.mark.asyncio
+async def test_evaluate_question_answers_empty_qas_returns_none():
+    """Sin Q&A, no se llama a Gemini y devuelve (None, '')."""
+    fake_client = MagicMock()
+    fake_client.aio.models.generate_content = MagicMock(
+        side_effect=AssertionError("no debería llamarse"),
+    )
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    result = await svc.evaluate_question_answers(sefira_nombre="Tiféret", qas=[])
+    assert result == (None, "")
+
+
+@pytest.mark.asyncio
+async def test_evaluate_question_answers_fallback_on_exception():
+    fake_client = MagicMock()
+    fake_client.aio.models.generate_content = MagicMock(
+        side_effect=Exception("rate limit")
+    )
+    svc = KSpaceAi(provider="gemini", api_key="fake-key", client=fake_client)
+    result = await svc.evaluate_question_answers(
+        sefira_nombre="Tiféret",
+        qas=[("q?", "a")],
+    )
+    assert result == (None, "")

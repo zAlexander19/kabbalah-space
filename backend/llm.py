@@ -43,6 +43,16 @@ Escribí una observación breve (máx 3 frases) en español rioplatense. Tono re
 
 Devolvé solo el texto, sin titulos ni encabezados."""
 
+QUESTION_EVAL_PROMPT_TEMPLATE = """Sos KSpace-AI, una guía contemplativa basada en la Cábala. Un usuario respondió a las preguntas guía sobre la sefirá "{sefira}":
+
+{qa_bloque}
+
+Tarea: leer las respuestas y devolver en JSON estricto:
+- "score": un número 1-10 (puede ser decimal con 1 cifra) reflejando profundidad/coherencia/sinceridad respecto al arquetipo de la sefirá. No es la calidad de la prosa — es qué tanto las respuestas realmente tocan la dimensión.
+- "feedback": 2-3 frases breves en español rioplatense, tono contemplativo. Reflejá patrones que ves en el conjunto de respuestas. No moralices ni des órdenes.
+
+Devolvé solo el JSON, sin texto antes ni después."""
+
 
 class KSpaceAi:
     def __init__(self, provider: str, api_key: str, client=None):
@@ -122,6 +132,42 @@ class KSpaceAi:
         except Exception as e:
             logger.warning("KSpaceAi.generate_calendar_reading fallback to None: %s", e)
             return None
+
+    async def evaluate_question_answers(
+        self, sefira_nombre: str, qas: list[tuple[str, str]],
+    ) -> tuple[Optional[float], str]:
+        """Evalúa un conjunto de respuestas a preguntas guía de una sefirá.
+
+        Devuelve (score, feedback) si Gemini está habilitado y responde bien.
+        Devuelve (None, "") en cualquier otro caso (stub mode, sin preguntas,
+        excepción del cliente).
+        """
+        if not self.enabled:
+            return (None, "")
+        if not qas:
+            return (None, "")
+        try:
+            client = self._get_client()
+            qa_bloque = "\n\n".join(
+                f"Pregunta: {q.strip()}\nRespuesta: {a.strip()[:1000]}"
+                for q, a in qas
+            )
+            prompt = QUESTION_EVAL_PROMPT_TEMPLATE.format(
+                sefira=sefira_nombre,
+                qa_bloque=qa_bloque,
+            )
+            resp = await client.aio.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            data = json.loads(resp.text)
+            score = float(data["score"])
+            score = max(1.0, min(10.0, score))
+            feedback = str(data["feedback"]).strip()
+            return (score, feedback)
+        except Exception as e:
+            logger.warning("KSpaceAi.evaluate_question_answers fallback: %s", e)
+            return (None, "")
 
     # ---- Stub helpers ----
 
