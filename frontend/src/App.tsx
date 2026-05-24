@@ -71,6 +71,12 @@ function AppInner() {
     return () => window.removeEventListener('navigate:cuenta', handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setActiveView('calendario');
+    window.addEventListener('navigate:calendario', handler);
+    return () => window.removeEventListener('navigate:calendario', handler);
+  }, []);
+
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
     setPageRevealed(true);

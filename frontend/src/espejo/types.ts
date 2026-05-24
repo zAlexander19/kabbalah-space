@@ -10,6 +10,7 @@ export type SefiraResumen = {
   ultima_reflexion_score: number | null;
   ultima_actividad: string | null;
   intensidad: number;
+  actividades_total: number;
 };
 
 export type PreguntaConEstado = {

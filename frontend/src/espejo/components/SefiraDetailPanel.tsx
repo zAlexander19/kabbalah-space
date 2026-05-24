@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { SefiraResumen, PreguntaConEstado, Registro } from '../types';
 import SefiraHeader from './SefiraHeader';
-import LastReflection from './LastReflection';
 import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
 import HistoryList from './HistoryList';
@@ -18,8 +17,6 @@ type Props = {
 };
 
 export default function SefiraDetailPanel({ resumen, description, preguntas, registros, onDataChanged }: Props) {
-  const ultima = registros[0] ?? null;
-
   const hasUnblocked = useMemo(() => preguntas.some(p => !p.bloqueada), [preguntas]);
   const allAnswered = preguntas.length > 0 && !hasUnblocked && preguntas.every(p => !!p.ultima_respuesta);
 
@@ -127,11 +124,7 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
       variants={{ animate: { transition: { staggerChildren: 0.05 } } }}
       className="space-y-6"
     >
-      <Section><SefiraHeader resumen={resumen} description={description} /></Section>
-
-      {ultima && (
-        <Section><LastReflection registro={ultima} /></Section>
-      )}
+      <Section><SefiraHeader resumen={resumen} description={description} registros={registros} /></Section>
 
       <Section>
         <div className="flex items-baseline justify-between mb-3">

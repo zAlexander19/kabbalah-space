@@ -74,6 +74,7 @@ export default function EspejoModule({
       ultima_reflexion_score: null,
       ultima_actividad: null,
       intensidad: 0,
+      actividades_total: 0,
     };
   }, [summary, selectedId, selectedNode]);
 

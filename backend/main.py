@@ -470,6 +470,7 @@ class SefiraResumen(BaseModel):
     ultima_reflexion_score: Optional[int] = None
     ultima_actividad: Optional[datetime] = None
     intensidad: float = 0.0
+    actividades_total: int = 0
 
 
 class MesBucket(BaseModel):
@@ -649,6 +650,16 @@ async def espejo_resumen(
         ultima = regs[0] if regs else None
         intensidad = (frescas / total) if total > 0 else 0.0
 
+        actividades_total = (await db.execute(
+            select(func.count())
+            .select_from(Actividad)
+            .join(ActividadSefira, ActividadSefira.actividad_id == Actividad.id)
+            .where(
+                Actividad.usuario_id == user.id,
+                ActividadSefira.sefira_id == s.id,
+            )
+        )).scalar_one()
+
         out.append(SefiraResumen(
             sefira_id=s.id, sefira_nombre=s.nombre,
             preguntas_total=total, preguntas_frescas=frescas, preguntas_disponibles=disponibles,
@@ -658,6 +669,7 @@ async def espejo_resumen(
             ultima_reflexion_score=ultima.puntuacion_ia if ultima else None,
             ultima_actividad=ultima.fecha_registro if ultima else None,
             intensidad=intensidad,
+            actividades_total=actividades_total,
         ))
     return out
 
