@@ -10,6 +10,8 @@ export type {
   CheckoutResponse,
   ReflexionLibreCreate,
   ReflexionLibreOut,
+  EmailPreferences,
+  EmailPreferenceKey,
 } from './types';
 
 export {
@@ -17,4 +19,6 @@ export {
   createCheckout,
   getPortalUrl,
   createReflexionLibre,
+  getEmailPreferences,
+  updateEmailPreferences,
 } from './api';

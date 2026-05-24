@@ -69,3 +69,12 @@ export interface ReflexionLibreOut {
   contenido: string;
   fecha_creacion: string; // ISO 8601
 }
+
+export interface EmailPreferences {
+  weekly_summary: boolean;
+  monthly_summary: boolean;
+  imbalance_alerts: boolean;
+  reflection_reminders: boolean;
+}
+
+export type EmailPreferenceKey = keyof EmailPreferences;

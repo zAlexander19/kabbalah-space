@@ -3,6 +3,7 @@ import type {
   BillingStatus,
   CheckoutRequest,
   CheckoutResponse,
+  EmailPreferences,
   ReflexionLibreCreate,
   ReflexionLibreOut,
 } from './types';
@@ -46,6 +47,23 @@ export async function createReflexionLibre(
   const res = await apiFetch('/reflexiones-libres', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function getEmailPreferences(): Promise<EmailPreferences> {
+  const res = await apiFetch('/email/preferences');
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function updateEmailPreferences(
+  patch: Partial<EmailPreferences>,
+): Promise<EmailPreferences> {
+  const res = await apiFetch('/email/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
