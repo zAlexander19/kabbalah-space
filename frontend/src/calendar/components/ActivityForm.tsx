@@ -296,35 +296,34 @@ export default function ActivityForm({
         </div>
       </div>
 
-      {showRecurrencePicker ? (
+      <div className="relative">
         <RecurrencePicker
           value={rrule}
           startDate={startDateForPicker}
           disabled={!!editing && scope === 'one' && !!editing.serie_id}
-          onChange={setRrule}
+          onChange={(next) => {
+            // Free user: any non-null choice opens the premium gate and is
+            // not applied. Editing an existing recurrence is allowed (so the
+            // user doesn't lose visibility of their own data).
+            if (!showRecurrencePicker && next) {
+              gate.openGate({
+                reason: 'recurrence_premium',
+                detail: { error: 'premium_required', reason: 'recurrence_premium' },
+              });
+              return;
+            }
+            setRrule(next);
+          }}
         />
-      ) : (
-        <button
-          type="button"
-          onClick={() =>
-            gate.openGate({
-              reason: 'recurrence_premium',
-              detail: { error: 'premium_required', reason: 'recurrence_premium' },
-            })
-          }
-          className="w-full text-left px-4 py-3 rounded-xl bg-stone-900/60 border border-stone-800/60 text-stone-400 text-sm hover:border-amber-300/30 hover:text-amber-100 transition-colors flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
-              repeat
-            </span>
-            Repetir actividad
-          </span>
-          <span className="text-[10px] uppercase tracking-[0.14em] text-amber-300/70">
+        {!showRecurrencePicker && (
+          <span
+            className="absolute top-0 right-0 text-[9px] uppercase tracking-[0.16em] text-amber-300/90 bg-amber-300/10 border border-amber-300/30 rounded-full px-2 py-0.5 pointer-events-none shadow-[0_0_8px_rgba(233,195,73,0.2)]"
+            aria-label="Funcionalidad premium"
+          >
             Premium
           </span>
-        </button>
-      )}
+        )}
+      </div>
 
       <div>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Descripción</label>
