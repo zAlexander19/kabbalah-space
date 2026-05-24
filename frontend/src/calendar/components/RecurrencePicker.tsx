@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -25,6 +25,8 @@ const DAYS_UI: { key: ByDay; label: string }[] = [
 
 export default function RecurrencePicker({ value, startDate, disabled, onChange, markPremium }: Props) {
   const [showCustom, setShowCustom] = useState(false);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const startWeekday = WEEKDAY_FROM_DATE[startDate.getDay()];
   const startDayOfMonth = startDate.getDate();
   const startWeekdayLabel = format(startDate, 'EEEE', { locale: es });
@@ -39,13 +41,35 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange,
 
   const matchedPreset = presets.find(p => p.rrule === value);
   const selectedKey = matchedPreset ? matchedPreset.id : (value ? 'custom' : 'none');
+  const currentLabel = selectedKey === 'custom'
+    ? 'Personalizado…'
+    : (presets.find(p => p.id === selectedKey)?.label ?? 'No se repite');
 
   useEffect(() => {
     if (value && !matchedPreset) setShowCustom(true);
   }, [value, matchedPreset]);
 
-  function onSelect(e: React.ChangeEvent<HTMLSelectElement>) {
-    const key = e.target.value;
+  // Click outside closes the listbox
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  function pick(key: string) {
+    setOpen(false);
     if (key === 'custom') {
       setShowCustom(true);
       const initial = value && !matchedPreset ? value : `FREQ=WEEKLY;BYDAY=${startWeekday}`;
@@ -62,28 +86,63 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange,
       <label className="text-[10px] uppercase tracking-[0.22em] text-amber-100/60 font-medium">
         Repetir
       </label>
-      <div className="relative mt-2">
-        <select
+      <div ref={containerRef} className="relative mt-2">
+        <button
+          type="button"
           disabled={disabled}
-          value={selectedKey}
-          onChange={onSelect}
-          className="w-full appearance-none bg-[#0e1014] border border-stone-800/70 hover:border-stone-700/80 focus:border-amber-300/50 focus:shadow-[0_0_0_3px_rgba(233,195,73,0.08)] rounded-xl px-4 py-3 pr-10 text-sm text-stone-100 font-body outline-none disabled:opacity-50 transition-all cursor-pointer"
+          onClick={() => setOpen(o => !o)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className={`w-full bg-[#0e1014] border ${
+            open ? 'border-amber-300/50 shadow-[0_0_0_3px_rgba(233,195,73,0.08)]' : 'border-stone-800/70 hover:border-stone-700/80'
+          } rounded-xl px-4 py-3 pr-10 text-sm text-stone-100 font-body text-left outline-none disabled:opacity-50 transition-all cursor-pointer`}
         >
-          {presets.map(p => (
-            <option key={p.id} value={p.id} className="bg-stone-950 text-stone-100">
-              {markPremium && p.id !== 'none' ? `${p.label}  ·  premium` : p.label}
-            </option>
-          ))}
-          <option value="custom" className="bg-stone-950 text-stone-100">
-            {markPremium ? 'Personalizado…  ·  premium' : 'Personalizado…'}
-          </option>
-        </select>
+          {currentLabel}
+        </button>
         <span
-          className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 text-[18px] pointer-events-none"
+          className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 text-[18px] pointer-events-none transition-transform ${open ? 'rotate-180' : ''}`}
           aria-hidden="true"
         >
           expand_more
         </span>
+
+        {open && (
+          <ul
+            role="listbox"
+            className="absolute z-30 left-0 right-0 mt-2 rounded-xl bg-stone-950/98 border border-stone-800/80 shadow-[0_18px_48px_rgba(0,0,0,0.55)] backdrop-blur-md overflow-hidden py-1"
+          >
+            {presets.map(p => {
+              const isSelected = p.id === selectedKey;
+              const isPremium = markPremium && p.id !== 'none';
+              return (
+                <li key={p.id} role="option" aria-selected={isSelected}>
+                  <button
+                    type="button"
+                    onClick={() => pick(p.id)}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
+                      isSelected ? 'bg-amber-300/10 text-amber-100' : 'text-stone-200 hover:bg-stone-900/80 hover:text-amber-100'
+                    }`}
+                  >
+                    <span>{p.label}</span>
+                    {isPremium && <PremiumPill />}
+                  </button>
+                </li>
+              );
+            })}
+            <li role="option" aria-selected={selectedKey === 'custom'}>
+              <button
+                type="button"
+                onClick={() => pick('custom')}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors border-t border-stone-800/60 ${
+                  selectedKey === 'custom' ? 'bg-amber-300/10 text-amber-100' : 'text-stone-200 hover:bg-stone-900/80 hover:text-amber-100'
+                }`}
+              >
+                <span>Personalizado…</span>
+                {markPremium && <PremiumPill />}
+              </button>
+            </li>
+          </ul>
+        )}
       </div>
 
       {showCustom && value && !disabled && (
@@ -99,6 +158,16 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange,
         <p className="text-[10px] text-stone-500 mt-2">La recurrencia solo se modifica al editar “Toda la serie”.</p>
       )}
     </div>
+  );
+}
+
+function PremiumPill() {
+  return (
+    <span
+      className="shrink-0 text-[9px] uppercase tracking-[0.18em] font-medium text-stone-950 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 rounded-full px-2.5 py-[2px] shadow-[0_1px_6px_rgba(233,195,73,0.4)] ring-1 ring-amber-200/40"
+    >
+      Premium
+    </span>
   );
 }
 
