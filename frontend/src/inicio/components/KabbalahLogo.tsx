@@ -23,8 +23,7 @@ export default function KabbalahLogo({ size = 'sm' }: Props) {
       />
       <span className={`ks-serif ${text} font-light tracking-tight whitespace-nowrap`}>
         <span className="text-ink-glow">Kabbalah</span>
-        <span className="text-gold mx-1.5">✦</span>
-        <span className="italic text-ink-glow">Space</span>
+        <span className="italic text-ink-glow ml-1.5">Space</span>
       </span>
     </span>
   );
