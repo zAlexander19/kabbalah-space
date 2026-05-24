@@ -60,16 +60,23 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   useEffect(() => { setEditorOpen(false); }, [resumen.sefira_id]);
 
   // Si el usuario tiene respuestas guardadas pero todavía no hay score de IA
-  // para esta sefirá, disparar la evaluación al abrir el modal. Una sola vez
-  // por sefirá por sesión (ref guarda el set de sefirot ya evaluadas) para no
-  // hacer llamadas duplicadas al LLM si el usuario abre/cierra el modal.
-  const autoFiredRef = useRef<Set<string>>(new Set());
+  // para esta sefirá, disparar la evaluación al abrir el modal. El ref guarda
+  // el set de (sefira+timestamp) ya disparadas para no llamar dos veces en una
+  // misma apertura; si vuelve a abrirse el modal y sigue sin score, reintenta.
+  const lastFireRef = useRef<{ sefiraId: string; at: number } | null>(null);
   useEffect(() => {
     if (!open) return;
     if (latestIaScore !== null) return;
     if (preguntas.every(p => !p.ultima_respuesta)) return;
-    if (autoFiredRef.current.has(resumen.sefira_id)) return;
-    autoFiredRef.current.add(resumen.sefira_id);
+    // Evitar llamadas duplicadas dentro de los últimos 5s (ej. doble render
+    // por StrictMode). Si pasó más tiempo y todavía no hay score, reintenta.
+    const now = Date.now();
+    if (
+      lastFireRef.current
+      && lastFireRef.current.sefiraId === resumen.sefira_id
+      && now - lastFireRef.current.at < 5000
+    ) return;
+    lastFireRef.current = { sefiraId: resumen.sefira_id, at: now };
     void apiFetch('/ia/respuestas/evaluar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
