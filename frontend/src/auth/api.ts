@@ -1,5 +1,6 @@
 import { API_BASE } from '../shared/tokens';
 import type { User } from './types';
+import type { GateError } from '../premium/types';
 
 const TOKEN_KEY = 'kabbalah_auth_token';
 
@@ -30,6 +31,14 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
 }
 
+// ---------- 402 / 409 (premium gating) interceptor ----------
+
+let onPaymentRequired: ((err: GateError) => void) | null = null;
+
+export function setPaymentRequiredHandler(fn: (err: GateError) => void): void {
+  onPaymentRequired = fn;
+}
+
 // ---------- Auth-aware fetch ----------
 
 /**
@@ -51,6 +60,18 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   if (res.status === 401 && token) {
     setStoredToken(null);
     onUnauthorized?.();
+  }
+  if ((res.status === 402 || res.status === 409) && onPaymentRequired) {
+    // Clone before reading so the original response body is still consumable by the caller.
+    try {
+      const cloned = res.clone();
+      const body = await cloned.json();
+      if (body?.detail?.reason) {
+        onPaymentRequired(body.detail as GateError);
+      }
+    } catch {
+      /* malformed body — don't crash the interceptor */
+    }
   }
   return res;
 }
