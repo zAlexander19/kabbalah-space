@@ -11,6 +11,9 @@ type Props = {
   startDate: Date;
   disabled?: boolean;
   onChange: (rrule: string | null) => void;
+  /** When true, all options except "No se repite" are tagged "(premium)"
+   *  in their label, signaling to free users that picking them is gated. */
+  markPremium?: boolean;
 };
 
 type EndsKind = 'never' | 'on' | 'after';
@@ -20,7 +23,7 @@ const DAYS_UI: { key: ByDay; label: string }[] = [
   { key: 'TH', label: 'J' }, { key: 'FR', label: 'V' }, { key: 'SA', label: 'S' }, { key: 'SU', label: 'D' },
 ];
 
-export default function RecurrencePicker({ value, startDate, disabled, onChange }: Props) {
+export default function RecurrencePicker({ value, startDate, disabled, onChange, markPremium }: Props) {
   const [showCustom, setShowCustom] = useState(false);
   const startWeekday = WEEKDAY_FROM_DATE[startDate.getDay()];
   const startDayOfMonth = startDate.getDate();
@@ -64,9 +67,13 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange 
         className="mt-2 w-full bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 rounded-lg px-3 py-2 text-sm text-stone-100 outline-none disabled:opacity-50"
       >
         {presets.map(p => (
-          <option key={p.id} value={p.id}>{p.label}</option>
+          <option key={p.id} value={p.id}>
+            {markPremium && p.id !== 'none' ? `${p.label} (premium)` : p.label}
+          </option>
         ))}
-        <option value="custom">Personalizado…</option>
+        <option value="custom">
+          {markPremium ? 'Personalizado… (premium)' : 'Personalizado…'}
+        </option>
       </select>
 
       {showCustom && value && !disabled && (

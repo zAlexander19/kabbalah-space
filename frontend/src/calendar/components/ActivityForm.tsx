@@ -301,6 +301,7 @@ export default function ActivityForm({
           value={rrule}
           startDate={startDateForPicker}
           disabled={!!editing && scope === 'one' && !!editing.serie_id}
+          markPremium={!showRecurrencePicker}
           onChange={(next) => {
             // Free user: any non-null choice opens the premium gate and is
             // not applied. Editing an existing recurrence is allowed (so the
