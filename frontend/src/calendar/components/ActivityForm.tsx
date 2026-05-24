@@ -296,35 +296,25 @@ export default function ActivityForm({
         </div>
       </div>
 
-      <div className="relative">
-        <RecurrencePicker
-          value={rrule}
-          startDate={startDateForPicker}
-          disabled={!!editing && scope === 'one' && !!editing.serie_id}
-          markPremium={!showRecurrencePicker}
-          onChange={(next) => {
-            // Free user: any non-null choice opens the premium gate and is
-            // not applied. Editing an existing recurrence is allowed (so the
-            // user doesn't lose visibility of their own data).
-            if (!showRecurrencePicker && next) {
-              gate.openGate({
-                reason: 'recurrence_premium',
-                detail: { error: 'premium_required', reason: 'recurrence_premium' },
-              });
-              return;
-            }
-            setRrule(next);
-          }}
-        />
-        {!showRecurrencePicker && (
-          <span
-            className="absolute -top-1.5 right-2 text-[10px] uppercase tracking-[0.18em] font-medium text-stone-950 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 rounded-full px-3 py-[3px] pointer-events-none shadow-[0_2px_12px_rgba(233,195,73,0.45)] ring-1 ring-amber-200/40"
-            aria-label="Funcionalidad premium"
-          >
-            Premium
-          </span>
-        )}
-      </div>
+      <RecurrencePicker
+        value={rrule}
+        startDate={startDateForPicker}
+        disabled={!!editing && scope === 'one' && !!editing.serie_id}
+        markPremium={!showRecurrencePicker}
+        onChange={(next) => {
+          // Free user: any non-null choice opens the premium gate and is
+          // not applied. Editing an existing recurrence is allowed (so the
+          // user doesn't lose visibility of their own data).
+          if (!showRecurrencePicker && next) {
+            gate.openGate({
+              reason: 'recurrence_premium',
+              detail: { error: 'premium_required', reason: 'recurrence_premium' },
+            });
+            return;
+          }
+          setRrule(next);
+        }}
+      />
 
       <div>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Descripción</label>
