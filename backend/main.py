@@ -2,6 +2,7 @@ import asyncio
 import logging
 import random
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
@@ -47,9 +48,25 @@ from billing.reflexiones_libres import router as reflexiones_libres_router
 from billing.routers import router as billing_router
 from billing.webhooks import router as webhooks_router
 from emails.router import router as emails_router
+from scheduler.scheduler import start_scheduler, stop_scheduler
 
 settings = get_settings()
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # Startup: arrancar el scheduler de emails sólo si el kill switch está activo.
+    # El seeding inicial de la DB sigue vivo en el handler @app.on_event("startup")
+    # más abajo; FastAPI ejecuta ambos.
+    settings_for_lifespan = get_settings()
+    if settings_for_lifespan.emails_enabled:
+        start_scheduler()
+    yield
+    # Shutdown
+    stop_scheduler()
+
+
+app = FastAPI(lifespan=lifespan)
 
 from llm import KSpaceAi
 kspace_ai = KSpaceAi(provider=settings.llm_provider, api_key=settings.gemini_api_key)
