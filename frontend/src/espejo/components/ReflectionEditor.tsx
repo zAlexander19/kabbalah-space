@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { apiFetch, useAuth } from '../../auth';
+import { apiFetch } from '../../auth';
 
 type Props = {
   sefiraId: string;
@@ -8,21 +7,15 @@ type Props = {
   onSaved: () => void;
 };
 
-type Feedback = { score: number; text: string };
-
 export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Props) {
-  const auth = useAuth();
-  const ksaiEnabled = auth.user?.ksai_enabled ?? true;
   const [score, setScore] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim() || submitting) return;
     setSubmitting(true);
-    setFeedback(null);
     try {
       const res = await apiFetch('/evaluate', {
         method: 'POST',
@@ -30,8 +23,8 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
         body: JSON.stringify({ sefira: sefiraName, sefira_id: sefiraId, text, score }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setFeedback({ score: data.ai_score, text: data.feedback });
+        setText('');
+        setScore(5);
         onSaved();
       }
     } finally {
@@ -75,9 +68,7 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
           className="w-full min-h-[120px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors"
         />
         <p className="text-[10px] text-stone-500 mt-1 italic">
-          {ksaiEnabled
-            ? 'Tu reflexión es evaluada por KSpace-AI.'
-            : 'KSpace-AI desactivado. Activalo en tu perfil para evaluación automática.'}
+          Esta reflexión queda como nota personal. La IA evalúa tus respuestas a las preguntas guía.
         </p>
       </div>
 
@@ -86,28 +77,8 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
         disabled={submitting || !text.trim()}
         className="w-full rounded-xl bg-gradient-to-r from-amber-200/95 to-amber-100 text-stone-900 font-semibold text-xs uppercase tracking-[0.18em] py-3 hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
-        {submitting ? <LoadingDots /> : 'Recibir Diagnóstico IA'}
+        {submitting ? <LoadingDots /> : 'Guardar reflexión'}
       </button>
-
-      <AnimatePresence>
-        {feedback && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-xl border border-amber-300/30 bg-amber-300/5 p-4"
-          >
-            <div className="flex items-baseline gap-3 mb-3">
-              <span className="font-serif text-3xl text-amber-200/95">{feedback.score.toFixed(1)}</span>
-              <span className="text-[10px] uppercase tracking-wider text-stone-400 border border-stone-700/50 px-2 py-0.5 rounded">
-                Score Coherencia IA
-              </span>
-            </div>
-            <p className="text-sm text-stone-300/90 leading-relaxed whitespace-pre-line">{feedback.text}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </form>
   );
 }
