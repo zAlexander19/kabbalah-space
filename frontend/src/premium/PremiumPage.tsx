@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext';
 import { createCheckout } from './api';
 import { ComparisonTable } from './ComparisonTable';
-import { PricingToggle } from './PricingToggle';
 import { PromoBanner, usePromoFromUrl } from './PromoBanner';
 import { usePremium } from './usePremium';
 import type { SubscriptionPlan } from './types';
@@ -15,16 +14,15 @@ export function PremiumPage() {
   const auth = useAuth();
   const { isPremium } = usePremium();
   const promoCode = usePromoFromUrl();
-  const [plan, setPlan] = useState<SubscriptionPlan>('yearly');
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<SubscriptionPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubscribe() {
+  async function handleSubscribe(plan: SubscriptionPlan) {
     if (auth.status !== 'authenticated') {
       auth.openLoginModal();
       return;
     }
-    setSubmitting(true);
+    setSubmitting(plan);
     setError(null);
     try {
       const result = await createCheckout({
@@ -34,7 +32,7 @@ export function PremiumPage() {
       window.location.assign(result.checkout_url);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'unknown');
-      setSubmitting(false);
+      setSubmitting(null);
     }
   }
 
@@ -57,31 +55,52 @@ export function PremiumPage() {
 
       {promoCode && <PromoBanner code={promoCode} />}
 
-      {/* Pricing toggle + comparison + CTA (botón abajo de la info) */}
+      {/* Comparison + CTAs */}
       <div className="bg-[#15181d] border border-stone-700/40 rounded-3xl p-6 md:p-10 space-y-7 shadow-2xl">
-        <div className="flex justify-center">
-          <PricingToggle selected={plan} onChange={setPlan} />
-        </div>
-
         <ComparisonTable />
 
-        <div className="border-t border-stone-800/70 pt-7 flex flex-col items-center gap-3">
+        <div className="border-t border-stone-800/70 pt-7 space-y-3">
           {isPremium ? (
-            <p className="text-amber-100/90 text-sm">
+            <p className="text-amber-100/90 text-sm text-center">
               Ya tenés Premium activo. Gracias por estar acá.
             </p>
           ) : (
             <>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleSubscribe}
-                className="px-10 py-3.5 rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 hover:from-amber-100 hover:via-amber-200 hover:to-amber-300 text-stone-950 text-sm font-medium tracking-wide transition-all shadow-[0_4px_24px_rgba(233,195,73,0.4)] hover:shadow-[0_6px_32px_rgba(233,195,73,0.55)] ring-1 ring-amber-200/40 disabled:opacity-60 disabled:cursor-wait"
-              >
-                {submitting ? 'Abriendo checkout...' : 'Suscribirme a Premium'}
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                {/* ANUAL — destacado */}
+                <button
+                  type="button"
+                  disabled={submitting !== null}
+                  onClick={() => handleSubscribe('yearly')}
+                  className="relative px-6 py-4 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 hover:from-amber-100 hover:via-amber-200 hover:to-amber-300 text-stone-950 transition-all shadow-[0_4px_24px_rgba(233,195,73,0.4)] hover:shadow-[0_6px_32px_rgba(233,195,73,0.55)] ring-1 ring-amber-200/40 disabled:opacity-60 disabled:cursor-wait flex flex-col items-center gap-1"
+                >
+                  <span className="absolute -top-2 right-3 text-[9px] uppercase tracking-[0.18em] font-medium text-amber-100 bg-stone-950 rounded-full px-2 py-0.5 border border-amber-300/40">
+                    Recomendado
+                  </span>
+                  <span className="text-sm font-medium tracking-wide">
+                    {submitting === 'yearly' ? 'Abriendo checkout...' : 'Suscribirme anual'}
+                  </span>
+                  <span className="text-xs text-stone-800/80">
+                    USD 65.80 / año <span className="opacity-70">· ahorrás 2 meses</span>
+                  </span>
+                </button>
+
+                {/* MENSUAL — sutil */}
+                <button
+                  type="button"
+                  disabled={submitting !== null}
+                  onClick={() => handleSubscribe('monthly')}
+                  className="px-6 py-4 rounded-2xl bg-stone-900/60 hover:bg-stone-900/90 border border-stone-700/60 hover:border-amber-300/40 text-amber-100 transition-all disabled:opacity-60 disabled:cursor-wait flex flex-col items-center gap-1"
+                >
+                  <span className="text-sm font-medium tracking-wide">
+                    {submitting === 'monthly' ? 'Abriendo checkout...' : 'Suscribirme mensual'}
+                  </span>
+                  <span className="text-xs text-stone-400">USD 6.58 / mes</span>
+                </button>
+              </div>
+
               {error && (
-                <p className="text-red-300 text-sm" role="alert">
+                <p className="text-red-300 text-sm text-center" role="alert">
                   {error}
                 </p>
               )}
