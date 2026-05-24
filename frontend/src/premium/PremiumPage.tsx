@@ -11,25 +11,6 @@ import type { SubscriptionPlan } from './types';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-const FAQ = [
-  {
-    q: '¿Cómo cancelo?',
-    a: 'Desde "Mi cuenta → Suscripción" hacés un click en "Gestionar suscripción" y cancelás cuando quieras. Mantenés el acceso hasta el final del período que pagaste.',
-  },
-  {
-    q: '¿Qué pasa con mis datos si cancelo?',
-    a: 'Tus reflexiones, actividades y evolución siguen siendo tuyas. Volvés al tier gratis con sus límites, pero no perdés nada de tu historia.',
-  },
-  {
-    q: '¿Cuándo se cobra?',
-    a: 'Si entraste con un código de 7 días gratis, el cobro empieza al octavo día (podés cancelar antes sin costo). Si no, el cobro es inmediato al suscribirte.',
-  },
-  {
-    q: '¿Hay reembolsos?',
-    a: 'No automáticos. Si tenés un caso especial, escribínos y lo revisamos a mano.',
-  },
-];
-
 export function PremiumPage() {
   const auth = useAuth();
   const { isPremium } = usePremium();
@@ -76,11 +57,15 @@ export function PremiumPage() {
 
       {promoCode && <PromoBanner code={promoCode} />}
 
-      {/* Pricing + CTA */}
-      <div className="bg-[#15181d] border border-stone-700/40 rounded-3xl p-6 md:p-10 space-y-6 shadow-2xl">
-        <div className="flex flex-col items-center gap-5">
+      {/* Pricing toggle + comparison + CTA (botón abajo de la info) */}
+      <div className="bg-[#15181d] border border-stone-700/40 rounded-3xl p-6 md:p-10 space-y-7 shadow-2xl">
+        <div className="flex justify-center">
           <PricingToggle selected={plan} onChange={setPlan} />
+        </div>
 
+        <ComparisonTable />
+
+        <div className="border-t border-stone-800/70 pt-7 flex flex-col items-center gap-3">
           {isPremium ? (
             <p className="text-amber-100/90 text-sm">
               Ya tenés Premium activo. Gracias por estar acá.
@@ -91,7 +76,7 @@ export function PremiumPage() {
                 type="button"
                 disabled={submitting}
                 onClick={handleSubscribe}
-                className="px-8 py-3 rounded-full bg-amber-300/20 hover:bg-amber-300/30 border border-amber-300/50 text-amber-50 text-sm tracking-wide transition-colors shadow-[0_0_20px_rgba(233,195,73,0.25)] disabled:opacity-60 disabled:cursor-wait"
+                className="px-10 py-3.5 rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 hover:from-amber-100 hover:via-amber-200 hover:to-amber-300 text-stone-950 text-sm font-medium tracking-wide transition-all shadow-[0_4px_24px_rgba(233,195,73,0.4)] hover:shadow-[0_6px_32px_rgba(233,195,73,0.55)] ring-1 ring-amber-200/40 disabled:opacity-60 disabled:cursor-wait"
               >
                 {submitting ? 'Abriendo checkout...' : 'Suscribirme a Premium'}
               </button>
@@ -103,34 +88,6 @@ export function PremiumPage() {
             </>
           )}
         </div>
-
-        <div className="border-t border-stone-800/70 pt-6">
-          <ComparisonTable />
-        </div>
-      </div>
-
-      {/* FAQ */}
-      <div className="space-y-4">
-        <h2 className="font-serif text-2xl text-amber-100/90 text-center mb-6">
-          Preguntas que tal vez tengas
-        </h2>
-        {FAQ.map((item) => (
-          <details
-            key={item.q}
-            className="group bg-stone-950/60 border border-stone-800/60 rounded-xl px-5 py-4"
-          >
-            <summary className="cursor-pointer text-stone-200 text-sm font-medium list-none flex items-center justify-between">
-              <span>{item.q}</span>
-              <span
-                className="material-symbols-outlined text-stone-500 text-[18px] transition-transform group-open:rotate-180"
-                aria-hidden="true"
-              >
-                expand_more
-              </span>
-            </summary>
-            <p className="mt-3 text-stone-400 text-sm leading-relaxed">{item.a}</p>
-          </details>
-        ))}
       </div>
     </div>
   );
