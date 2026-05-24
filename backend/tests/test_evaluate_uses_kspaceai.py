@@ -1,53 +1,59 @@
-"""Test que /evaluate llama a KSpaceAi.evaluate_reflection cuando el usuario
-tiene ksai_enabled=True, y cae al stub determinista cuando es False."""
+"""Test que /evaluate guarda la reflexión sin llamar a KSpace-AI.
+
+La IA ya no evalúa reflexiones libres — eso ahora lo hace POST
+/ia/respuestas/evaluar sobre las respuestas a preguntas guía. La reflexión
+libre queda como nota personal con auto-puntuación.
+"""
 from unittest.mock import patch, AsyncMock
 
 import pytest
+from sqlalchemy import select
 
 
 @pytest.mark.asyncio
-async def test_evaluate_uses_kspaceai_when_user_enabled(
-    client, seed_sefirot, two_users,
+async def test_evaluate_guarda_reflexion_sin_llamar_ia(
+    client, db_session, seed_sefirot, two_users,
 ):
+    """/evaluate guarda RegistroDiario con puntuacion_ia=NULL y no llama al LLM."""
+    from models import RegistroDiario
     alice = two_users["alice"]
+
     with patch("main.kspace_ai.evaluate_reflection", new_callable=AsyncMock) as mock:
-        mock.return_value = (7.5, "Buena reflexión.")
         r = await client.post(
             "/evaluate",
-            json={"sefira": "Tiféret", "sefira_id": "tiferet", "text": "hola", "score": 6},
+            json={"sefira": "Tiféret", "sefira_id": "tiferet", "text": "hola mundo", "score": 6},
             headers=alice["headers"],
         )
     assert r.status_code == 200, r.text
-    data = r.json()
-    assert data["ai_score"] == 7.5
-    assert data["feedback"] == "Buena reflexión."
-    mock.assert_awaited_once()
+    assert r.json() == {"saved": True}
+    mock.assert_not_called()
+
+    rows = (await db_session.execute(
+        select(RegistroDiario).where(RegistroDiario.usuario_id == alice["id"])
+    )).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].reflexion_texto == "hola mundo"
+    assert rows[0].puntuacion_usuario == 6
+    assert rows[0].puntuacion_ia is None
 
 
 @pytest.mark.asyncio
-async def test_evaluate_skips_kspaceai_when_user_disabled(
+async def test_evaluate_ignora_ksai_enabled(
     client, db_session, seed_sefirot, two_users,
 ):
-    alice = two_users["alice"]
-    # Desactivar el toggle directamente en DB
+    """Aunque ksai_enabled sea True, /evaluate no llama a la IA."""
     from models import Usuario
-    from sqlalchemy import select
+    alice = two_users["alice"]
     u = (await db_session.execute(
         select(Usuario).where(Usuario.id == alice["id"])
     )).scalars().first()
-    u.ksai_enabled = False
-    await db_session.commit()
+    assert u.ksai_enabled is True  # default
 
     with patch("main.kspace_ai.evaluate_reflection", new_callable=AsyncMock) as mock:
         r = await client.post(
             "/evaluate",
-            json={"sefira": "Tiféret", "sefira_id": "tiferet", "text": "hola", "score": 6},
+            json={"sefira": "Tiféret", "sefira_id": "tiferet", "text": "x", "score": 5},
             headers=alice["headers"],
         )
-    assert r.status_code == 200, r.text
-    # El stub determinista NO debería haber llamado al servicio
+    assert r.status_code == 200
     mock.assert_not_called()
-    # El feedback es el hardcodeado-stub o el genérico
-    data = r.json()
-    assert data["ai_score"] is None
-    assert "KSpace-AI desactivado" in data["feedback"]

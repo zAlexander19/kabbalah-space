@@ -23,7 +23,8 @@ async def test_resumen_isolates_users(client: AsyncClient, seed_sefirot, two_use
     assert r_alice.status_code == 200
     by_id = {row["sefira_id"]: row for row in r_alice.json()}
     assert by_id["jesed"]["ultima_reflexion_texto"] == "alice"
-    assert by_id["jesed"]["score_ia_promedio"] is not None
+    # /evaluate ya no llama a la IA, por lo que puntuacion_ia siempre es NULL
+    assert by_id["jesed"]["score_ia_promedio"] is None
 
     r_bob = await client.get("/espejo/resumen", headers=bob["headers"])
     assert r_bob.status_code == 200

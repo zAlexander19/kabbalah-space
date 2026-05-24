@@ -383,8 +383,7 @@ class EvaluationRequest(BaseModel):
     score: float
 
 class EvaluationResponse(BaseModel):
-    ai_score: Optional[float] = None
-    feedback: str
+    saved: bool = True
 
 @app.post("/evaluate", response_model=EvaluationResponse)
 async def evaluate(
@@ -392,28 +391,22 @@ async def evaluate(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
-    if user.ksai_enabled:
-        ai_score, feedback = await kspace_ai.evaluate_reflection(
-            sefira_nombre=request.sefira,
-            texto=request.text,
-            user_score=request.score,
-        )
-    else:
-        # KSpace-AI desactivado: no se evalúa con IA, puntuacion_ia queda null
-        ai_score = None
-        feedback = "KSpace-AI desactivado. Tu reflexión quedó guardada."
+    """Guarda una reflexión libre del usuario sobre una sefirá.
 
+    KSpace-AI ya NO evalúa estas reflexiones — la IA actúa solo sobre las
+    respuestas a las preguntas guía (POST /ia/respuestas/evaluar). Esta
+    entrada queda como nota personal con la auto-puntuación.
+    """
     registro = RegistroDiario(
         sefira_id=request.sefira_id,
         reflexion_texto=request.text,
         puntuacion_usuario=int(round(request.score)),
-        puntuacion_ia=int(round(ai_score)) if ai_score is not None else None,
+        puntuacion_ia=None,
         usuario_id=user.id,
     )
     db.add(registro)
     await db.commit()
-
-    return EvaluationResponse(ai_score=ai_score, feedback=feedback)
+    return EvaluationResponse(saved=True)
 
 class PreguntaCreate(BaseModel):
     sefira_id: str
