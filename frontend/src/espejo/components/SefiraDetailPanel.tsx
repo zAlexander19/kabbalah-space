@@ -6,7 +6,6 @@ import LastReflection from './LastReflection';
 import QuestionCarousel from './QuestionCarousel';
 import AnswersGridModal from './AnswersGridModal';
 import HistoryList from './HistoryList';
-import IaRespuestasDiagnostic from './IaRespuestasDiagnostic';
 import { apiFetch } from '../../auth';
 import { ConfirmSaveDialog, clearDraft, useGatedSave } from '../../shared/drafts';
 
@@ -87,6 +86,17 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
           throw new Error(body.detail ?? `No se pudo guardar la pregunta ${pregunta_id.slice(0, 6)}.`);
         }
       }
+      // After all answers saved, auto-fire the IA evaluation (fire-and-forget).
+      // The modal opens immediately; when the IA call resolves, onDataChanged()
+      // triggers a re-fetch so the new AI score appears without manual action.
+      void apiFetch('/ia/respuestas/evaluar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sefira_id: resumen.sefira_id }),
+      })
+        .then(() => onDataChanged())  // refresh registros so the new IA score appears
+        .catch(() => { /* silent */ });
+
       // Reload + open summary modal + drop the persisted draft.
       onDataChanged();
       setModalOpen(true);
@@ -149,13 +159,6 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
             onSeeAnswers={() => setModalOpen(true)}
           />
         )}
-      </Section>
-
-      <Section>
-        <IaRespuestasDiagnostic
-          sefiraId={resumen.sefira_id}
-          hasAnswers={preguntas.some(p => !!p.ultima_respuesta)}
-        />
       </Section>
 
       {registros.length > 1 && (
