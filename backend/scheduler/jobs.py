@@ -28,7 +28,9 @@ from config import get_settings
 logger = logging.getLogger(__name__)
 
 
-APP_URL = "https://kabbalahspace.app"  # overridable via env in future
+def _get_app_url() -> str:
+    """Read APP_URL from settings.frontend_url at call time (lazy — env may change)."""
+    return get_settings().frontend_url or "https://kabbalahspace.app"
 
 
 def _now_utc() -> datetime:
@@ -79,9 +81,40 @@ async def _weekly_summary_for_now(db: AsyncSession, now: datetime):
 
         week_end = now
         week_start = now - timedelta(days=7)
+
+        # Compute weekly data for this user
+        from models import Sefira, Actividad, ActividadSefira, RespuestaPregunta
+
+        sefirot_counts = (await db.execute(
+            select(Sefira.nombre, sql_func.count(Actividad.id).label("cnt"))
+            .join(ActividadSefira, ActividadSefira.sefira_id == Sefira.id)
+            .join(Actividad, Actividad.id == ActividadSefira.actividad_id)
+            .where(
+                Actividad.usuario_id == user.id,
+                Actividad.inicio >= week_start,
+                Actividad.inicio < week_end,
+            )
+            .group_by(Sefira.nombre)
+            .order_by(sql_func.count(Actividad.id).desc())
+            .limit(3)
+        )).all()
+        top_sefirot = [(row[0], int(row[1])) for row in sefirot_counts]
+
+        reflexiones_count = (await db.execute(
+            select(sql_func.count(RespuestaPregunta.id))
+            .where(
+                RespuestaPregunta.usuario_id == user.id,
+                RespuestaPregunta.fecha_registro >= week_start,
+                RespuestaPregunta.fecha_registro < week_end,
+            )
+        )).scalar() or 0
+
         try:
             await send_weekly_summary(
-                db, user=user, week_start=week_start, week_end=week_end, app_url=APP_URL,
+                db, user=user, week_start=week_start, week_end=week_end,
+                app_url=_get_app_url(),
+                top_sefirot=top_sefirot,
+                reflexiones_count=reflexiones_count,
             )
         except Exception as e:
             logger.warning("weekly_summary failed for usuario_id=%s: %s", user.id, e)
@@ -129,9 +162,67 @@ async def _monthly_summary_for_now(db: AsyncSession, now: datetime):
             month_label = f"{spanish_months[month_start_local.month - 1]} de {month_start_local.year}"
 
         month_start_utc = month_start_local.astimezone(timezone.utc)
+
+        # Compute monthly data for this user
+        from models import Sefira, Actividad, ActividadSefira, RespuestaPregunta
+
+        # Compute month_end_utc (first second of next month, exclusive)
+        if month_start_local.month == 12:
+            month_end_local = month_start_local.replace(year=month_start_local.year + 1, month=1)
+        else:
+            month_end_local = month_start_local.replace(month=month_start_local.month + 1)
+        month_end_utc = month_end_local.astimezone(timezone.utc)
+
+        # sefirot_breakdown: all sefirot with their activity count, ordered desc
+        sefirot_counts = (await db.execute(
+            select(Sefira.nombre, sql_func.count(Actividad.id).label("cnt"))
+            .join(ActividadSefira, ActividadSefira.sefira_id == Sefira.id)
+            .join(Actividad, Actividad.id == ActividadSefira.actividad_id)
+            .where(
+                Actividad.usuario_id == user.id,
+                Actividad.inicio >= month_start_utc,
+                Actividad.inicio < month_end_utc,
+            )
+            .group_by(Sefira.nombre)
+            .order_by(sql_func.count(Actividad.id).desc())
+        )).all()
+        sefirot_breakdown = [(row[0], int(row[1])) for row in sefirot_counts]
+
+        reflexiones_count = (await db.execute(
+            select(sql_func.count(RespuestaPregunta.id))
+            .where(
+                RespuestaPregunta.usuario_id == user.id,
+                RespuestaPregunta.fecha_registro >= month_start_utc,
+                RespuestaPregunta.fecha_registro < month_end_utc,
+            )
+        )).scalar() or 0
+
+        # delta vs prev month — total activities in the previous month vs the month before that
+        if month_start_local.month == 1:
+            prev_month_start_local = month_start_local.replace(year=month_start_local.year - 1, month=12)
+        else:
+            prev_month_start_local = month_start_local.replace(month=month_start_local.month - 1)
+        prev_month_start_utc = prev_month_start_local.astimezone(timezone.utc)
+        prev_month_end_utc = month_start_utc
+
+        current_total = sum(c for _, c in sefirot_breakdown)
+        prev_total = (await db.execute(
+            select(sql_func.count(Actividad.id))
+            .where(
+                Actividad.usuario_id == user.id,
+                Actividad.inicio >= prev_month_start_utc,
+                Actividad.inicio < prev_month_end_utc,
+            )
+        )).scalar() or 0
+        delta_vs_prev_month = current_total - prev_total
+
         try:
             await send_monthly_summary(
-                db, user=user, month_start=month_start_utc, month_label=month_label, app_url=APP_URL,
+                db, user=user, month_start=month_start_utc, month_label=month_label,
+                app_url=_get_app_url(),
+                sefirot_breakdown=sefirot_breakdown,
+                reflexiones_count=reflexiones_count,
+                delta_vs_prev_month=delta_vs_prev_month,
             )
         except Exception as e:
             logger.warning("monthly_summary failed for usuario_id=%s: %s", user.id, e)
@@ -194,7 +285,7 @@ async def _imbalance_for_now(db: AsyncSession, now: datetime):
             try:
                 await send_imbalance_alert(
                     db, user=user, sefira_id=sefira.id, sefira_nombre=sefira.nombre,
-                    days_since=14, app_url=APP_URL,
+                    days_since=14, app_url=_get_app_url(),
                 )
             except Exception as e:
                 logger.warning("imbalance alert failed for usuario_id=%s sefira=%s: %s", user.id, sefira.id, e)
@@ -262,7 +353,7 @@ async def _reminder_for_now(db: AsyncSession, now: datetime):
         try:
             await send_reflection_reminder(
                 db, user=user, pregunta_id=pregunta.id, pregunta_texto=pregunta.texto_pregunta,
-                sefira_nombre=sefira_nombre, app_url=APP_URL,
+                sefira_nombre=sefira_nombre, app_url=_get_app_url(),
             )
         except Exception as e:
             logger.warning("reminder failed for usuario_id=%s: %s", user.id, e)
