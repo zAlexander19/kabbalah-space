@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 
 import { useAuth } from '../auth/AuthContext';
+import { EmailPreferencesSection } from './EmailPreferencesSection';
 import { SubscriptionSection } from './SubscriptionSection';
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -37,6 +38,8 @@ export function CuentaPage({ onNavigateToPremium }: CuentaPageProps) {
       </div>
 
       <SubscriptionSection onNavigateToPremium={onNavigateToPremium} />
+
+      <EmailPreferencesSection />
     </motion.div>
   );
 }
