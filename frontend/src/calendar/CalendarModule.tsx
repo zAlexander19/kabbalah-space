@@ -288,7 +288,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     </div>
 
       <GcalSyncCard />
+      <FelicitacionToast felicitacion={felicitacion} onDismiss={dismiss} />
     </div>
-    <FelicitacionToast felicitacion={felicitacion} onDismiss={dismiss} />
   );
 }
