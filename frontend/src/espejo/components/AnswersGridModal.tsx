@@ -47,7 +47,9 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
       // y arranque el ciclo completo (carrusel de preguntas + reflexión).
       onClose();
     } else {
-      // Free: mostrar la página de planes.
+      // Free: cerrar este modal primero (su z-index 110 tapa al modal de planes
+      // que vive en z-90) y luego abrir los planes.
+      onClose();
       gate.openPlans();
     }
   }
