@@ -318,7 +318,7 @@ export default function ActivityForm({
         />
         {!showRecurrencePicker && (
           <span
-            className="absolute top-0 right-0 text-[9px] uppercase tracking-[0.16em] text-amber-300/90 bg-amber-300/10 border border-amber-300/30 rounded-full px-2 py-0.5 pointer-events-none shadow-[0_0_8px_rgba(233,195,73,0.2)]"
+            className="absolute -top-1.5 right-2 text-[10px] uppercase tracking-[0.18em] font-medium text-stone-950 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-400 rounded-full px-3 py-[3px] pointer-events-none shadow-[0_2px_12px_rgba(233,195,73,0.45)] ring-1 ring-amber-200/40"
             aria-label="Funcionalidad premium"
           >
             Premium

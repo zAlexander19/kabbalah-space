@@ -59,22 +59,32 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange,
 
   return (
     <div>
-      <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Repetir</label>
-      <select
-        disabled={disabled}
-        value={selectedKey}
-        onChange={onSelect}
-        className="mt-2 w-full bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 rounded-lg px-3 py-2 text-sm text-stone-100 outline-none disabled:opacity-50"
-      >
-        {presets.map(p => (
-          <option key={p.id} value={p.id}>
-            {markPremium && p.id !== 'none' ? `${p.label} (premium)` : p.label}
+      <label className="text-[10px] uppercase tracking-[0.22em] text-amber-100/60 font-medium">
+        Repetir
+      </label>
+      <div className="relative mt-2">
+        <select
+          disabled={disabled}
+          value={selectedKey}
+          onChange={onSelect}
+          className="w-full appearance-none bg-[#0e1014] border border-stone-800/70 hover:border-stone-700/80 focus:border-amber-300/50 focus:shadow-[0_0_0_3px_rgba(233,195,73,0.08)] rounded-xl px-4 py-3 pr-10 text-sm text-stone-100 font-body outline-none disabled:opacity-50 transition-all cursor-pointer"
+        >
+          {presets.map(p => (
+            <option key={p.id} value={p.id} className="bg-stone-950 text-stone-100">
+              {markPremium && p.id !== 'none' ? `${p.label}  ·  premium` : p.label}
+            </option>
+          ))}
+          <option value="custom" className="bg-stone-950 text-stone-100">
+            {markPremium ? 'Personalizado…  ·  premium' : 'Personalizado…'}
           </option>
-        ))}
-        <option value="custom">
-          {markPremium ? 'Personalizado… (premium)' : 'Personalizado…'}
-        </option>
-      </select>
+        </select>
+        <span
+          className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 text-[18px] pointer-events-none"
+          aria-hidden="true"
+        >
+          expand_more
+        </span>
+      </div>
 
       {showCustom && value && !disabled && (
         <CustomBlock value={value} startDate={startDate} onChange={onChange} />
