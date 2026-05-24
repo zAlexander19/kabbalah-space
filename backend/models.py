@@ -87,7 +87,7 @@ class RegistroDiario(Base):
 
     sefira_id = Column(String(50), ForeignKey("sefirot.id"))
 
-    reflexion_texto = Column(Text, nullable=False)
+    reflexion_texto = Column(Text)
 
     puntuacion_usuario = Column(Integer)
 
