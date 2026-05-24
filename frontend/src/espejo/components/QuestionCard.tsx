@@ -34,7 +34,14 @@ export default function QuestionCard({ pregunta, onSaved }: Props) {
         onSaved();
       } else {
         const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
-        setError(data.detail ?? 'No se pudo guardar');
+        // Backend may return detail as a structured object for 402/409 gates.
+        // The global apiFetch interceptor opens the gate modal in that case,
+        // so we suppress the inline error to avoid duplicate UX.
+        // Rendering the object directly would crash React.
+        const detail = (data as { detail?: unknown }).detail;
+        if (typeof detail === 'string') setError(detail);
+        else if (detail && typeof detail === 'object') setError(null);
+        else setError('No se pudo guardar');
         setShake(s => s + 1);
       }
     } finally {

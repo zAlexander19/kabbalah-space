@@ -34,6 +34,19 @@ function hm(d: Date): string {
   return `${hh}:${min}`;
 }
 
+function errorMessageFromResponse(data: unknown): string {
+  // Backend returns `detail` as either a string OR a structured object
+  // ({error, reason, ...}) for 402 premium gates / 409 cooldown.
+  // The global apiFetch interceptor already opens PremiumGate for object detail,
+  // so we suppress the inline error in that case (avoid duplicate UX).
+  // Rendering the object directly would crash React.
+  if (typeof data !== 'object' || data === null) return 'No se pudo guardar';
+  const detail = (data as { detail?: unknown }).detail;
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object') return '';
+  return 'No se pudo guardar';
+}
+
 export default function ActivityForm({
   sefirot, editing, initialDate, initialSlot, scope = 'one',
   onSaved, onCancel, onDeleted, onRequestDeleteScope, onActividadCreada,
@@ -125,9 +138,9 @@ export default function ActivityForm({
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
-      const msg = data.detail ?? 'No se pudo guardar';
+      const msg = errorMessageFromResponse(data);
       setConfirmError(msg);
-      throw new Error(msg);
+      throw new Error(msg || 'premium_gate');
     }
     const created: { id: string }[] = await res.json().catch(() => []);
     if (created.length > 0 && onActividadCreada) {
@@ -215,7 +228,7 @@ export default function ActivityForm({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ detail: 'No se pudo guardar' }));
-        setError(data.detail ?? 'No se pudo guardar');
+        setError(errorMessageFromResponse(data));
         return;
       }
       onSaved();
