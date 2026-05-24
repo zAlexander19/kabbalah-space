@@ -41,6 +41,17 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   const { isPremium } = usePremium();
   const gate = useGate();
 
+  function handleHacerOtra() {
+    if (isPremium) {
+      // Premium: cerrar el modal para que el usuario vuelva al sefirá detail
+      // y arranque el ciclo completo (carrusel de preguntas + reflexión).
+      onClose();
+    } else {
+      // Free: mostrar la página de planes.
+      gate.openPlans();
+    }
+  }
+
   // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
   // a colapsar el editor.
   useEffect(() => { setEditorOpen(false); }, [resumen.sefira_id]);
@@ -182,25 +193,22 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                       </div>
                     </>
                   ) : (
-                    <div className="flex justify-center items-center gap-2">
+                    <>
+                      <div className="h-px bg-stone-800/60" />
                       <button
                         type="button"
-                        onClick={() => {
-                          if (isPremium) {
-                            setEditorOpen(true);
-                          } else {
-                            gate.openGate({
-                              reason: 'feature_premium_only',
-                              detail: { error: 'premium_required', reason: 'feature_premium_only' },
-                            });
-                          }
-                        }}
-                        className="text-[10px] uppercase tracking-[0.14em] text-stone-500 hover:text-amber-200 transition-colors"
+                        onClick={handleHacerOtra}
+                        className="w-full rounded-xl bg-gradient-to-r from-amber-200/95 to-amber-100 text-stone-900 font-semibold text-xs uppercase tracking-[0.18em] py-3.5 px-4 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                       >
-                        Hacer otra reflexión
+                        <span>Hacer otra reflexión</span>
+                        <ModalPremiumPill />
                       </button>
-                      {!isPremium && <ModalPremiumPill />}
-                    </div>
+                      <p className="text-[10px] text-stone-500 text-center italic">
+                        {isPremium
+                          ? 'Volvés a empezar el ciclo: responder las preguntas y escribir una nueva reflexión.'
+                          : 'Disponible con Premium. Te lleva a re-responder las preguntas y guardar otra reflexión.'}
+                      </p>
+                    </>
                   )}
                 </aside>
               </div>
