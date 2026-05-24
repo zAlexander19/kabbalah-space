@@ -452,7 +452,7 @@ class PreguntaConEstado(BaseModel):
 
 class RegistroOut(BaseModel):
     id: str
-    reflexion_texto: str
+    reflexion_texto: Optional[str] = None
     puntuacion_usuario: Optional[int] = None
     puntuacion_ia: Optional[int] = None
     fecha_registro: datetime

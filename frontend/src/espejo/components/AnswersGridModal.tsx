@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import type { PreguntaConEstado, SefiraResumen, Registro } from '../types';
 import ReflectionEditor from './ReflectionEditor';
 import { SEFIRA_COLORS } from '../../shared/tokens';
+import { apiFetch } from '../../auth';
 import { usePremium } from '../../premium/usePremium';
 import { useGate } from '../../premium/PremiumGateContext';
 
@@ -57,6 +58,26 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
   // a colapsar el editor.
   useEffect(() => { setEditorOpen(false); }, [resumen.sefira_id]);
+
+  // Si el usuario tiene respuestas guardadas pero todavía no hay score de IA
+  // para esta sefirá, disparar la evaluación al abrir el modal. Una sola vez
+  // por sefirá por sesión (ref guarda el set de sefirot ya evaluadas) para no
+  // hacer llamadas duplicadas al LLM si el usuario abre/cierra el modal.
+  const autoFiredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!open) return;
+    if (latestIaScore !== null) return;
+    if (preguntas.every(p => !p.ultima_respuesta)) return;
+    if (autoFiredRef.current.has(resumen.sefira_id)) return;
+    autoFiredRef.current.add(resumen.sefira_id);
+    void apiFetch('/ia/respuestas/evaluar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sefira_id: resumen.sefira_id }),
+    })
+      .then(() => onScoreSaved())
+      .catch(() => { /* silent: la IA es accesorio */ });
+  }, [open, resumen.sefira_id, latestIaScore, preguntas, onScoreSaved]);
 
   // ESC closes
   useEffect(() => {
