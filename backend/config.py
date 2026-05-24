@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     lemonsqueezy_variant_yearly: str = ""
     lemonsqueezy_webhook_secret: str = ""
 
+    # Resend (transactional emails)
+    resend_api_key: str = ""
+    resend_webhook_secret: str = ""
+    from_email: str = "Kabbalah Space <hola@kabbalahspace.app>"
+    emails_enabled: bool = False  # kill switch — set to True to enable the scheduler + sender
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -66,6 +72,10 @@ class Settings(BaseSettings):
     @property
     def lemonsqueezy_configured(self) -> bool:
         return bool(self.lemonsqueezy_api_key and self.lemonsqueezy_store_id)
+
+    @property
+    def resend_configured(self) -> bool:
+        return bool(self.resend_api_key and self.from_email)
 
 
 @lru_cache(maxsize=1)
