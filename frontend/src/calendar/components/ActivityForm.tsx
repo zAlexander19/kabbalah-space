@@ -4,6 +4,8 @@ import { SEFIRA_COLORS } from '../../shared/tokens';
 import { apiFetch } from '../../auth';
 import RecurrencePicker from './RecurrencePicker';
 import { ConfirmSaveDialog, PendingDraftBadge, useDraftPersistence, useGatedSave } from '../../shared/drafts';
+import { usePremium } from '../../premium/usePremium';
+import { useGate } from '../../premium/PremiumGateContext';
 
 type Scope = 'one' | 'series';
 
@@ -44,6 +46,13 @@ export default function ActivityForm({
   const [selected, setSelected] = useState<string[]>([]);
   const [rrule, setRrule] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const { isPremium } = usePremium();
+  const gate = useGate();
+  // Edit-mode safety net: if the user is free but the activity ALREADY has a
+  // rrule (e.g. created when they were premium, or via series share), we keep
+  // the picker visible so they don't lose visibility of their own data.
+  const editingHasExistingRrule = !!editing && !!editing.rrule;
+  const showRecurrencePicker = isPremium || editingHasExistingRrule;
   const [shake, setShake] = useState(0);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -274,12 +283,35 @@ export default function ActivityForm({
         </div>
       </div>
 
-      <RecurrencePicker
-        value={rrule}
-        startDate={startDateForPicker}
-        disabled={!!editing && scope === 'one' && !!editing.serie_id}
-        onChange={setRrule}
-      />
+      {showRecurrencePicker ? (
+        <RecurrencePicker
+          value={rrule}
+          startDate={startDateForPicker}
+          disabled={!!editing && scope === 'one' && !!editing.serie_id}
+          onChange={setRrule}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() =>
+            gate.openGate({
+              reason: 'recurrence_premium',
+              detail: { error: 'premium_required', reason: 'recurrence_premium' },
+            })
+          }
+          className="w-full text-left px-4 py-3 rounded-xl bg-stone-900/60 border border-stone-800/60 text-stone-400 text-sm hover:border-amber-300/30 hover:text-amber-100 transition-colors flex items-center justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
+              repeat
+            </span>
+            Repetir actividad
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.14em] text-amber-300/70">
+            Premium
+          </span>
+        </button>
+      )}
 
       <div>
         <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Descripción</label>
