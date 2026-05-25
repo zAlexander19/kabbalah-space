@@ -81,7 +81,7 @@ export function PremiumPage() {
                     {submitting === 'yearly' ? 'Abriendo checkout...' : 'Suscribirme anual'}
                   </span>
                   <span className="text-xs text-stone-800/80">
-                    USD 65.80 / año <span className="opacity-70">· ahorrás 2 meses</span>
+                    USD 59.99 / año <span className="opacity-70">· ahorrás 2 meses</span>
                   </span>
                 </button>
 
@@ -95,7 +95,7 @@ export function PremiumPage() {
                   <span className="text-sm font-medium tracking-wide">
                     {submitting === 'monthly' ? 'Abriendo checkout...' : 'Suscribirme mensual'}
                   </span>
-                  <span className="text-xs text-stone-400">USD 6.58 / mes</span>
+                  <span className="text-xs text-stone-400">USD 5.99 / mes</span>
                 </button>
               </div>
 

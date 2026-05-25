@@ -6,8 +6,8 @@ interface PricingToggleProps {
 }
 
 const PRICES: Record<SubscriptionPlan, { amount: string; cadence: string; savings?: string }> = {
-  monthly: { amount: 'USD 6.58', cadence: 'por mes' },
-  yearly: { amount: 'USD 65.80', cadence: 'por año', savings: 'ahorrás 2 meses' },
+  monthly: { amount: 'USD 5.99', cadence: 'por mes' },
+  yearly: { amount: 'USD 59.99', cadence: 'por año', savings: 'ahorrás 2 meses' },
 };
 
 export function PricingToggle({ selected, onChange }: PricingToggleProps) {
