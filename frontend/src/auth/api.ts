@@ -100,6 +100,15 @@ export async function fetchMe(): Promise<User> {
   return res.json();
 }
 
+export async function updateMe(patch: { nombre?: string }): Promise<User> {
+  const res = await apiFetch('/usuarios/me', {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function loginEmail(email: string, password: string): Promise<LoginResponse> {
   const res = await apiFetch('/auth/login', {
     method: 'POST',

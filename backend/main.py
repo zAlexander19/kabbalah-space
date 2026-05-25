@@ -146,6 +146,31 @@ async def me(user: Usuario = Depends(get_current_user)):
     return user
 
 
+class UsuarioPatch(BaseModel):
+    nombre: Optional[str] = None
+
+
+@app.patch("/usuarios/me", response_model=UserOut)
+async def update_me(
+    payload: UsuarioPatch,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    """Patch the current user's editable profile fields. Email/provider are
+    immutable from the API; changing those needs a re-verification flow."""
+    data = payload.model_dump(exclude_unset=True)
+    if "nombre" in data:
+        nombre = (data["nombre"] or "").strip()
+        if not nombre:
+            raise HTTPException(status_code=422, detail="El nombre no puede estar vacío")
+        if len(nombre) > 100:
+            raise HTTPException(status_code=422, detail="El nombre es demasiado largo")
+        user.nombre = nombre
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 class KsaiToggleRequest(BaseModel):
     enabled: bool
 
