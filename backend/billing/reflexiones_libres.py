@@ -51,7 +51,7 @@ class ReflexionLibreOut(BaseModel):
 
 def _user_month_start_utc(user: Usuario) -> datetime:
     """First instant of the user's current calendar month, in UTC."""
-    tz_name = user.timezone or "America/Argentina/Buenos_Aires"
+    tz_name = user.timezone or "America/Santiago"
     tz = gettz(tz_name) or timezone.utc
     now_local = datetime.now(tz)
     month_start_local = now_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

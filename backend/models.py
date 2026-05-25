@@ -37,7 +37,7 @@ class Usuario(Base):
 
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
 
-    timezone = Column(String(64), nullable=False, server_default="America/Argentina/Buenos_Aires")
+    timezone = Column(String(64), nullable=False, server_default="America/Santiago")
 
     google_refresh_token_enc = Column(Text, nullable=True)
     google_calendar_id       = Column(String(255), nullable=True)

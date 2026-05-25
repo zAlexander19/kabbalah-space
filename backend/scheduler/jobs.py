@@ -39,7 +39,7 @@ def _now_utc() -> datetime:
 
 def _user_local(now_utc: datetime, tz_name: str) -> datetime:
     try:
-        tz = ZoneInfo(tz_name or "America/Argentina/Buenos_Aires")
+        tz = ZoneInfo(tz_name or "America/Santiago")
         return now_utc.astimezone(tz)
     except Exception:
         return now_utc
