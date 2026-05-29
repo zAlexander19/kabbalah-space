@@ -41,21 +41,26 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   // premium), y se vuelve a cerrar después de guardar.
   const [editorOpen, setEditorOpen] = useState(false);
   const [libreOpen, setLibreOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { isPremium } = usePremium();
   const gate = useGate();
 
   function handleHacerOtra() {
     if (isPremium) {
-      // Premium: abrir el editor de reflexión libre para esta sefirá.
-      // Las preguntas guía siguen en cooldown pero el premium puede
-      // escribir reflexiones libres sin límite.
-      setLibreOpen(true);
+      // Premium: mostrar confirm primero. Tras aceptar, se abre el editor
+      // de reflexión libre (Iteración 2 sumará el modo edit completo).
+      setConfirmOpen(true);
     } else {
       // Free: cerrar este modal primero (su z-index 110 tapa al modal de planes
       // que vive en z-90) y luego abrir los planes.
       onClose();
       gate.openPlans();
     }
+  }
+
+  function confirmContinue() {
+    setConfirmOpen(false);
+    setLibreOpen(true);
   }
 
   // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
@@ -251,6 +256,63 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
         </motion.div>
       )}
     </AnimatePresence>
+
+    <AnimatePresence>
+      {confirmOpen && (
+        <motion.div
+          key="confirm-overlay"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease }}
+        >
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setConfirmOpen(false)}
+            aria-hidden="true"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-otra-title"
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.22, ease }}
+            className="relative w-full max-w-md rounded-2xl bg-stone-950/95 border border-amber-300/20 shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-7"
+          >
+            <h3
+              id="confirm-otra-title"
+              className="font-serif text-xl text-amber-100/95 mb-3"
+            >
+              ¿Querés volver a reflexionar sobre esta dimensión?
+            </h3>
+            <p className="text-stone-300 text-sm leading-relaxed mb-6">
+              Tus respuestas anteriores quedarán guardadas como histórico. Vas
+              a poder escribir una nueva reflexión sobre <strong>{resumen.sefira_nombre}</strong>.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 rounded-full text-stone-400 hover:text-stone-200 text-xs tracking-wide transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmContinue}
+                className="px-5 py-2 rounded-full bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/40 text-amber-100 text-xs tracking-wide transition-colors"
+              >
+                Sí, continuar
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <ReflexionLibreEditor
       open={libreOpen}
       tipo="sefira"
