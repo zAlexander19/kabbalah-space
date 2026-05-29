@@ -42,13 +42,18 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   const [editorOpen, setEditorOpen] = useState(false);
   const [libreOpen, setLibreOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Modo edit: cada AnswerCard se vuelve un form con textarea con la respuesta
+  // vieja prellenada. Las acciones globales del panel pasan al footer.
+  const [editMode, setEditMode] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { isPremium } = usePremium();
   const gate = useGate();
 
   function handleHacerOtra() {
     if (isPremium) {
-      // Premium: mostrar confirm primero. Tras aceptar, se abre el editor
-      // de reflexión libre (Iteración 2 sumará el modo edit completo).
+      // Premium: mostrar confirm primero. Tras aceptar, se entra en modo edit.
       setConfirmOpen(true);
     } else {
       // Free: cerrar este modal primero (su z-index 110 tapa al modal de planes
@@ -60,7 +65,71 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
 
   function confirmContinue() {
     setConfirmOpen(false);
-    setLibreOpen(true);
+    // Inicializar drafts con las respuestas viejas para cada pregunta
+    const initial: Record<string, string> = {};
+    for (const p of preguntas) {
+      if (p.ultima_respuesta) initial[p.pregunta_id] = p.ultima_respuesta;
+    }
+    setDrafts(initial);
+    setSaveError(null);
+    setEditMode(true);
+  }
+
+  function exitEditMode() {
+    setEditMode(false);
+    setDrafts({});
+    setSaveError(null);
+  }
+
+  async function handleMantener() {
+    // Duplica TODAS las respuestas previas (mismo texto, fecha de hoy)
+    // y abre el editor de reflexión libre.
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { duplicarRespuesta } = await import('../api');
+      const targets = preguntas.filter((p) => p.ultima_respuesta);
+      for (const p of targets) {
+        await duplicarRespuesta(p.pregunta_id);
+      }
+      exitEditMode();
+      onScoreSaved();
+      setLibreOpen(true);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleGuardarTodas() {
+    // Para cada pregunta:
+    // - Si el draft cambió respecto a la respuesta vieja → forzar (nueva respuesta)
+    // - Si no cambió → duplicar (mantener la vieja en nuevo ciclo)
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const { forzarRespuesta, duplicarRespuesta } = await import('../api');
+      for (const p of preguntas) {
+        const draft = (drafts[p.pregunta_id] ?? '').trim();
+        const original = (p.ultima_respuesta ?? '').trim();
+        if (!original && !draft) continue; // pregunta nunca respondida y sin draft
+        if (draft && draft !== original) {
+          await forzarRespuesta(p.pregunta_id, draft);
+        } else if (original) {
+          await duplicarRespuesta(p.pregunta_id);
+        }
+      }
+      exitEditMode();
+      onScoreSaved();
+      setLibreOpen(true);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Cada vez que cambia la sefirá (modal se abre con otra sefira), volvemos
@@ -182,9 +251,58 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      {answered.map((p, i) => (
-                        <AnswerCard key={p.pregunta_id} pregunta={p} delay={i * 0.04} />
+                      {(editMode ? preguntas : answered).map((p, i) => (
+                        <AnswerCard
+                          key={p.pregunta_id}
+                          pregunta={p}
+                          delay={i * 0.04}
+                          editable={editMode}
+                          draft={drafts[p.pregunta_id]}
+                          onDraftChange={(v) =>
+                            setDrafts((prev) => ({ ...prev, [p.pregunta_id]: v }))
+                          }
+                          disabled={saving}
+                        />
                       ))}
+                    </div>
+                  )}
+
+                  {editMode && (
+                    <div className="mt-6 pt-6 border-t border-stone-800/60 space-y-4">
+                      {saveError && (
+                        <p className="text-red-300 text-sm text-center" role="alert">
+                          {saveError}
+                        </p>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                        <button
+                          type="button"
+                          onClick={exitEditMode}
+                          disabled={saving}
+                          className="px-5 py-2.5 rounded-full text-stone-400 hover:text-stone-200 text-xs tracking-wide transition-colors disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleMantener}
+                          disabled={saving}
+                          className="px-5 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-200 text-xs tracking-wide transition-colors disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          {saving ? 'Guardando...' : 'Mantener respuestas previas'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGuardarTodas}
+                          disabled={saving}
+                          className="px-5 py-2.5 rounded-full bg-amber-300/20 hover:bg-amber-300/30 border border-amber-300/50 text-amber-50 text-xs tracking-wide transition-colors disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          {saving ? 'Guardando...' : 'Guardar y continuar'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-stone-500 text-center italic">
+                        Tras guardar vas a poder escribir una reflexión libre sobre esta sefirá.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -374,7 +492,16 @@ function ModalPremiumPill() {
   );
 }
 
-function AnswerCard({ pregunta, delay }: { pregunta: PreguntaConEstado; delay: number }) {
+interface AnswerCardProps {
+  pregunta: PreguntaConEstado;
+  delay: number;
+  editable?: boolean;
+  draft?: string;
+  onDraftChange?: (value: string) => void;
+  disabled?: boolean;
+}
+
+function AnswerCard({ pregunta, delay, editable, draft, onDraftChange, disabled }: AnswerCardProps) {
   const fecha = pregunta.fecha_ultima
     ? format(parseISO(pregunta.fecha_ultima), "d 'de' MMMM", { locale: es })
     : '';
@@ -383,20 +510,40 @@ function AnswerCard({ pregunta, delay }: { pregunta: PreguntaConEstado; delay: n
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.32, ease, delay }}
-      className="rounded-2xl border border-stone-800/60 bg-stone-900/40 p-6 flex flex-col gap-4 min-h-[200px] hover:border-stone-700/80 hover:bg-stone-900/55 transition-colors"
+      className={`rounded-2xl border ${editable ? 'border-amber-300/30 bg-stone-900/50' : 'border-stone-800/60 bg-stone-900/40 hover:border-stone-700/80 hover:bg-stone-900/55'} p-6 flex flex-col gap-4 min-h-[200px] transition-colors`}
     >
       <p className="text-stone-100 text-base leading-snug font-medium">
         {pregunta.texto_pregunta}
       </p>
-      <p className="text-stone-300/85 text-sm leading-relaxed italic flex-1 whitespace-pre-wrap">
-        {pregunta.ultima_respuesta}
-      </p>
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-stone-500 pt-3 border-t border-stone-800/60">
-        <span>{fecha}</span>
-        {pregunta.dias_restantes !== null && pregunta.dias_restantes > 0 && (
-          <span className="text-amber-200/60">vuelve en {pregunta.dias_restantes}d</span>
-        )}
-      </div>
+      {editable ? (
+        <>
+          {pregunta.ultima_respuesta && (
+            <p className="text-[10px] uppercase tracking-[0.16em] text-stone-500">
+              Respuesta anterior — {fecha}
+            </p>
+          )}
+          <textarea
+            value={draft ?? ''}
+            onChange={(e) => onDraftChange?.(e.target.value)}
+            disabled={disabled}
+            placeholder={pregunta.ultima_respuesta ?? 'Escribí tu respuesta...'}
+            rows={5}
+            className="w-full bg-stone-950/60 border border-stone-800/70 focus:border-amber-300/50 rounded-xl p-3 text-stone-100 text-sm leading-relaxed italic outline-none transition-colors disabled:opacity-50 resize-y"
+          />
+        </>
+      ) : (
+        <>
+          <p className="text-stone-300/85 text-sm leading-relaxed italic flex-1 whitespace-pre-wrap">
+            {pregunta.ultima_respuesta}
+          </p>
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-stone-500 pt-3 border-t border-stone-800/60">
+            <span>{fecha}</span>
+            {pregunta.dias_restantes !== null && pregunta.dias_restantes > 0 && (
+              <span className="text-amber-200/60">vuelve en {pregunta.dias_restantes}d</span>
+            )}
+          </div>
+        </>
+      )}
     </motion.div>
   );
 }

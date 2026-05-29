@@ -1251,6 +1251,89 @@ async def save_respuesta(
     return nueva_res
 
 
+class RespuestaForzarRequest(BaseModel):
+    respuesta_texto: str
+
+
+@app.post("/respuestas/{pregunta_id}/forzar")
+async def save_respuesta_forzar(
+    pregunta_id: str,
+    rep: RespuestaForzarRequest,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    """Premium-only: crea una nueva RespuestaPregunta ignorando el cooldown.
+    Permite al usuario reiniciar el ciclo de reflexión sobre una sefirá sin
+    esperar los 7 días del cooldown premium. Las respuestas anteriores quedan
+    intactas como histórico."""
+    if not user.is_premium:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "premium_required", "reason": "feature_premium_only"},
+        )
+
+    # Verificar que la pregunta existe
+    pregunta = (await db.execute(
+        select(PreguntaSefira).where(PreguntaSefira.id == pregunta_id)
+    )).scalars().first()
+    if pregunta is None:
+        raise HTTPException(status_code=404, detail="Pregunta no encontrada")
+
+    nueva_res = RespuestaPregunta(
+        pregunta_id=pregunta_id,
+        respuesta_texto=rep.respuesta_texto,
+        usuario_id=user.id,
+    )
+    db.add(nueva_res)
+    await db.commit()
+    await db.refresh(nueva_res)
+    return nueva_res
+
+
+@app.post("/respuestas/{pregunta_id}/duplicar")
+async def duplicar_respuesta(
+    pregunta_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    """Premium-only: duplica la última respuesta del usuario para esa pregunta,
+    creando una nueva entrada con fecha actual y mismo texto. Útil cuando el
+    usuario quiere mantener su respuesta anterior pero iniciar un nuevo ciclo
+    (típicamente para luego agregar una reflexión libre sin re-escribir las
+    preguntas guía)."""
+    if not user.is_premium:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "premium_required", "reason": "feature_premium_only"},
+        )
+
+    last = (await db.execute(
+        select(RespuestaPregunta)
+        .where(
+            RespuestaPregunta.pregunta_id == pregunta_id,
+            RespuestaPregunta.usuario_id == user.id,
+        )
+        .order_by(RespuestaPregunta.fecha_registro.desc())
+        .limit(1)
+    )).scalars().first()
+
+    if last is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No hay respuestas previas para duplicar en esta pregunta",
+        )
+
+    nueva_res = RespuestaPregunta(
+        pregunta_id=pregunta_id,
+        respuesta_texto=last.respuesta_texto,
+        usuario_id=user.id,
+    )
+    db.add(nueva_res)
+    await db.commit()
+    await db.refresh(nueva_res)
+    return nueva_res
+
+
 async def ensure_series_materialized(db: AsyncSession, end: datetime, user_id: str) -> None:
     """For each open-ended series (no UNTIL/COUNT), materialize more instances
     if the series' last instance ends before `end`."""
