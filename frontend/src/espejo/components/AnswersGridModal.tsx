@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 
 import type { PreguntaConEstado, SefiraResumen, Registro } from '../types';
 import ReflectionEditor from './ReflectionEditor';
+import { ReflexionLibreEditor } from '../ReflexionLibreEditor';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 import { apiFetch } from '../../auth';
 import { usePremium } from '../../premium/usePremium';
@@ -39,14 +40,16 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   // puede abrirlo manualmente con el botón "Hacer otra reflexión" (solo
   // premium), y se vuelve a cerrar después de guardar.
   const [editorOpen, setEditorOpen] = useState(false);
+  const [libreOpen, setLibreOpen] = useState(false);
   const { isPremium } = usePremium();
   const gate = useGate();
 
   function handleHacerOtra() {
     if (isPremium) {
-      // Premium: cerrar el modal para que el usuario vuelva al sefirá detail
-      // y arranque el ciclo completo (carrusel de preguntas + reflexión).
-      onClose();
+      // Premium: abrir el editor de reflexión libre para esta sefirá.
+      // Las preguntas guía siguen en cooldown pero el premium puede
+      // escribir reflexiones libres sin límite.
+      setLibreOpen(true);
     } else {
       // Free: cerrar este modal primero (su z-index 110 tapa al modal de planes
       // que vive en z-90) y luego abrir los planes.
@@ -101,6 +104,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   // `fixed` into "fixed relative to that ancestor", trapping the modal
   // inside the right column instead of covering the viewport.
   return createPortal(
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -231,12 +235,12 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                         className="w-full rounded-xl bg-gradient-to-r from-amber-200/95 to-amber-100 text-stone-900 font-semibold text-xs uppercase tracking-[0.18em] py-3.5 px-4 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                       >
                         <span>Hacer otra reflexión</span>
-                        <ModalPremiumPill />
+                        {!isPremium && <ModalPremiumPill />}
                       </button>
                       <p className="text-[10px] text-stone-500 text-center italic">
                         {isPremium
-                          ? 'Volvés a empezar el ciclo: responder las preguntas y escribir una nueva reflexión.'
-                          : 'Disponible con Premium. Te lleva a re-responder las preguntas y guardar otra reflexión.'}
+                          ? 'Escribí una reflexión libre sobre esta sefirá. Sin tope.'
+                          : 'Disponible con Premium. Te lleva a escribir una reflexión libre sobre esta sefirá.'}
                       </p>
                     </>
                   )}
@@ -246,7 +250,15 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>,
+    </AnimatePresence>
+    <ReflexionLibreEditor
+      open={libreOpen}
+      tipo="sefira"
+      sefiraId={resumen.sefira_id}
+      onClose={() => setLibreOpen(false)}
+      onSaved={() => onScoreSaved()}
+    />
+    </>,
     document.body
   );
 }
