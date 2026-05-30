@@ -62,17 +62,14 @@ export function TourEspejoProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const next = useCallback(() => {
-    setCurrentStep((prev) => {
-      if (prev === null) return null;
-      const nextId = (prev + 1) as StepId;
-      if (nextId > STEPS.length) {
-        markDone();
-        setIsActive(false);
-        return null;
-      }
-      return nextId;
-    });
-  }, []);
+    if (currentStep === null) return;
+    const nextId = (currentStep + 1) as StepId;
+    if (nextId > STEPS.length) {
+      finish();
+      return;
+    }
+    setCurrentStep(nextId);
+  }, [currentStep, finish]);
 
   const skip = useCallback(() => {
     finish();
