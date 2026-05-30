@@ -11,8 +11,12 @@ export default function HistoryList({ registros }: Props) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  if (registros.length <= 1) return null;
-  const previous = registros.slice(1);
+  // Filtrar entradas que tienen texto real del usuario. Las que solo traen
+  // puntuacion_ia (sin reflexión escrita) son evaluaciones automaticas que
+  // ensucian el historial — no las mostramos.
+  const conTexto = registros.filter(r => r.reflexion_texto && r.reflexion_texto.trim().length > 0);
+  if (conTexto.length <= 1) return null;
+  const previous = conTexto.slice(1);
 
   return (
     <div>
