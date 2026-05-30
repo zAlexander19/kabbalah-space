@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CONNECTIONS, SEFIRA_COLORS, ink } from '../../shared/tokens';
+import { useTourStep } from '../../onboarding';
 
 export type SefiraNode = {
   id: string;
@@ -25,6 +26,10 @@ const SVG_H = 880;
 
 export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }: Props) {
   const reduced = useReducedMotion();
+  const treeRootRef = useRef<HTMLDivElement>(null);
+  const tiferetRef = useRef<HTMLElement>(null);
+  useTourStep(1, treeRootRef as React.RefObject<HTMLElement>);
+  useTourStep(2, tiferetRef as React.RefObject<HTMLElement>);
 
   // Map Y → cascade step so equal-Y nodes share a delay (keter alone,
   // then jojma+bina, etc.). The lightning descends one row at a time.
@@ -46,6 +51,7 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
 
   return (
     <div
+      ref={treeRootRef}
       className="relative w-[400px] h-[880px] select-none"
       onClick={() => onSelect(null)}
     >
@@ -159,7 +165,11 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
           const isOther = selectedId !== null && !isSelected;
           const delay = nodeDelay(node.y);
           return (
-            <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+            <g
+              key={node.id}
+              ref={node.id === 'tiferet' ? (tiferetRef as React.RefObject<any>) : undefined}
+              transform={`translate(${node.x},${node.y})`}
+            >
               <motion.g
                 onClick={(e) => { e.stopPropagation(); onSelect(node.id); }}
                 style={{ cursor: 'pointer', transformOrigin: '0px 0px' }}
