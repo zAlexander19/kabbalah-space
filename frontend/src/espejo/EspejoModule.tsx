@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { SefiraResumen } from './types';
 import { useEspejoSummary } from './hooks/useEspejoSummary';
@@ -45,16 +45,19 @@ export default function EspejoModule({
 
   // Cleanup: if the user navigates away while the tour is still active,
   // skip it (closes the tooltip + marks done) so it doesn't reappear on
-  // remount. The empty deps + the closure over `tour` is intentional —
-  // `tour.skip` is stable via useCallback in the context, so this runs
-  // exactly on real unmount.
+  // remount. We use a ref so the unmount cleanup reads the LATEST tour
+  // state — capturing `tour` directly would snapshot the first render
+  // (where isActive is false) and the guard would never fire.
+  const tourRef = useRef(tour);
+  useEffect(() => {
+    tourRef.current = tour;
+  }, [tour]);
   useEffect(() => {
     return () => {
-      if (tour.isActive) {
-        tour.skip();
+      if (tourRef.current.isActive) {
+        tourRef.current.skip();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Defer mount of the rotating card by ~700ms after the intro completes.
