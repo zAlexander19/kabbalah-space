@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiFetch, useAuth } from '../../auth';
 import type { SefiraResumen } from '../types';
 
@@ -12,25 +12,36 @@ export function useEspejoSummary() {
   const { status } = useAuth();
   const [summary, setSummary] = useState<SefiraResumen[]>([]);
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const reload = useCallback(async () => {
+    abortRef.current?.abort();
     if (status !== 'authenticated') {
       setSummary([]);
       return;
     }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     try {
-      const res = await apiFetch('/espejo/resumen');
+      const res = await apiFetch('/espejo/resumen', { signal: controller.signal });
+      if (controller.signal.aborted) return;
       if (res.ok) {
         const data = await res.json();
-        setSummary(data);
+        if (!controller.signal.aborted) setSummary(data);
       }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+      throw e;
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [status]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+    return () => abortRef.current?.abort();
+  }, [reload]);
 
   return { summary, loading, reload };
 }

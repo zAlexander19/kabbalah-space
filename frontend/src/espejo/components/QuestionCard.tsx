@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Lock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -11,7 +11,7 @@ type Props = {
   onSaved: () => void;
 };
 
-export default function QuestionCard({ pregunta, onSaved }: Props) {
+function QuestionCardImpl({ pregunta, onSaved }: Props) {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,3 +115,6 @@ export default function QuestionCard({ pregunta, onSaved }: Props) {
     </motion.div>
   );
 }
+
+const QuestionCard = memo(QuestionCardImpl);
+export default QuestionCard;

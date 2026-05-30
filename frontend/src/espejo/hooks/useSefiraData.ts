@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiFetch, useAuth } from '../../auth';
 import type { PreguntaConEstado, Registro } from '../types';
 
@@ -21,24 +21,31 @@ export function useSefiraData(sefiraId: string | null) {
   const [preguntas, setPreguntas] = useState<PreguntaConEstado[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const reload = useCallback(async () => {
+    abortRef.current?.abort();
     if (!sefiraId || status === 'loading') {
       setPreguntas([]);
       setRegistros([]);
       return;
     }
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     try {
       if (status === 'authenticated') {
         const [pRes, rRes] = await Promise.all([
-          apiFetch(`/respuestas/${sefiraId}`),
-          apiFetch(`/registros/${sefiraId}`),
+          apiFetch(`/respuestas/${sefiraId}`, { signal: controller.signal }),
+          apiFetch(`/registros/${sefiraId}`, { signal: controller.signal }),
         ]);
+        if (controller.signal.aborted) return;
         if (pRes.ok) setPreguntas(await pRes.json());
+        if (controller.signal.aborted) return;
         if (rRes.ok) setRegistros(await rRes.json());
       } else {
-        const res = await apiFetch(`/preguntas/${sefiraId}`);
+        const res = await apiFetch(`/preguntas/${sefiraId}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         if (res.ok) {
           const raw: RawPregunta[] = await res.json();
           const synth: PreguntaConEstado[] = raw.map((p) => ({
@@ -54,12 +61,18 @@ export function useSefiraData(sefiraId: string | null) {
         }
         setRegistros([]);
       }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+      throw e;
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [sefiraId, status]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+    return () => abortRef.current?.abort();
+  }, [reload]);
 
   return { preguntas, registros, loading, reload };
 }

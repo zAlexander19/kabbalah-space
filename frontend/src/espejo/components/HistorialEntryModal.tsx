@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 
 import { getHistorialSnapshot, type HistorialSnapshot } from '../api';
 import { SEFIRA_COLORS } from '../../shared/tokens';
+import { useScrollLock } from '../../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -30,15 +31,7 @@ export default function HistorialEntryModal({ open, registroId, onClose }: Props
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Body scroll lock
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useScrollLock(open);
 
   // Fetch snapshot when modal opens with a new registroId
   useEffect(() => {

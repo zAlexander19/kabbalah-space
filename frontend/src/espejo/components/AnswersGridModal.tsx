@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -11,6 +11,8 @@ import { SEFIRA_COLORS } from '../../shared/tokens';
 import { apiFetch } from '../../auth';
 import { usePremium } from '../../premium/usePremium';
 import { useGate } from '../../premium/PremiumGateContext';
+import { useScrollLock } from '../../shared/hooks/useScrollLock';
+import { duplicarRespuesta, forzarRespuesta } from '../api';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -50,6 +52,14 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isPremium } = usePremium();
   const gate = useGate();
+
+  useScrollLock(open);
+  useScrollLock(confirmOpen);
+
+  // Stable callback so memoized AnswerCard children don't re-render on every keystroke.
+  const handleDraftChange = useCallback((preguntaId: string, value: string) => {
+    setDrafts((prev) => ({ ...prev, [preguntaId]: value }));
+  }, []);
 
   function handleHacerOtra() {
     if (isPremium) {
@@ -92,7 +102,6 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
     setSaving(true);
     setSaveError(null);
     try {
-      const { duplicarRespuesta } = await import('../api');
       const targets = preguntas.filter((p) => p.ultima_respuesta);
       for (const p of targets) {
         await duplicarRespuesta(p.pregunta_id);
@@ -118,7 +127,6 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
     setSaving(true);
     setSaveError(null);
     try {
-      const { forzarRespuesta, duplicarRespuesta } = await import('../api');
       for (const p of preguntas) {
         const draft = (drafts[p.pregunta_id] ?? '').trim();
         const original = (p.ultima_respuesta ?? '').trim();
@@ -179,6 +187,16 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   }, [open, onClose]);
 
   const answered = preguntas.filter(p => !!p.ultima_respuesta);
+
+  // Premium cooldown semanal: máximo días que faltan antes de que TODAS las
+  // preguntas vuelvan a estar disponibles. Si > 0, "Hacer otra reflexión"
+  // todavía no puede invocarse (el backend devolvería 409). La cadencia
+  // semanal mantiene 1 punto por semana en los gráficos de Mi Evolución.
+  const cooldownDiasRestantes = answered.reduce((max, p) => {
+    const d = p.dias_restantes ?? 0;
+    return d > max ? d : max;
+  }, 0);
+  const cooldownActivo = cooldownDiasRestantes > 0;
 
   // Render via portal so position: fixed escapes any transformed ancestor.
   // Without this, framer-motion `x` transforms on parent containers turn
@@ -265,9 +283,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                           delay={i * 0.04}
                           editable={editMode}
                           draft={drafts[p.pregunta_id]}
-                          onDraftChange={(v) =>
-                            setDrafts((prev) => ({ ...prev, [p.pregunta_id]: v }))
-                          }
+                          onDraftChange={handleDraftChange}
                           disabled={saving}
                         />
                       ))}
@@ -356,6 +372,21 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                         />
                       </div>
                     </>
+                  ) : isPremium && cooldownActivo ? (
+                    <>
+                      <div className="h-px bg-stone-800/60" />
+                      <div className="rounded-xl border border-stone-700/40 bg-stone-950/40 px-4 py-3 text-center">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-amber-200/70 mb-1">
+                          Próxima reflexión
+                        </p>
+                        <p className="text-stone-200 text-sm leading-snug">
+                          En {cooldownDiasRestantes} {cooldownDiasRestantes === 1 ? 'día' : 'días'}
+                        </p>
+                        <p className="text-[10px] text-stone-500 italic mt-2 leading-snug">
+                          Cadencia semanal — una reflexión por semana mantiene tu progreso visible en Mi Evolución.
+                        </p>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <div className="h-px bg-stone-800/60" />
@@ -369,7 +400,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                       </button>
                       <p className="text-[10px] text-stone-500 text-center italic">
                         {isPremium
-                          ? 'Escribí una reflexión libre sobre esta sefirá. Sin tope.'
+                          ? 'Iniciá un nuevo ciclo: respuestas + reflexión + nivelación.'
                           : 'Disponible con Premium. Te lleva a escribir una reflexión libre sobre esta sefirá.'}
                       </p>
                     </>
@@ -450,7 +481,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   );
 }
 
-function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: string }) {
+const SefiraOrb = memo(function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: string }) {
   const color = SEFIRA_COLORS[sefiraId] ?? '#a3a3a3';
   return (
     <div className="flex justify-center pt-2">
@@ -469,9 +500,9 @@ function SefiraOrb({ sefiraId, sefiraName }: { sefiraId: string; sefiraName: str
       </div>
     </div>
   );
-}
+});
 
-function ScoreChip({ label, value, accent }: {
+const ScoreChip = memo(function ScoreChip({ label, value, accent }: {
   label: string;
   value: number | null;
   accent: 'amber' | 'stone';
@@ -487,7 +518,7 @@ function ScoreChip({ label, value, accent }: {
       </span>
     </div>
   );
-}
+});
 
 function ModalPremiumPill() {
   return (
@@ -504,11 +535,11 @@ interface AnswerCardProps {
   delay: number;
   editable?: boolean;
   draft?: string;
-  onDraftChange?: (value: string) => void;
+  onDraftChange?: (preguntaId: string, value: string) => void;
   disabled?: boolean;
 }
 
-function AnswerCard({ pregunta, delay, editable, draft, onDraftChange, disabled }: AnswerCardProps) {
+const AnswerCard = memo(function AnswerCard({ pregunta, delay, editable, draft, onDraftChange, disabled }: AnswerCardProps) {
   const fecha = pregunta.fecha_ultima
     ? format(parseISO(pregunta.fecha_ultima), "d 'de' MMMM", { locale: es })
     : '';
@@ -531,7 +562,7 @@ function AnswerCard({ pregunta, delay, editable, draft, onDraftChange, disabled 
           )}
           <textarea
             value={draft ?? ''}
-            onChange={(e) => onDraftChange?.(e.target.value)}
+            onChange={(e) => onDraftChange?.(pregunta.pregunta_id, e.target.value)}
             disabled={disabled}
             placeholder={pregunta.ultima_respuesta ?? 'Escribí tu respuesta...'}
             rows={5}
@@ -553,4 +584,4 @@ function AnswerCard({ pregunta, delay, editable, draft, onDraftChange, disabled 
       )}
     </motion.div>
   );
-}
+});

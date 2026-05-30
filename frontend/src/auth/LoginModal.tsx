@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { useAuth } from './AuthContext';
 import type { OAuthErrorCode } from './types';
+import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -28,6 +29,8 @@ export function LoginModal() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  useScrollLock(auth.isLoginModalOpen);
 
   // Reset on open and focus first field
   useEffect(() => {

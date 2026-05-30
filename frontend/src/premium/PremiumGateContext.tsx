@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import type { GateError, GateReason } from './types';
 
@@ -42,10 +42,13 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
   const openPlans = useCallback(() => setIsPlansOpen(true), []);
   const closePlans = useCallback(() => setIsPlansOpen(false), []);
 
+  const value = useMemo(
+    () => ({ isOpen, reason, detail, openGate, closeGate, isPlansOpen, openPlans, closePlans }),
+    [isOpen, reason, detail, openGate, closeGate, isPlansOpen, openPlans, closePlans],
+  );
+
   return (
-    <PremiumGateContext.Provider
-      value={{ isOpen, reason, detail, openGate, closeGate, isPlansOpen, openPlans, closePlans }}
-    >
+    <PremiumGateContext.Provider value={value}>
       {children}
     </PremiumGateContext.Provider>
   );

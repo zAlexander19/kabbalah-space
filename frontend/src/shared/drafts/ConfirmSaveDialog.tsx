@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
+import { useScrollLock } from '../hooks/useScrollLock';
+
 const ease = [0.16, 1, 0.3, 1] as const;
 
 type Props = {
@@ -32,6 +34,8 @@ export function ConfirmSaveDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  useScrollLock(open);
+
   // ESC closes (when not saving)
   useEffect(() => {
     if (!open) return;

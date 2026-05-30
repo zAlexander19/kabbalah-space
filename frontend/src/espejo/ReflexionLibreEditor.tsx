@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { createReflexionLibre } from '../premium';
+import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 const DRAFT_PREFIX = 'reflexion-libre-draft-';
@@ -33,6 +34,8 @@ export function ReflexionLibreEditor({
   const [contenido, setContenido] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useScrollLock(open);
 
   // Restore draft on open
   useEffect(() => {

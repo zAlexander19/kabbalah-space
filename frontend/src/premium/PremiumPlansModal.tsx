@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { useGate } from './PremiumGateContext';
 import { PremiumPage } from './PremiumPage';
+import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -16,15 +17,7 @@ const ease = [0.16, 1, 0.3, 1] as const;
 export function PremiumPlansModal() {
   const { isPlansOpen, closePlans } = useGate();
 
-  // Lock body scroll while open
-  useEffect(() => {
-    if (!isPlansOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [isPlansOpen]);
+  useScrollLock(isPlansOpen);
 
   // Escape closes
   useEffect(() => {
