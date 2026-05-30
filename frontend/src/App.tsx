@@ -11,7 +11,7 @@ import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPlansModal } from "./premium/PremiumPlansModal";
 import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
-import { useTourEspejo, TOUR_DONE_FLAG } from "./onboarding";
+import { TourEspejoProvider, TourTooltip, useTourEspejo, TOUR_DONE_FLAG } from "./onboarding";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -48,12 +48,22 @@ function shouldPlayIntro(): boolean {
 const ease = [0.16, 1, 0.3, 1] as const;
 
 function AppInner() {
-  const [activeView, setActiveView] = useState<ViewKey>('inicio');
+  const [activeView, setActiveViewRaw] = useState<ViewKey>('inicio');
   const [pageRevealed, setPageRevealed] = useState<boolean>(() => !shouldPlayIntro());
   const [introPlaying, setIntroPlaying] = useState<boolean>(() => shouldPlayIntro());
 
   const gate = useGate();
   const tour = useTourEspejo();
+
+  const setActiveView = useCallback(
+    (target: ViewKey) => {
+      if (tour.isActive && target !== 'espejo' && target !== 'inicio') {
+        return; // navegación bloqueada durante el tour
+      }
+      setActiveViewRaw(target);
+    },
+    [tour.isActive],
+  );
 
   useEffect(() => {
     setPaymentRequiredHandler((err) => {
@@ -180,6 +190,7 @@ function AppInner() {
     </div>
     <PremiumGate onNavigateToPremium={gate.openPlans} />
     <PremiumPlansModal />
+    <TourTooltip />
     </>
   );
 }
@@ -187,7 +198,9 @@ function AppInner() {
 export default function App() {
   return (
     <PremiumGateProvider>
-      <AppInner />
+      <TourEspejoProvider>
+        <AppInner />
+      </TourEspejoProvider>
     </PremiumGateProvider>
   );
 }
