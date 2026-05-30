@@ -1340,10 +1340,11 @@ async def save_respuesta_forzar(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
-    """Premium-only: crea una nueva RespuestaPregunta ignorando el cooldown.
-    Permite al usuario reiniciar el ciclo de reflexión sobre una sefirá sin
-    esperar los 7 días del cooldown premium. Las respuestas anteriores quedan
-    intactas como histórico."""
+    """Premium-only: registra una nueva RespuestaPregunta como reinicio de ciclo.
+    Respeta el cooldown semanal de premium — la cadencia mínima es de 7 días
+    para que cada reflexión caiga en una semana distinta y se grafique como
+    punto separado en Mi Evolución. Las respuestas anteriores quedan intactas
+    como histórico."""
     if not user.is_premium:
         raise HTTPException(
             status_code=402,
@@ -1356,6 +1357,31 @@ async def save_respuesta_forzar(
     )).scalars().first()
     if pregunta is None:
         raise HTTPException(status_code=404, detail="Pregunta no encontrada")
+
+    last = (await db.execute(
+        select(RespuestaPregunta)
+        .where(
+            RespuestaPregunta.pregunta_id == pregunta_id,
+            RespuestaPregunta.usuario_id == user.id,
+        )
+        .order_by(RespuestaPregunta.fecha_registro.desc())
+        .limit(1)
+    )).scalars().first()
+
+    if last is not None:
+        last_dt = last.fecha_registro
+        if last_dt.tzinfo is not None:
+            last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        next_available = last_dt + timedelta(days=PREMIUM_COOLDOWN_DAYS)
+        if next_available > datetime.utcnow():
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error": "cooldown_active",
+                    "reason": "respuesta_cooldown",
+                    "next_available": next_available.date().isoformat(),
+                },
+            )
 
     nueva_res = RespuestaPregunta(
         pregunta_id=pregunta_id,
@@ -1375,10 +1401,10 @@ async def duplicar_respuesta(
     user: Usuario = Depends(get_current_user),
 ):
     """Premium-only: duplica la última respuesta del usuario para esa pregunta,
-    creando una nueva entrada con fecha actual y mismo texto. Útil cuando el
-    usuario quiere mantener su respuesta anterior pero iniciar un nuevo ciclo
-    (típicamente para luego agregar una reflexión libre sin re-escribir las
-    preguntas guía)."""
+    creando una nueva entrada con fecha actual y mismo texto. Respeta el
+    cooldown semanal premium — la cadencia mínima de toda respuesta es 7 días
+    para que cada ciclo de reflexión caiga en su propia semana en los gráficos
+    de Mi Evolución."""
     if not user.is_premium:
         raise HTTPException(
             status_code=402,
@@ -1399,6 +1425,20 @@ async def duplicar_respuesta(
         raise HTTPException(
             status_code=404,
             detail="No hay respuestas previas para duplicar en esta pregunta",
+        )
+
+    last_dt = last.fecha_registro
+    if last_dt.tzinfo is not None:
+        last_dt = last_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    next_available = last_dt + timedelta(days=PREMIUM_COOLDOWN_DAYS)
+    if next_available > datetime.utcnow():
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "cooldown_active",
+                "reason": "respuesta_cooldown",
+                "next_available": next_available.date().isoformat(),
+            },
         )
 
     nueva_res = RespuestaPregunta(
