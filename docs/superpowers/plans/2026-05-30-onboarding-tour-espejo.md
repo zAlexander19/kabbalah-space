@@ -335,7 +335,7 @@ git commit -m "feat(onboarding): useTourStep hook para registrar elementos como 
 
 ```tsx
 // frontend/src/onboarding/TourTooltip.tsx
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
@@ -359,12 +359,13 @@ function computePosition(
 ): Position {
   const isMobile = viewport.w < MOBILE_BREAKPOINT;
   if (isMobile) {
-    // On mobile always go bottom, centered horizontally.
-    return {
-      top: Math.min(rect.bottom + TOOLTIP_OFFSET, viewport.h - tooltipHeight - VIEWPORT_PADDING),
-      left: VIEWPORT_PADDING,
-      placement: 'bottom',
-    };
+    // On mobile, place below if it fits, otherwise above. Keeps the tooltip
+    // visually connected to the target (e.g. paso 5 — historial — is near the
+    // bottom of the page).
+    const placeBelow = rect.bottom + TOOLTIP_OFFSET + tooltipHeight + VIEWPORT_PADDING <= viewport.h;
+    return placeBelow
+      ? { top: rect.bottom + TOOLTIP_OFFSET, left: VIEWPORT_PADDING, placement: 'bottom' }
+      : { top: Math.max(VIEWPORT_PADDING, rect.top - TOOLTIP_OFFSET - tooltipHeight), left: VIEWPORT_PADDING, placement: 'top' };
   }
 
   const tryPlacement = (p: StepPlacement): Position | null => {
@@ -416,8 +417,8 @@ function computePosition(
 function ArrowSvg({ placement }: { placement: StepPlacement }) {
   // Triangle pointing toward the target. CSS rotation based on placement.
   const rotate = {
-    right: 180,
-    left: 0,
+    right: 0,
+    left: 180,
     top: 90,
     bottom: -90,
   }[placement];
@@ -463,14 +464,18 @@ export function TourTooltip() {
     }
     const update = () => {
       const rect = targetEl.getBoundingClientRect();
-      // Approximate tooltip height — refined after first render by measuring real DOM.
+      // Approximate tooltip height — copy length and step mode determine it.
       const approxHeight = step.mode === 'linear' ? 160 : 110;
       setPosition(computePosition(rect, step.placement, viewport, approxHeight));
     };
     update();
     const onResize = () => {
-      setViewport({ w: window.innerWidth, h: window.innerHeight });
-      update();
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setViewport({ w, h });
+      const rect = targetEl.getBoundingClientRect();
+      const approxHeight = step.mode === 'linear' ? 160 : 110;
+      setPosition(computePosition(rect, step.placement, { w, h }, approxHeight));
     };
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', update, true);
@@ -481,14 +486,20 @@ export function TourTooltip() {
   }, [step, targetEl, viewport.w, viewport.h]);
 
   // Attach advance listener for contextual / target-click steps.
+  // tour.next is stashed in a ref so we don't re-attach the listener on every
+  // context value change (which would happen each time targetsVersion bumps).
+  const nextRef = useRef(tour.next);
+  useEffect(() => {
+    nextRef.current = tour.next;
+  }, [tour.next]);
   useEffect(() => {
     if (!step || !targetEl) return;
     if (step.advanceOn === 'next-button') return;
-    const handler = () => tour.next();
+    const handler = () => nextRef.current();
     const eventName = step.advanceOn === 'target-focus' ? 'focus' : 'click';
     targetEl.addEventListener(eventName, handler, { once: true });
     return () => targetEl.removeEventListener(eventName, handler);
-  }, [step, targetEl, tour]);
+  }, [step, targetEl]);
 
   // Auto-close timer for the last step (paso 5) when target never appears or
   // user doesn't interact.
