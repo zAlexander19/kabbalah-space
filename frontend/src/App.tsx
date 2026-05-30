@@ -81,13 +81,13 @@ function AppInner() {
     const handler = () => setActiveView('cuenta');
     window.addEventListener('navigate:cuenta', handler);
     return () => window.removeEventListener('navigate:cuenta', handler);
-  }, []);
+  }, [setActiveView]);
 
   useEffect(() => {
     const handler = () => setActiveView('calendario');
     window.addEventListener('navigate:calendario', handler);
     return () => window.removeEventListener('navigate:calendario', handler);
-  }, []);
+  }, [setActiveView]);
 
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
