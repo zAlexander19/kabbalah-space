@@ -637,6 +637,84 @@ async def get_registros(
     ]
 
 
+class HistorialRespuestaSnapshot(BaseModel):
+    pregunta_id: str
+    texto_pregunta: str
+    respuesta_texto: str
+    fecha_respuesta: datetime
+
+
+class HistorialSnapshot(BaseModel):
+    registro: RegistroOut
+    sefira_id: str
+    sefira_nombre: str
+    respuestas: list[HistorialRespuestaSnapshot]
+
+
+@app.get("/espejo/registros/{registro_id}/snapshot", response_model=HistorialSnapshot)
+async def get_registro_snapshot(
+    registro_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+):
+    """Devuelve el RegistroDiario + las respuestas a las preguntas guia de
+    esa sefirá en el momento del registro: para cada pregunta, la respuesta
+    más reciente del usuario que sea anterior o igual a la fecha del registro.
+    """
+    registro = (await db.execute(
+        select(RegistroDiario).where(
+            RegistroDiario.id == registro_id,
+            RegistroDiario.usuario_id == user.id,
+        )
+    )).scalars().first()
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+
+    sefira = (await db.execute(
+        select(Sefira).where(Sefira.id == registro.sefira_id)
+    )).scalars().first()
+    if sefira is None:
+        raise HTTPException(status_code=404, detail="Sefirá no encontrada")
+
+    preguntas = (await db.execute(
+        select(PreguntaSefira).where(PreguntaSefira.sefira_id == registro.sefira_id)
+    )).scalars().all()
+
+    respuestas: list[HistorialRespuestaSnapshot] = []
+    for p in preguntas:
+        ultima = (await db.execute(
+            select(RespuestaPregunta)
+            .where(
+                RespuestaPregunta.pregunta_id == p.id,
+                RespuestaPregunta.usuario_id == user.id,
+                RespuestaPregunta.fecha_registro <= registro.fecha_registro,
+            )
+            .order_by(RespuestaPregunta.fecha_registro.desc())
+            .limit(1)
+        )).scalars().first()
+        if ultima is None:
+            continue
+        respuestas.append(HistorialRespuestaSnapshot(
+            pregunta_id=p.id,
+            texto_pregunta=p.texto_pregunta,
+            respuesta_texto=ultima.respuesta_texto,
+            fecha_respuesta=ultima.fecha_registro,
+        ))
+
+    return HistorialSnapshot(
+        registro=RegistroOut(
+            id=registro.id,
+            reflexion_texto=registro.reflexion_texto,
+            puntuacion_usuario=registro.puntuacion_usuario,
+            puntuacion_ia=registro.puntuacion_ia,
+            fecha_registro=registro.fecha_registro,
+        ),
+        sefira_id=sefira.id,
+        sefira_nombre=sefira.nombre,
+        respuestas=respuestas,
+    )
+
+
 @app.get("/espejo/resumen", response_model=list[SefiraResumen])
 async def espejo_resumen(
     db: AsyncSession = Depends(get_db),

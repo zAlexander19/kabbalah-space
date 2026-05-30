@@ -1,10 +1,31 @@
 import { apiFetch } from '../auth';
+import type { Registro } from './types';
 
 interface RespuestaResponse {
   id: string;
   pregunta_id: string;
   respuesta_texto: string;
   fecha_registro: string;
+}
+
+export interface HistorialRespuestaSnapshot {
+  pregunta_id: string;
+  texto_pregunta: string;
+  respuesta_texto: string;
+  fecha_respuesta: string;
+}
+
+export interface HistorialSnapshot {
+  registro: Registro;
+  sefira_id: string;
+  sefira_nombre: string;
+  respuestas: HistorialRespuestaSnapshot[];
+}
+
+export async function getHistorialSnapshot(registroId: string): Promise<HistorialSnapshot> {
+  const res = await apiFetch(`/espejo/registros/${registroId}/snapshot`);
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
 }
 
 async function parseError(res: Response): Promise<string> {
