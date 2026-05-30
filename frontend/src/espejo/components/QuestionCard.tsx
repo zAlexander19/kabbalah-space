@@ -1,21 +1,25 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Lock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { PreguntaConEstado } from '../types';
 import { apiFetch } from '../../auth';
+import { useTourStep } from '../../onboarding';
 
 type Props = {
   pregunta: PreguntaConEstado;
   onSaved: () => void;
+  isFirstVisible?: boolean;  // when true, this card's textarea is the target of tour step 3
 };
 
-function QuestionCardImpl({ pregunta, onSaved }: Props) {
+function QuestionCardImpl({ pregunta, onSaved, isFirstVisible }: Props) {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useTourStep(3, isFirstVisible ? textareaRef : null);
 
   useEffect(() => { setText(''); setError(null); }, [pregunta.pregunta_id]);
 
@@ -86,6 +90,7 @@ function QuestionCardImpl({ pregunta, onSaved }: Props) {
         </div>
       ) : (
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={e => setText(e.target.value)}
           onBlur={handleSave}
