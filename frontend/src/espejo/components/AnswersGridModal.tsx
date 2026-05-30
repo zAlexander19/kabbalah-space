@@ -82,8 +82,9 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   }
 
   async function handleMantener() {
-    // Duplica TODAS las respuestas previas (mismo texto, fecha de hoy)
-    // y abre el editor de reflexión libre.
+    // Duplica TODAS las respuestas previas (mismo texto, fecha de hoy) y deja
+    // el editor de reflexión + nivelación de energía abierto en el sidebar
+    // para que el usuario cierre el ciclo con una nueva reflexión y score.
     if (saving) return;
     setSaving(true);
     setSaveError(null);
@@ -95,7 +96,8 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
       }
       exitEditMode();
       onScoreSaved();
-      setLibreOpen(true);
+      // Reabrir el editor del sidebar (queda visible aunque ya haya reflexión vieja)
+      setEditorOpen(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
     } finally {
@@ -124,7 +126,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
       }
       exitEditMode();
       onScoreSaved();
-      setLibreOpen(true);
+      setEditorOpen(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
     } finally {
@@ -301,7 +303,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                         </button>
                       </div>
                       <p className="text-[10px] text-stone-500 text-center italic">
-                        Tras guardar vas a poder escribir una reflexión libre sobre esta sefirá.
+                        Tras guardar, el panel de la derecha te deja escribir una nueva reflexión y ajustar el nivel de la sefirá.
                       </p>
                     </div>
                   )}
