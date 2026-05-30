@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
 
 import type { PreguntaConEstado } from '../types';
 import { PendingDraftBadge, useDraftPersistence } from '../../shared/drafts';
+import { useTourStep } from '../../onboarding';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -64,6 +65,7 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useTourStep(3, textareaRef);
 
   // Reset session state if the underlying questions change (e.g. after save —
   // questions reload with new bloqueada flags, possibly different ids).
