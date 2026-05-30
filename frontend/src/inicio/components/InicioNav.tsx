@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import KabbalahLogo from './KabbalahLogo';
 import { useAuth } from '../../auth';
+import { useTourEspejo } from '../../onboarding';
 
 export type InicioNavTarget = 'inicio' | 'espejo' | 'calendario' | 'evolucion';
 
@@ -27,6 +28,7 @@ function getInitials(nombre: string): string {
 
 export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) {
   const auth = useAuth();
+  const tour = useTourEspejo();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -85,12 +87,18 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
         <div className="hidden md:flex items-center gap-1">
           {SECTIONS.map((s) => {
             const active = activeView === s.key;
+            const isBlockedByTour = tour.isActive && s.key !== 'espejo';
             return (
               <button
                 key={s.key}
                 type="button"
                 onClick={() => onNavigate(s.key)}
-                className={`ks-nav-link ${active ? 'text-gold' : ''}`}
+                disabled={isBlockedByTour}
+                aria-disabled={isBlockedByTour ? 'true' : undefined}
+                title={isBlockedByTour ? 'Terminá el tour antes de salir' : undefined}
+                className={`ks-nav-link ${active ? 'text-gold' : ''} ${
+                  isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
+                }`}
                 aria-current={active ? 'page' : undefined}
               >
                 {s.label}
