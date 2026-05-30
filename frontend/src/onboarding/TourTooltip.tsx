@@ -173,6 +173,23 @@ export function TourTooltip() {
     return () => clearTimeout(timer);
   }, [step, tour]);
 
+  // Auto-pause when a higher-z modal opens (PremiumGate z-100, AnswersGridModal
+  // z-110, etc). We don't reposition or remount — we just hide the tooltip and
+  // let it reappear when the modal closes.
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (!tour.isActive) return;
+    const check = () => {
+      const modals = document.querySelectorAll('[aria-modal="true"]');
+      setIsPaused(modals.length > 0);
+    };
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal'] });
+    return () => observer.disconnect();
+  }, [tour.isActive]);
+
   if (!step || !position) return null;
 
   const motionDuration = reducedMotion ? 0 : 0.22;
@@ -182,7 +199,7 @@ export function TourTooltip() {
       <motion.div
         key={step.id}
         initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: isPaused ? 0 : 1, scale: isPaused ? 0.95 : 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: motionDuration, ease }}
         className="fixed z-[80] pointer-events-none"
