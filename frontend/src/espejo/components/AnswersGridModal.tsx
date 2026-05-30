@@ -73,6 +73,9 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
     setDrafts(initial);
     setSaveError(null);
     setEditMode(true);
+    // Abrir tambien el editor del sidebar para que TODO el ciclo (respuestas
+    // editables + reflexion + score) se vea de una sola pantalla.
+    setEditorOpen(true);
   }
 
   function exitEditMode() {
@@ -82,9 +85,9 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
   }
 
   async function handleMantener() {
-    // Duplica TODAS las respuestas previas (mismo texto, fecha de hoy) y deja
-    // el editor de reflexión + nivelación de energía abierto en el sidebar
-    // para que el usuario cierre el ciclo con una nueva reflexión y score.
+    // Duplica TODAS las respuestas previas (mismo texto, fecha de hoy).
+    // El editor de reflexión + nivelación ya está visible en el sidebar
+    // desde que entró al modo edit.
     if (saving) return;
     setSaving(true);
     setSaveError(null);
@@ -94,10 +97,12 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
       for (const p of targets) {
         await duplicarRespuesta(p.pregunta_id);
       }
-      exitEditMode();
+      // Salimos del modo edit (deja las cards en lectura) pero NO cerramos
+      // editorOpen: dejamos el editor del sidebar disponible para que el usuario
+      // escriba su reflexión + score y cierre el ciclo.
+      setEditMode(false);
+      setDrafts({});
       onScoreSaved();
-      // Reabrir el editor del sidebar (queda visible aunque ya haya reflexión vieja)
-      setEditorOpen(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
     } finally {
@@ -117,16 +122,16 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
       for (const p of preguntas) {
         const draft = (drafts[p.pregunta_id] ?? '').trim();
         const original = (p.ultima_respuesta ?? '').trim();
-        if (!original && !draft) continue; // pregunta nunca respondida y sin draft
+        if (!original && !draft) continue;
         if (draft && draft !== original) {
           await forzarRespuesta(p.pregunta_id, draft);
         } else if (original) {
           await duplicarRespuesta(p.pregunta_id);
         }
       }
-      exitEditMode();
+      setEditMode(false);
+      setDrafts({});
       onScoreSaved();
-      setEditorOpen(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'No se pudo guardar');
     } finally {
@@ -303,7 +308,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                         </button>
                       </div>
                       <p className="text-[10px] text-stone-500 text-center italic">
-                        Tras guardar, el panel de la derecha te deja escribir una nueva reflexión y ajustar el nivel de la sefirá.
+                        El panel de la derecha también está abierto: escribí tu nueva reflexión y ajustá el nivel de la sefirá ahí mismo.
                       </p>
                     </div>
                   )}
