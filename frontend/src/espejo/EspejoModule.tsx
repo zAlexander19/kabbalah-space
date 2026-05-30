@@ -9,6 +9,7 @@ import EmptyState from './components/EmptyState';
 import SefiraDetailPanel from './components/SefiraDetailPanel';
 import EspejoIntro from './components/EspejoIntro';
 import { ReflexionLibreEditor } from './ReflexionLibreEditor';
+import { useTourEspejo } from '../onboarding';
 
 type Props = {
   sefirot: SefiraNode[];
@@ -39,6 +40,22 @@ export default function EspejoModule({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { preguntas, registros, reload: reloadSefira } = useSefiraData(selectedId);
   const [libreEditorOpen, setLibreEditorOpen] = useState(false);
+
+  const tour = useTourEspejo();
+
+  // Cleanup: if the user navigates away while the tour is still active,
+  // skip it (closes the tooltip + marks done) so it doesn't reappear on
+  // remount. The empty deps + the closure over `tour` is intentional —
+  // `tour.skip` is stable via useCallback in the context, so this runs
+  // exactly on real unmount.
+  useEffect(() => {
+    return () => {
+      if (tour.isActive) {
+        tour.skip();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Defer mount of the rotating card by ~700ms after the intro completes.
   // This prevents a stutter at the moment the intro starts unmounting:

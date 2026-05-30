@@ -11,6 +11,7 @@ import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPlansModal } from "./premium/PremiumPlansModal";
 import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
+import { useTourEspejo, TOUR_DONE_FLAG } from "./onboarding";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -52,6 +53,7 @@ function AppInner() {
   const [introPlaying, setIntroPlaying] = useState<boolean>(() => shouldPlayIntro());
 
   const gate = useGate();
+  const tour = useTourEspejo();
 
   useEffect(() => {
     setPaymentRequiredHandler((err) => {
@@ -83,7 +85,14 @@ function AppInner() {
     if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
       window.sessionStorage.setItem(INTRO_FLAG, '1');
     }
-  }, []);
+    try {
+      if (localStorage.getItem(TOUR_DONE_FLAG) !== '1') {
+        tour.start();
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [tour]);
 
   // If the user navigates away from Espejo while the intro is still playing,
   // EspejoIntro unmounts without ever calling onComplete — leaving introPlaying
