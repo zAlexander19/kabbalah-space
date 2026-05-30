@@ -30,6 +30,8 @@ from emails.templates.weekly_summary import render_weekly_summary
 from emails.templates.monthly_summary import render_monthly_summary
 from emails.templates.imbalance_alert import render_imbalance_alert
 from emails.templates.reflection_reminder import render_reflection_reminder
+from emails.templates.gcal_link_suggestion import render_gcal_link_suggestion
+from emails.templates.evolucion_nudge import render_evolucion_nudge
 
 
 logger = logging.getLogger(__name__)
@@ -261,7 +263,93 @@ async def send_reflection_reminder(
         msg_id = await send_email(
             settings,
             to=user.email,
-            subject="Una pregunta espera por vos",
+            subject="Una pregunta espera por ti",
+            html=html,
+        )
+        await _finish_log_success(db, log, msg_id)
+        return msg_id
+    except ResendError as e:
+        await _finish_log_failure(db, log, str(e))
+        raise
+
+
+# ---------------- GCAL LINK SUGGESTION (transactional onboarding) ----------------
+
+async def send_gcal_link_suggestion(
+    db: AsyncSession,
+    *,
+    user: Usuario,
+    app_url: str,
+) -> Optional[str]:
+    """Transactional one-shot nudge to connect Google Calendar.
+
+    NOT gated by EmailPreferences — this is an onboarding/transactional
+    email, not a recurring digest. Idempotency key is fixed per-user, so
+    each user receives it at most once regardless of how many times the
+    trigger conditions are re-evaluated.
+    """
+    idem = f"{user.id}-gcal-link-suggestion"
+    log = await _start_log(db, usuario_id=user.id, email_type="gcal_link_suggestion", idempotency_key=idem)
+    if log is None:
+        return None
+
+    settings = get_settings()
+    preferences_url = f"{app_url}/cuenta"
+
+    html = render_gcal_link_suggestion(
+        nombre=user.nombre,
+        app_url=app_url,
+        preferences_url=preferences_url,
+    )
+
+    try:
+        msg_id = await send_email(
+            settings,
+            to=user.email,
+            subject="No olvides sincronizar con Google Calendar",
+            html=html,
+        )
+        await _finish_log_success(db, log, msg_id)
+        return msg_id
+    except ResendError as e:
+        await _finish_log_failure(db, log, str(e))
+        raise
+
+
+# ---------------- EVOLUCION NUDGE (monthly, free + premium) ----------------
+
+async def send_evolucion_nudge(
+    db: AsyncSession,
+    *,
+    user: Usuario,
+    cycle_n: int,
+    app_url: str,
+) -> Optional[str]:
+    """Monthly nudge to revisit Mi Evolución.
+
+    NOT gated by EmailPreferences (free users have no prefs row, and this
+    is a retention-style transactional). The cycle number gives one envío
+    per ~30-day window per user via the idempotency key.
+    """
+    idem = f"{user.id}-evolucion-cycle-{cycle_n}"
+    log = await _start_log(db, usuario_id=user.id, email_type="evolucion_nudge", idempotency_key=idem)
+    if log is None:
+        return None
+
+    settings = get_settings()
+    preferences_url = f"{app_url}/cuenta"
+
+    html = render_evolucion_nudge(
+        nombre=user.nombre,
+        app_url=app_url,
+        preferences_url=preferences_url,
+    )
+
+    try:
+        msg_id = await send_email(
+            settings,
+            to=user.email,
+            subject="Mira tu evolución del mes",
             html=html,
         )
         await _finish_log_success(db, log, msg_id)

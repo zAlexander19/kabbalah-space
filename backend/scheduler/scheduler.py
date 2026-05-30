@@ -36,6 +36,8 @@ def start_scheduler() -> AsyncIOScheduler:
         hourly_monthly_summary_tick,
         nightly_imbalance_tick,
         nightly_reminder_tick,
+        hourly_gcal_link_suggestion_tick,
+        hourly_evolucion_nudge_tick,
     )
 
     sched = AsyncIOScheduler(timezone="UTC")
@@ -43,8 +45,11 @@ def start_scheduler() -> AsyncIOScheduler:
     sched.add_job(hourly_monthly_summary_tick, CronTrigger(minute=5), id="monthly_tick", replace_existing=True)
     sched.add_job(nightly_imbalance_tick, CronTrigger(hour=2, minute=15), id="imbalance_tick", replace_existing=True)
     sched.add_job(nightly_reminder_tick, CronTrigger(hour=2, minute=30), id="reminder_tick", replace_existing=True)
+    sched.add_job(hourly_gcal_link_suggestion_tick, CronTrigger(minute=45), id="gcal_link_tick", replace_existing=True)
+    # Evolucion nudge runs once daily — daily granularity is enough for a 30-day cycle.
+    sched.add_job(hourly_evolucion_nudge_tick, CronTrigger(hour=3, minute=0), id="evolucion_nudge_tick", replace_existing=True)
     sched.start()
-    logger.info("scheduler started with 4 jobs")
+    logger.info("scheduler started with 6 jobs")
 
     _scheduler = sched
     return sched

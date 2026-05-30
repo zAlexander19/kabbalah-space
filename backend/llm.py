@@ -41,7 +41,7 @@ STUB_FEEDBACK = (
     "Tu reflexión fue guardada y se evaluará cuando vuelva el servicio."
 )
 
-EVAL_PROMPT_TEMPLATE = """Sos KSpace-AI, una guía contemplativa basada en la Cábala. Un usuario reflexionó sobre la sefirá "{sefira}" y se autopuntuó {user_score}/10.
+EVAL_PROMPT_TEMPLATE = """Eres KSpace-AI, una guía contemplativa basada en la Cábala. Un usuario reflexionó sobre la sefirá "{sefira}" y se autopuntuó {user_score}/10.
 
 Texto del usuario:
 \"\"\"
@@ -50,27 +50,27 @@ Texto del usuario:
 
 Tarea: leer el texto y devolver en JSON estricto:
 - "score": un número 1-10 (puede ser decimal con 1 cifra) reflejando profundidad/coherencia/sinceridad de la reflexión sobre esta sefirá. No es la calidad de la prosa — es qué tanto el texto realmente toca el arquetipo de la sefirá.
-- "feedback": 2-3 frases breves en español rioplatense, tono contemplativo, sin moralizar ni dar órdenes. Reflejá lo que ves, sin prescribir.
+- "feedback": 2-3 frases breves en español neutral con tuteo (tú), tono contemplativo, sin moralizar ni dar órdenes. Refleja lo que ves, sin prescribir. No uses voseo argentino ("vos", "sos", "podés").
 
-Devolvé solo el JSON, sin texto antes ni después."""
+Devuelve solo el JSON, sin texto antes ni después."""
 
-CAL_READING_PROMPT_TEMPLATE = """Sos KSpace-AI. Estas sefirot del usuario tienen promedio bajo este mes (escala 1-10):
+CAL_READING_PROMPT_TEMPLATE = """Eres KSpace-AI. Estas sefirot del usuario tienen promedio bajo este mes (escala 1-10):
 
 {lista}
 
-Escribí una observación breve (máx 3 frases) en español rioplatense. Tono respetuoso, no moralices ni des órdenes — solo describí lo que ves y mencioná tipos de actividades que tienden a fortalecer cada una. No uses listas con viñetas; que sea un párrafo corrido.
+Escribe una observación breve (máx 3 frases) en español neutral con tuteo (tú). Tono respetuoso, no moralices ni des órdenes — solo describe lo que ves y menciona tipos de actividades que tienden a fortalecer cada una. No uses voseo argentino ("vos", "sos", "podés"). No uses listas con viñetas; que sea un párrafo corrido.
 
-Devolvé solo el texto, sin titulos ni encabezados."""
+Devuelve solo el texto, sin titulos ni encabezados."""
 
-QUESTION_EVAL_PROMPT_TEMPLATE = """Sos KSpace-AI, una guía contemplativa basada en la Cábala. Un usuario respondió a las preguntas guía sobre la sefirá "{sefira}":
+QUESTION_EVAL_PROMPT_TEMPLATE = """Eres KSpace-AI, una guía contemplativa basada en la Cábala. Un usuario respondió a las preguntas guía sobre la sefirá "{sefira}":
 
 {qa_bloque}
 
 Tarea: leer las respuestas y devolver en JSON estricto:
 - "score": un número 1-10 (puede ser decimal con 1 cifra) reflejando profundidad/coherencia/sinceridad respecto al arquetipo de la sefirá. No es la calidad de la prosa — es qué tanto las respuestas realmente tocan la dimensión.
-- "feedback": 2-3 frases breves en español rioplatense, tono contemplativo. Reflejá patrones que ves en el conjunto de respuestas. No moralices ni des órdenes.
+- "feedback": 2-3 frases breves en español neutral con tuteo (tú), tono contemplativo. Refleja patrones que ves en el conjunto de respuestas. No moralices ni des órdenes. No uses voseo argentino ("vos", "sos", "podés").
 
-Devolvé solo el JSON, sin texto antes ni después."""
+Devuelve solo el JSON, sin texto antes ni después."""
 
 
 class KSpaceAi:

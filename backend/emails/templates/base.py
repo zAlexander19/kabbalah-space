@@ -6,8 +6,8 @@ Inline CSS only — most email clients strip <style> tags.
 from typing import Optional
 
 FOOTER_TEXT = (
-    "Recibís este correo porque sos parte de Kabbalah Space Premium. "
-    "Podés ajustar tus preferencias o darte de baja en cualquier momento."
+    "Recibes este correo porque eres parte de Kabbalah Space Premium. "
+    "Puedes ajustar tus preferencias o darte de baja en cualquier momento."
 )
 
 

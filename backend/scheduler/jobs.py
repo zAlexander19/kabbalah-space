@@ -357,3 +357,116 @@ async def _reminder_for_now(db: AsyncSession, now: datetime):
             )
         except Exception as e:
             logger.warning("reminder failed for usuario_id=%s: %s", user.id, e)
+
+
+# ---------------- GCAL LINK SUGGESTION (transactional, free + premium) ----------------
+
+GCAL_PROMPT_MIN_ACTIVIDADES = 5
+GCAL_PROMPT_IDLE_HOURS = 2
+
+
+async def hourly_gcal_link_suggestion_tick():
+    settings = get_settings()
+    if not settings.emails_enabled:
+        return
+    from database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await _gcal_link_suggestion_for_now(db, _now_utc())
+
+
+async def _gcal_link_suggestion_for_now(db: AsyncSession, now: datetime):
+    """Find users who:
+      - Have NOT linked Google Calendar (gcal_sync_enabled = False)
+      - Have created >= 5 actividades
+      - Last actividad was created >= 2h ago (creation streak ended)
+
+    Send the one-shot nudge. Idempotency key is fixed per-user so receiving
+    the email once means never again, even if conditions stay true.
+    """
+    from models import Usuario, Actividad
+    from emails.sender import send_gcal_link_suggestion
+
+    idle_cutoff = now - timedelta(hours=GCAL_PROMPT_IDLE_HOURS)
+
+    # Aggregate per user: count of actividades and max(fecha_creacion).
+    rows = (await db.execute(
+        select(
+            Actividad.usuario_id,
+            sql_func.count(Actividad.id).label("cnt"),
+            sql_func.max(Actividad.fecha_creacion).label("last_at"),
+        )
+        .group_by(Actividad.usuario_id)
+        .having(sql_func.count(Actividad.id) >= GCAL_PROMPT_MIN_ACTIVIDADES)
+    )).all()
+
+    for usuario_id, cnt, last_at in rows:
+        if last_at is None:
+            continue
+        # Normalize to UTC-naive for comparison with `now`.
+        if last_at.tzinfo is not None:
+            last_at_utc = last_at.astimezone(timezone.utc)
+        else:
+            last_at_utc = last_at.replace(tzinfo=timezone.utc)
+        if last_at_utc > idle_cutoff:
+            continue  # still within the creation streak
+
+        user = (await db.execute(
+            select(Usuario).where(Usuario.id == usuario_id)
+        )).scalars().first()
+        if user is None or user.gcal_sync_enabled:
+            continue
+
+        try:
+            await send_gcal_link_suggestion(
+                db, user=user, app_url=_get_app_url(),
+            )
+        except Exception as e:
+            logger.warning("gcal_link_suggestion failed for usuario_id=%s: %s", user.id, e)
+
+
+# ---------------- EVOLUCION NUDGE (monthly, free + premium) ----------------
+
+EVOLUCION_NUDGE_CYCLE_DAYS = 30
+
+
+async def hourly_evolucion_nudge_tick():
+    settings = get_settings()
+    if not settings.emails_enabled:
+        return
+    from database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await _evolucion_nudge_for_now(db, _now_utc())
+
+
+async def _evolucion_nudge_for_now(db: AsyncSession, now: datetime):
+    """For each user, compute their cycle number (days_since_signup // 30).
+    If cycle_n >= 1, attempt to send the nudge. Idempotency key is
+    cycle-scoped so each cycle fires once (UNIQUE on email_log blocks re-sends).
+
+    Free + premium both receive it. The trigger is per-user (not calendar
+    day 1) so it doesn't collide with monthly_summary on the same day.
+    """
+    from models import Usuario
+    from emails.sender import send_evolucion_nudge
+
+    users = (await db.execute(select(Usuario))).scalars().all()
+
+    for user in users:
+        signup = user.fecha_creacion
+        if signup is None:
+            continue
+        if signup.tzinfo is None:
+            signup_utc = signup.replace(tzinfo=timezone.utc)
+        else:
+            signup_utc = signup.astimezone(timezone.utc)
+        days_since_signup = (now - signup_utc).days
+        if days_since_signup < EVOLUCION_NUDGE_CYCLE_DAYS:
+            continue
+        cycle_n = days_since_signup // EVOLUCION_NUDGE_CYCLE_DAYS
+
+        try:
+            await send_evolucion_nudge(
+                db, user=user, cycle_n=cycle_n, app_url=_get_app_url(),
+            )
+        except Exception as e:
+            logger.warning("evolucion_nudge failed for usuario_id=%s: %s", user.id, e)

@@ -84,7 +84,8 @@ def test_monthly_summary_positive_delta_message():
         app_url="https://x.com",
         preferences_url="https://x.com/cuenta",
     )
-    assert "5 más" in html or "5 mas" in html
+    assert "+5 actividades" in html
+    assert "respecto al mes anterior" in html
 
 
 def test_monthly_summary_negative_delta_message():
@@ -98,7 +99,8 @@ def test_monthly_summary_negative_delta_message():
         app_url="https://x.com",
         preferences_url="https://x.com/cuenta",
     )
-    assert "3 menos" in html
+    assert "−3 actividades" in html  # minus sign U+2212
+    assert "respecto al mes anterior" in html
 
 
 def test_imbalance_alert_includes_sefira_and_days():
