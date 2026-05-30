@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { apiFetch } from '../../auth';
+import { useTourStep } from '../../onboarding';
 
 type Props = {
   sefiraId: string;
@@ -8,6 +9,8 @@ type Props = {
 };
 
 export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Props) {
+  const rootRef = useRef<HTMLFormElement>(null);
+  useTourStep(4, rootRef);
   const [score, setScore] = useState(5);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -37,7 +40,7 @@ export default function ReflectionEditor({ sefiraId, sefiraName, onSaved }: Prop
   const trackPercent = ((score - 1) / 9) * 100;
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-stone-700/40 bg-stone-950/30 p-5 space-y-5">
+    <form ref={rootRef} onSubmit={handleSubmit} className="rounded-xl border border-stone-700/40 bg-stone-950/30 p-5 space-y-5">
       <div>
         <div className="flex justify-between items-baseline mb-3">
           <label className="text-[10px] uppercase tracking-[0.18em] text-stone-400">Nivelación de energía</label>
