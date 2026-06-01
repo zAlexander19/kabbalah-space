@@ -42,7 +42,15 @@ export function useCalendarRange(initialDate: Date = new Date()) {
     });
   }, [view]);
 
+  const goPrevDay = useCallback(() => {
+    setAnchor((prev) => addDays(prev, -1));
+  }, []);
+
+  const goNextDay = useCallback(() => {
+    setAnchor((prev) => addDays(prev, 1));
+  }, []);
+
   const goToday = useCallback(() => setAnchor(new Date()), []);
 
-  return { anchor, setAnchor, view, setView, range, goPrev, goNext, goToday };
+  return { anchor, setAnchor, view, setView, range, goPrev, goNext, goPrevDay, goNextDay, goToday };
 }
