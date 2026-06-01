@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
 import KabbalahLogo from './KabbalahLogo';
 import { useAuth } from '../../auth';
 import { useTourEspejo } from '../../onboarding';
@@ -32,6 +33,8 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 100);
@@ -58,6 +61,24 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
   useEffect(() => {
     if (auth.status !== 'authenticated') setMenuOpen(false);
   }, [auth.status]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [mobileMenuOpen]);
 
   const onLanding = activeView === 'inicio';
   const isAnon = auth.status === 'anonymous';
@@ -108,6 +129,63 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
         </div>
 
         <div className="flex items-center gap-2" ref={menuRef}>
+          {/* Mobile hamburger button — visible only on mobile */}
+          <div className="md:hidden relative" ref={mobileMenuRef}>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={mobileMenuOpen}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-800/50 text-stone-300"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+
+            <AnimatePresence>
+              {mobileMenuOpen && (
+                <motion.div
+                  key="mobile-dropdown"
+                  role="menu"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease }}
+                  className="absolute right-0 mt-2 w-60 origin-top-right rounded-xl bg-stone-950/95 backdrop-blur-xl border border-stone-800/70 shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden"
+                >
+                  {SECTIONS.map((s) => {
+                    const active = activeView === s.key;
+                    const isBlockedByTour = tour.isActive && s.key !== 'espejo';
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onNavigate(s.key);
+                        }}
+                        disabled={isBlockedByTour}
+                        aria-disabled={isBlockedByTour ? 'true' : undefined}
+                        title={isBlockedByTour ? 'Termina el tour antes de salir' : undefined}
+                        className={`w-full px-4 py-3 flex items-center justify-between text-sm tracking-wide transition-colors border-b border-stone-800/60 last:border-b-0 ${
+                          active
+                            ? 'text-gold bg-stone-900/50'
+                            : 'text-stone-200 hover:text-amber-200 hover:bg-stone-900/60'
+                        } ${isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        <span>{s.label}</span>
+                        {active && (
+                          <span className="text-[10px] uppercase tracking-[0.18em] text-gold/70">Acá</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {auth.status === 'loading' ? null : isAnon ? (
             <button
               type="button"
