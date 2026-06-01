@@ -28,18 +28,22 @@ export default function YearViewMobile({
     return Array.from({ length: 12 }, (_, i) => startOfMonth(addMonths(yearStart, i)));
   }, [yearStart]);
 
-  // Counts per (month index, sefira id).
+  // Counts per (month index, sefira id). Guarded by year so multi-year
+  // activities don't collapse into the same bucket as the displayed year.
   const heatmap = useMemo(() => {
     const m: Record<number, Record<string, number>> = {};
     for (let i = 0; i < 12; i++) m[i] = {};
+    const displayedYear = date.getFullYear();
     for (const act of activities) {
-      const monthIdx = new Date(act.inicio).getMonth();
+      const d = new Date(act.inicio);
+      if (d.getFullYear() !== displayedYear) continue;
+      const monthIdx = d.getMonth();
       for (const s of act.sefirot) {
         m[monthIdx][s.id] = (m[monthIdx][s.id] ?? 0) + 1;
       }
     }
     return m;
-  }, [activities]);
+  }, [activities, date]);
 
   return (
     <div className="w-full">
