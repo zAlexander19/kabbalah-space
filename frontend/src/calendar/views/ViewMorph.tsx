@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import type { CalendarView } from '../types';
 
-const ORDER: Record<CalendarView, number> = { semana: 0, mes: 1, anio: 2 };
+const ORDER: Record<CalendarView, number> = { dia: -1, semana: 0, mes: 1, anio: 2 };
 
 type Props = {
   view: CalendarView;

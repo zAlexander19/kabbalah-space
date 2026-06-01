@@ -7,7 +7,9 @@ export function useCalendarRange(initialDate: Date = new Date()) {
   const [view, setView] = useState<CalendarView>('semana');
 
   const range = useMemo<DateRange>(() => {
-    if (view === 'semana') {
+    if (view === 'dia' || view === 'semana') {
+      // Para 'dia' también cargamos la semana completa que contiene el anchor,
+      // así swipes entre días reusan los datos ya cacheados.
       return {
         start: startOfWeek(anchor, { weekStartsOn: 1 }),
         end:   endOfWeek(anchor,   { weekStartsOn: 1 }),
@@ -28,6 +30,7 @@ export function useCalendarRange(initialDate: Date = new Date()) {
 
   const goPrev = useCallback(() => {
     setAnchor(prev => {
+      if (view === 'dia')    return addDays(prev, -1);
       if (view === 'semana') return addDays(prev, -7);
       if (view === 'mes')    return addMonths(prev, -1);
       return addYears(prev, -1);
@@ -36,6 +39,7 @@ export function useCalendarRange(initialDate: Date = new Date()) {
 
   const goNext = useCallback(() => {
     setAnchor(prev => {
+      if (view === 'dia')    return addDays(prev, 1);
       if (view === 'semana') return addDays(prev, 7);
       if (view === 'mes')    return addMonths(prev, 1);
       return addYears(prev, 1);

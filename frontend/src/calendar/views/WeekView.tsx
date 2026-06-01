@@ -19,11 +19,14 @@ type Props = {
   onEventClick?: (a: Activity) => void;
   onEventEdit?: (a: Activity) => void;
   onEventDelete?: (a: Activity) => void;
+  onEventMove?: (id: string, newStart: Date, newEnd: Date) => void;
   gcalEnabled?: boolean;
   pendingSlot?: { start: Date; end: Date } | null;
+  /** Habilita long-press → drag de actividades. Solo se usa desde WeekViewMobile. */
+  enableLongPressDrag?: boolean;
 };
 
-export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventEdit, onEventDelete, gcalEnabled = false, pendingSlot }: Props) {
+export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventEdit, onEventDelete, onEventMove, gcalEnabled = false, pendingSlot, enableLongPressDrag = false }: Props) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -138,6 +141,8 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
                     onEdit={onEventEdit ?? onEventClick}
                     onDelete={onEventDelete}
                     gcalEnabled={gcalEnabled}
+                    enableLongPressDrag={enableLongPressDrag}
+                    onMove={onEventMove}
                   />
                 ))}
               </AnimatePresence>

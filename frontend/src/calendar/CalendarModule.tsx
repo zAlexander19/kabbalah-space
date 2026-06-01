@@ -13,6 +13,7 @@ import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
 import YearView from './views/YearView';
 import WeekViewMobile from './views/WeekViewMobile';
+import DayViewMobile from './views/DayViewMobile';
 import MonthViewMobile from './views/MonthViewMobile';
 import YearViewMobile from './views/YearViewMobile';
 import ViewMorph from './views/ViewMorph';
@@ -213,8 +214,8 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
           <CalendarToolbarMobile
             date={anchor}
             view={view}
-            onPrev={view === 'semana' ? goPrevDay : goPrev}
-            onNext={view === 'semana' ? goNextDay : goNext}
+            onPrev={goPrev}
+            onNext={goNext}
             onToday={goToday}
             onViewChange={setView}
           />
@@ -253,8 +254,8 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
           {isMobile ? (
             <>
-              {view === 'semana' && (
-                <WeekViewMobile
+              {view === 'dia' && (
+                <DayViewMobile
                   date={anchor}
                   activities={filteredActivities}
                   onPrevDay={goPrevDay}
@@ -265,6 +266,19 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
                   onEventDelete={deleteFromMenu}
                   onEventMove={handleEventMove}
                   gcalEnabled={gcalEnabled}
+                />
+              )}
+              {view === 'semana' && (
+                <WeekViewMobile
+                  date={anchor}
+                  activities={filteredActivities}
+                  onSlotClick={openSlot}
+                  onEventClick={openEvent}
+                  onEventEdit={openEventForce}
+                  onEventDelete={deleteFromMenu}
+                  onEventMove={handleEventMove}
+                  gcalEnabled={gcalEnabled}
+                  pendingSlot={editing === null ? pendingSlot : null}
                 />
               )}
               {view === 'mes' && (

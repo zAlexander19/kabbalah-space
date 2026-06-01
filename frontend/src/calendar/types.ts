@@ -34,6 +34,6 @@ export type VolumeItem = {
   actividades_total: number;
 };
 
-export type CalendarView = 'semana' | 'mes' | 'anio';
+export type CalendarView = 'dia' | 'semana' | 'mes' | 'anio';
 
 export type DateRange = { start: Date; end: Date };

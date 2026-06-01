@@ -13,6 +13,7 @@ type Props = {
 };
 
 const VIEW_OPTIONS: { key: CalendarView; label: string }[] = [
+  { key: 'dia',    label: 'Día' },
   { key: 'semana', label: 'Semana' },
   { key: 'mes',    label: 'Mes' },
   { key: 'anio',   label: 'Año' },
@@ -28,8 +29,11 @@ export default function CalendarToolbarMobile({
 }: Props) {
   // Label dinámico según view
   let label: string;
-  if (view === 'semana') {
+  if (view === 'dia') {
     label = format(date, "EEEE d 'de' MMM", { locale: es });
+  } else if (view === 'semana') {
+    // Para semana, mostrar rango "DD-DD MMM"
+    label = format(date, "'Sem.' d 'de' MMM", { locale: es });
   } else if (view === 'mes') {
     label = format(date, "MMMM yyyy", { locale: es });
   } else {
