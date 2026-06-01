@@ -22,7 +22,7 @@ type Props = {
 export default function WeekViewMobile(props: Props) {
   return (
     <div className="w-full">
-      <WeekView {...props} enableLongPressDrag={true} />
+      <WeekView {...props} enableLongPressDrag={true} hourColumnWidth={40} />
     </div>
   );
 }

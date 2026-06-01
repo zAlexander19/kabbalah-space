@@ -24,9 +24,11 @@ type Props = {
   pendingSlot?: { start: Date; end: Date } | null;
   /** Habilita long-press → drag de actividades. Solo se usa desde WeekViewMobile. */
   enableLongPressDrag?: boolean;
+  /** Ancho de la columna de horas (px). Default 60. Mobile usa 40 para ganar espacio horizontal. */
+  hourColumnWidth?: number;
 };
 
-export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventEdit, onEventDelete, onEventMove, gcalEnabled = false, pendingSlot, enableLongPressDrag = false }: Props) {
+export default function WeekView({ date, activities, onSlotClick, onEventClick, onEventEdit, onEventDelete, onEventMove, gcalEnabled = false, pendingSlot, enableLongPressDrag = false, hourColumnWidth = 60 }: Props) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -78,7 +80,7 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
   const pendingDayKey = pendingSlot ? format(pendingSlot.start, 'yyyy-MM-dd') : null;
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+    <div className="grid" style={{ gridTemplateColumns: `${hourColumnWidth}px repeat(7, 1fr)` }}>
       <div />
       {days.map(day => {
         const isToday = isSameDay(day, now);
