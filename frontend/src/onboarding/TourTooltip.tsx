@@ -111,6 +111,9 @@ export function TourTooltip() {
     w: typeof window === 'undefined' ? 1024 : window.innerWidth,
     h: typeof window === 'undefined' ? 768 : window.innerHeight,
   });
+  // Rect del target — usado para el spotlight backdrop. Se mantiene sincronizado
+  // con `position` (mismo effect lo actualiza en scroll/resize).
+  const [targetRect, setTargetRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   const step = useMemo<TourStep | null>(() => {
     if (!tour.isActive || tour.currentStep === null) return null;
@@ -120,10 +123,12 @@ export function TourTooltip() {
   const targetRef = step ? tour.getTargetRef(step.id) : null;
   const targetEl = targetRef?.current ?? null;
 
-  // Recompute position whenever the step, target element, or viewport changes.
+  // Recompute position + target rect whenever the step, target element, or
+  // viewport changes.
   useLayoutEffect(() => {
     if (!step || !targetEl) {
       setPosition(null);
+      setTargetRect(null);
       return;
     }
     const update = () => {
@@ -131,6 +136,7 @@ export function TourTooltip() {
       // Approximate tooltip height — copy length and step mode determine it.
       const approxHeight = step.mode === 'linear' ? 160 : 110;
       setPosition(computePosition(rect, step.placement, viewport, approxHeight));
+      setTargetRect({ x: rect.left, y: rect.top, w: rect.width, h: rect.height });
     };
     update();
     const onResize = () => {
@@ -140,6 +146,7 @@ export function TourTooltip() {
       const rect = targetEl.getBoundingClientRect();
       const approxHeight = step.mode === 'linear' ? 160 : 110;
       setPosition(computePosition(rect, step.placement, { w, h }, approxHeight));
+      setTargetRect({ x: rect.left, y: rect.top, w: rect.width, h: rect.height });
     };
     window.addEventListener('resize', onResize);
     window.addEventListener('scroll', update, true);
@@ -194,24 +201,66 @@ export function TourTooltip() {
 
   const motionDuration = reducedMotion ? 0 : 0.22;
 
+  // Spotlight padding alrededor del target (px de aire antes del oscuro).
+  const SPOTLIGHT_PADDING = 12;
+  const SPOTLIGHT_RADIUS = 16;
+
   return createPortal(
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={step.id}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: isPaused ? 0 : 1, scale: isPaused ? 0.95 : 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: motionDuration, ease }}
-        className="fixed z-[80] pointer-events-none"
-        style={{
-          top: position.top,
-          left: position.left,
-          width: viewport.w < MOBILE_BREAKPOINT ? viewport.w - VIEWPORT_PADDING * 2 : TOOLTIP_WIDTH,
-        }}
-        role="dialog"
-        aria-modal="false"
-        aria-label={`Tour del Espejo, paso ${step.id} de ${STEPS.length}`}
-      >
+    <>
+      <AnimatePresence>
+        {targetRect && (
+          <motion.svg
+            key={`overlay-${step.id}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isPaused ? 0 : 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: motionDuration, ease }}
+            className="fixed inset-0 z-[75] pointer-events-none"
+            width="100%"
+            height="100%"
+            aria-hidden="true"
+          >
+            <defs>
+              <mask id={`tour-spotlight-${step.id}`}>
+                {/* blanco = oscurecido, negro = hueco (nítido sobre el target) */}
+                <rect width="100%" height="100%" fill="white" />
+                <rect
+                  x={targetRect.x - SPOTLIGHT_PADDING}
+                  y={targetRect.y - SPOTLIGHT_PADDING}
+                  width={targetRect.w + SPOTLIGHT_PADDING * 2}
+                  height={targetRect.h + SPOTLIGHT_PADDING * 2}
+                  rx={SPOTLIGHT_RADIUS}
+                  ry={SPOTLIGHT_RADIUS}
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <rect
+              width="100%"
+              height="100%"
+              fill="rgba(0, 0, 0, 0.65)"
+              mask={`url(#tour-spotlight-${step.id})`}
+            />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step.id}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: isPaused ? 0 : 1, scale: isPaused ? 0.95 : 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: motionDuration, ease }}
+          className="fixed z-[80] pointer-events-none"
+          style={{
+            top: position.top,
+            left: position.left,
+            width: viewport.w < MOBILE_BREAKPOINT ? viewport.w - VIEWPORT_PADDING * 2 : TOOLTIP_WIDTH,
+          }}
+          role="dialog"
+          aria-modal="false"
+          aria-label={`Tour del Espejo, paso ${step.id} de ${STEPS.length}`}
+        >
         <div
           className="relative pointer-events-auto rounded-2xl bg-stone-950/95 border border-amber-300/40 shadow-[0_24px_60px_rgba(0,0,0,0.6)] px-5 py-4 backdrop-blur-md"
         >
@@ -241,8 +290,9 @@ export function TourTooltip() {
             </div>
           )}
         </div>
-      </motion.div>
-    </AnimatePresence>,
+        </motion.div>
+      </AnimatePresence>
+    </>,
     document.body,
   );
 }
