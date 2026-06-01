@@ -259,12 +259,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
                   activities={filteredActivities}
                   onPrevDay={goPrevDay}
                   onNextDay={goNextDay}
-                  onSlotClick={(start, end) => {
-                    setEditing(null);
-                    setPendingSlot({ start, end });
-                    setScope('one');
-                    setPanelOpen(true);
-                  }}
+                  onSlotClick={openSlot}
                   onEventClick={openEvent}
                   onEventEdit={openEventForce}
                   onEventDelete={deleteFromMenu}

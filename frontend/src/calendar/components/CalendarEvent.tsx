@@ -126,18 +126,30 @@ export default function CalendarEvent({
   const handleDragEnd = (e: PointerEvent | MouseEvent | TouchEvent) => {
     setDragging(false);
     if (!onMove) return;
-    // Obtener el punto donde se soltó (cliente coords).
     const clientX = 'clientX' in e ? e.clientX : (e as TouchEvent).changedTouches[0]?.clientX ?? 0;
     const clientY = 'clientY' in e ? e.clientY : (e as TouchEvent).changedTouches[0]?.clientY ?? 0;
     const els = document.elementsFromPoint(clientX, clientY);
-    // Buscar el primer elemento con data-slot (formato: "YYYY-MM-DD|HH")
-    const slot = els.find((el) => el instanceof HTMLElement && el.dataset.slot);
-    if (!(slot instanceof HTMLElement) || !slot.dataset.slot) return;
-    const [dayStr, hourStr] = slot.dataset.slot.split('|');
-    const [y, m, d] = dayStr.split('-').map(Number);
-    const hour = Number(hourStr);
-    const newStart = new Date(y, m - 1, d, hour, 0, 0, 0);
-    const durationMs = new Date(activity.fin).getTime() - new Date(activity.inicio).getTime();
+    // Prefer slot (week view: explicit day+hour). Fall back to day (month view: preserve hour).
+    const slotEl = els.find((el) => el instanceof HTMLElement && el.dataset.slot);
+    const dayEl = els.find((el) => el instanceof HTMLElement && el.dataset.day);
+    const target = slotEl ?? dayEl;
+    if (!(target instanceof HTMLElement)) return;
+    const startD = new Date(activity.inicio);
+    const endD = new Date(activity.fin);
+    const durationMs = endD.getTime() - startD.getTime();
+    let newStart: Date;
+    if (target.dataset.slot) {
+      const [dayStr, hourStr] = target.dataset.slot.split('|');
+      const [y, m, d] = dayStr.split('-').map(Number);
+      const hour = Number(hourStr);
+      newStart = new Date(y, m - 1, d, hour, 0, 0, 0);
+    } else if (target.dataset.day) {
+      const [y, m, d] = target.dataset.day.split('-').map(Number);
+      // Preserve original hour/minute of the activity.
+      newStart = new Date(y, m - 1, d, startD.getHours(), startD.getMinutes(), 0, 0);
+    } else {
+      return;
+    }
     const newEnd = new Date(newStart.getTime() + durationMs);
     onMove(activity.id, newStart, newEnd);
   };

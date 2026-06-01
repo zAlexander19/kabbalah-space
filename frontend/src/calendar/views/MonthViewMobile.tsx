@@ -1,6 +1,5 @@
 // frontend/src/calendar/views/MonthViewMobile.tsx
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   startOfMonth,
   endOfMonth,
@@ -14,6 +13,7 @@ import {
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Activity } from '../types';
+import CalendarEvent from '../components/CalendarEvent';
 
 type Props = {
   date: Date;
@@ -69,23 +69,6 @@ export default function MonthViewMobile({
   );
 
   const monthLabel = format(date, "MMMM yyyy", { locale: es });
-
-  function handleDragEnd(act: Activity, _e: unknown, info: { offset: { x: number; y: number } }, sourceEl: HTMLElement) {
-    // Compute drop element from sourceEl bounding rect + offset
-    const rect = sourceEl.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2 + info.offset.x;
-    const cy = rect.top + rect.height / 2 + info.offset.y;
-    const els = document.elementsFromPoint(cx, cy);
-    const dayEl = els.find((el) => el instanceof HTMLElement && el.dataset.day);
-    if (!(dayEl instanceof HTMLElement) || !dayEl.dataset.day || !onEventMove) return;
-    const [y, m, d] = dayEl.dataset.day.split('-').map(Number);
-    const startD = new Date(act.inicio);
-    const endD = new Date(act.fin);
-    const newStart = new Date(y, m - 1, d, startD.getHours(), startD.getMinutes(), 0, 0);
-    const durationMs = endD.getTime() - startD.getTime();
-    const newEnd = new Date(newStart.getTime() + durationMs);
-    onEventMove(act.id, newStart, newEnd);
-  }
 
   return (
     <div className="w-full">
@@ -160,33 +143,18 @@ export default function MonthViewMobile({
           <p className="text-stone-500 italic text-sm">Nada agendado para este día.</p>
         ) : (
           <ul className="space-y-2">
-            {selectedEvents.map((act) => {
-              const hora = format(new Date(act.inicio), 'HH:mm');
-              const sefiraNames = act.sefirot.map((s) => s.nombre).join(', ');
-              const ChipMotion = motion.button;
-              return (
-                <ChipMotion
-                  key={act.id}
-                  type="button"
-                  onClick={() => onEventClick?.(act)}
-                  drag={!!onEventMove}
-                  dragMomentum={false}
-                  onDragEnd={(e, info) => {
-                    const el = (e.target as HTMLElement) ?? null;
-                    if (el) handleDragEnd(act, e, info, el);
-                  }}
-                  whileDrag={{ scale: 1.05, zIndex: 50 }}
-                  className="w-full text-left rounded-lg border border-stone-800/60 bg-stone-900/40 hover:bg-stone-900/60 px-3 py-2 flex flex-col"
-                >
-                  <span className="text-stone-100 text-sm">
-                    <span className="text-amber-200/80 tabular-nums">{hora}</span> · {act.titulo}
-                  </span>
-                  {sefiraNames && (
-                    <span className="text-[11px] text-stone-400">{sefiraNames}</span>
-                  )}
-                </ChipMotion>
-              );
-            })}
+            {selectedEvents.map((act) => (
+              <li key={act.id}>
+                <CalendarEvent
+                  activity={act}
+                  variant="month"
+                  onClick={onEventClick}
+                  onEdit={onEventClick}
+                  enableLongPressDrag={true}
+                  onMove={onEventMove}
+                />
+              </li>
+            ))}
           </ul>
         )}
       </div>
