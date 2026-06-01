@@ -6,14 +6,21 @@ import { useActivities } from './hooks/useActivities';
 import { useFelicitacion } from './hooks/useFelicitacion';
 import { apiFetch } from '../auth';
 import { useGcalStatus } from '../sync';
+import { useMediaQuery } from '../shared/hooks/useMediaQuery';
 import CalendarToolbar from './components/CalendarToolbar';
+import CalendarToolbarMobile from './components/CalendarToolbarMobile';
 import WeekView from './views/WeekView';
 import MonthView from './views/MonthView';
 import YearView from './views/YearView';
+import WeekViewMobile from './views/WeekViewMobile';
+import MonthViewMobile from './views/MonthViewMobile';
+import YearViewMobile from './views/YearViewMobile';
 import ViewMorph from './views/ViewMorph';
 import SefirotTree from './components/SefirotTree';
 import SefirotLegend from './components/SefirotLegend';
 import ActivityPanel from './components/ActivityPanel';
+import ActivityPanelMobile from './components/ActivityPanelMobile';
+import ActivityFab from './components/ActivityFab';
 import RecurrenceScopeDialog from './components/RecurrenceScopeDialog';
 import GcalSyncCard from './components/GcalSyncCard';
 import CalendarioIaLectura from './components/CalendarioIaLectura';
@@ -28,7 +35,8 @@ type Props = {
 };
 
 export default function CalendarModule({ sefirot, glowText }: Props) {
-  const { anchor, setAnchor, view, setView, range, goPrev, goNext, goToday } = useCalendarRange();
+  const { anchor, setAnchor, view, setView, range, goPrev, goNext, goPrevDay, goNextDay, goToday } = useCalendarRange();
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const { activities, volume, loading, error, reload } = useActivities(range);
   const { status: gcalStatus } = useGcalStatus(true);
   const gcalEnabled = gcalStatus?.enabled === true;
@@ -185,19 +193,42 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
     reload();
   }
 
+  async function handleEventMove(id: string, newStart: Date, newEnd: Date) {
+    const res = await apiFetch(`/actividades/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inicio: newStart.toISOString(),
+        fin: newEnd.toISOString(),
+      }),
+    });
+    if (res.ok) reload();
+  }
+
   return (
     <div className="w-full flex flex-col gap-6 md:gap-8">
     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
       <div className={`lg:col-span-7 xl:col-span-7 2xl:col-span-8 w-full min-w-0 bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-5 md:p-6 shadow-2xl relative ${panelOpen ? 'z-[60]' : 'z-10'}`}>
-        <CalendarToolbar
-          date={anchor}
-          view={view}
-          onPrev={goPrev}
-          onNext={goNext}
-          onToday={goToday}
-          onViewChange={setView}
-          onCreate={openCreate}
-        />
+        {isMobile ? (
+          <CalendarToolbarMobile
+            date={anchor}
+            view={view}
+            onPrev={view === 'semana' ? goPrevDay : goPrev}
+            onNext={view === 'semana' ? goNextDay : goNext}
+            onToday={goToday}
+            onViewChange={setView}
+          />
+        ) : (
+          <CalendarToolbar
+            date={anchor}
+            view={view}
+            onPrev={goPrev}
+            onNext={goNext}
+            onToday={goToday}
+            onViewChange={setView}
+            onCreate={openCreate}
+          />
+        )}
 
         {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
 
@@ -220,34 +251,81 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
             }
           `}</style>
 
-          <ViewMorph view={view}>
-            {view === 'semana' && (
-              <WeekView
-                date={anchor}
-                activities={filteredActivities}
-                onSlotClick={openSlot}
-                onEventClick={openEvent}
-                onEventEdit={openEventForce}
-                onEventDelete={deleteFromMenu}
-                gcalEnabled={gcalEnabled}
-                pendingSlot={editing === null ? pendingSlot : null}
-              />
-            )}
-            {view === 'mes' && (
-              <MonthView
-                date={anchor}
-                activities={filteredActivities}
-                onDayClick={openDay}
-                onEventClick={openEvent}
-                onEventEdit={openEventForce}
-                onEventDelete={deleteFromMenu}
-                gcalEnabled={gcalEnabled}
-              />
-            )}
-            {view === 'anio' && (
-              <YearView date={anchor} activities={activities} onMonthClick={openMonth} />
-            )}
-          </ViewMorph>
+          {isMobile ? (
+            <>
+              {view === 'semana' && (
+                <WeekViewMobile
+                  date={anchor}
+                  activities={filteredActivities}
+                  onPrevDay={goPrevDay}
+                  onNextDay={goNextDay}
+                  onSlotClick={(start, end) => {
+                    setEditing(null);
+                    setPendingSlot({ start, end });
+                    setScope('one');
+                    setPanelOpen(true);
+                  }}
+                  onEventClick={openEvent}
+                  onEventEdit={openEventForce}
+                  onEventDelete={deleteFromMenu}
+                  onEventMove={handleEventMove}
+                  gcalEnabled={gcalEnabled}
+                />
+              )}
+              {view === 'mes' && (
+                <MonthViewMobile
+                  date={anchor}
+                  activities={filteredActivities}
+                  onPrevMonth={goPrev}
+                  onNextMonth={goNext}
+                  onEventClick={openEvent}
+                  onEventMove={handleEventMove}
+                />
+              )}
+              {view === 'anio' && (
+                <YearViewMobile
+                  date={anchor}
+                  activities={activities}
+                  sefirot={sefirot}
+                  onPrevYear={goPrev}
+                  onNextYear={goNext}
+                  onSelectMonth={(monthDate) => {
+                    setAnchor(monthDate);
+                    setView('mes');
+                  }}
+                />
+              )}
+            </>
+          ) : (
+            <ViewMorph view={view}>
+              {view === 'semana' && (
+                <WeekView
+                  date={anchor}
+                  activities={filteredActivities}
+                  onSlotClick={openSlot}
+                  onEventClick={openEvent}
+                  onEventEdit={openEventForce}
+                  onEventDelete={deleteFromMenu}
+                  gcalEnabled={gcalEnabled}
+                  pendingSlot={editing === null ? pendingSlot : null}
+                />
+              )}
+              {view === 'mes' && (
+                <MonthView
+                  date={anchor}
+                  activities={filteredActivities}
+                  onDayClick={openDay}
+                  onEventClick={openEvent}
+                  onEventEdit={openEventForce}
+                  onEventDelete={deleteFromMenu}
+                  gcalEnabled={gcalEnabled}
+                />
+              )}
+              {view === 'anio' && (
+                <YearView date={anchor} activities={activities} onMonthClick={openMonth} />
+              )}
+            </ViewMorph>
+          )}
 
           {!loading && filteredActivities.length === 0 && view !== 'anio' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -266,18 +344,35 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         <SefirotLegend volume={volume} filterId={filterId} onFilterToggle={toggleFilter} />
       </div>
 
-      <ActivityPanel
-        open={panelOpen}
-        sefirot={sefirot}
-        editing={editing}
-        initialSlot={pendingSlot}
-        scope={scope}
-        onClose={closePanel}
-        onSaved={handleSaved}
-        onDeleted={handleDeleted}
-        onRequestDeleteScope={requestDeleteScopeFromForm}
-        onActividadCreada={handleActividadCreada}
-      />
+      {isMobile ? (
+        <ActivityPanelMobile
+          open={panelOpen}
+          sefirot={sefirot}
+          editing={editing}
+          initialSlot={pendingSlot}
+          scope={scope}
+          onClose={closePanel}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+          onRequestDeleteScope={requestDeleteScopeFromForm}
+          onActividadCreada={handleActividadCreada}
+        />
+      ) : (
+        <ActivityPanel
+          open={panelOpen}
+          sefirot={sefirot}
+          editing={editing}
+          initialSlot={pendingSlot}
+          scope={scope}
+          onClose={closePanel}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+          onRequestDeleteScope={requestDeleteScopeFromForm}
+          onActividadCreada={handleActividadCreada}
+        />
+      )}
+
+      {isMobile && <ActivityFab onClick={openCreate} />}
 
       <RecurrenceScopeDialog
         open={scopeDialog !== null}
