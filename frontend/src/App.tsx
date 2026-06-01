@@ -11,7 +11,7 @@ import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPlansModal } from "./premium/PremiumPlansModal";
 import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
-import { TourEspejoProvider, TourTooltip, useTourEspejo, TOUR_DONE_FLAG } from "./onboarding";
+import { TourEspejoProvider, TourTooltip, useTourEspejo } from "./onboarding";
 
 const SEFIROT = [
   { id: "keter",   name: "Kéter",   x: 200, y: 80,  colorClass: "", textClass: "", description: "La Corona. La voluntad primigenia y el vacío puro de donde todo emana." },
@@ -95,14 +95,10 @@ function AppInner() {
     if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
       window.sessionStorage.setItem(INTRO_FLAG, '1');
     }
-    try {
-      if (localStorage.getItem(TOUR_DONE_FLAG) !== '1') {
-        tour.start();
-      }
-    } catch {
-      /* localStorage unavailable */
-    }
-  }, [tour]);
+    // El trigger del tour vive en EspejoModule (useEffect en introPlaying) para
+    // cubrir también el caso en que la intro ya fue vista previamente y este
+    // handler nunca llega a correr.
+  }, []);
 
   // If the user navigates away from Espejo while the intro is still playing,
   // EspejoIntro unmounts without ever calling onComplete — leaving introPlaying

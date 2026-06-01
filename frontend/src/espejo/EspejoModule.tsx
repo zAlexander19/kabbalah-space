@@ -9,7 +9,7 @@ import EmptyState from './components/EmptyState';
 import SefiraDetailPanel from './components/SefiraDetailPanel';
 import EspejoIntro from './components/EspejoIntro';
 import { ReflexionLibreEditor } from './ReflexionLibreEditor';
-import { useTourEspejo } from '../onboarding';
+import { useTourEspejo, TOUR_DONE_FLAG } from '../onboarding';
 
 type Props = {
   sefirot: SefiraNode[];
@@ -43,17 +43,31 @@ export default function EspejoModule({
 
   const tour = useTourEspejo();
 
-  // Cleanup: if the user navigates away while the tour is still active,
-  // cancel it (closes the tooltip WITHOUT marking done) so an accidental
-  // misclick on the logo or another nav doesn't permanently lose the
-  // onboarding. The user gets the tour again next time they enter /espejo.
-  // We use a ref so the unmount cleanup reads the LATEST tour state —
-  // capturing `tour` directly would snapshot the first render (where
-  // isActive is false) and the guard would never fire.
+  // Trigger del tour: arranca cuando el módulo está mostrando el árbol
+  // (introPlaying=false). Cubre los 2 casos:
+  // - Usuario nuevo: la intro corre, termina, introPlaying flipea a false,
+  //   este effect dispara start().
+  // - Usuario que ya vio la intro antes (sessionStorage flag): introPlaying
+  //   arranca en false, dispara start() en mount.
+  // start() es no-op si el flag de localStorage ya está seteado.
   const tourRef = useRef(tour);
   useEffect(() => {
     tourRef.current = tour;
   }, [tour]);
+  useEffect(() => {
+    if (introPlaying) return;
+    try {
+      if (localStorage.getItem(TOUR_DONE_FLAG) !== '1') {
+        tourRef.current.start();
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [introPlaying]);
+
+  // Cleanup: si el usuario navega fuera mientras el tour sigue activo,
+  // cancel() (cierra SIN marcar done) — un misclick en el logo no debería
+  // perder el onboarding permanentemente.
   useEffect(() => {
     return () => {
       if (tourRef.current.isActive) {
