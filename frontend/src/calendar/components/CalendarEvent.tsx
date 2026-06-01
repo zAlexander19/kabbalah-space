@@ -4,6 +4,7 @@ import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import type { Activity } from '../types';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 import { eventChip } from '../motion/transitions';
+import { useLongPress } from '../hooks/useLongPress';
 import ActividadSyncBadge from './ActividadSyncBadge';
 
 type Variant = 'week' | 'month';
@@ -16,10 +17,15 @@ type Props = {
   onEdit?: (a: Activity) => void;
   onDelete?: (a: Activity) => void;
   gcalEnabled?: boolean;
+  /** Cuando true, mantener apretado 500ms activa modo drag. Solo para vistas mobile. */
+  enableLongPressDrag?: boolean;
+  /** Callback al soltar el drag sobre una nueva fecha/hora. Solo aplica cuando enableLongPressDrag=true. */
+  onMove?: (id: string, newStart: Date, newEnd: Date) => void;
 };
 
 export default function CalendarEvent({
   activity, variant, style, onClick, onEdit, onDelete, gcalEnabled = false,
+  enableLongPressDrag = false, onMove,
 }: Props) {
   const color = SEFIRA_COLORS[activity.sefirot[0]?.id] ?? '#eab308';
   const sefirotLabel = activity.sefirot.map(s => s.nombre).join(', ');
@@ -108,6 +114,34 @@ export default function CalendarEvent({
     onDelete?.(activity);
   }
 
+  const [dragging, setDragging] = useState(false);
+
+  const longPressHandlers = useLongPress<HTMLDivElement>(
+    () => {
+      if (enableLongPressDrag) setDragging(true);
+    },
+    { delay: 500, cancelOnMove: true, moveThreshold: 10 },
+  );
+
+  const handleDragEnd = (e: PointerEvent | MouseEvent | TouchEvent) => {
+    setDragging(false);
+    if (!onMove) return;
+    // Obtener el punto donde se soltó (cliente coords).
+    const clientX = 'clientX' in e ? e.clientX : (e as TouchEvent).changedTouches[0]?.clientX ?? 0;
+    const clientY = 'clientY' in e ? e.clientY : (e as TouchEvent).changedTouches[0]?.clientY ?? 0;
+    const els = document.elementsFromPoint(clientX, clientY);
+    // Buscar el primer elemento con data-slot (formato: "YYYY-MM-DD|HH")
+    const slot = els.find((el) => el instanceof HTMLElement && el.dataset.slot);
+    if (!(slot instanceof HTMLElement) || !slot.dataset.slot) return;
+    const [dayStr, hourStr] = slot.dataset.slot.split('|');
+    const [y, m, d] = dayStr.split('-').map(Number);
+    const hour = Number(hourStr);
+    const newStart = new Date(y, m - 1, d, hour, 0, 0, 0);
+    const durationMs = new Date(activity.fin).getTime() - new Date(activity.inicio).getTime();
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    onMove(activity.id, newStart, newEnd);
+  };
+
   const menu = (
     <AnimatePresence>
       {menuOpen && (
@@ -160,7 +194,12 @@ export default function CalendarEvent({
         exit="exit"
         whileHover={{ y: -1 }}
         onClick={handleChipClick}
-        className="absolute left-1 right-1 rounded-md px-2 py-1 cursor-pointer group"
+        {...(enableLongPressDrag ? longPressHandlers : {})}
+        drag={dragging}
+        dragMomentum={false}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ scale: 1.08, zIndex: 100 }}
+        className={`absolute left-1 right-1 rounded-md px-2 py-1 cursor-pointer group ${dragging ? 'ring-2 ring-amber-300/60 z-50 shadow-[0_8px_24px_rgba(233,195,73,0.4)]' : ''}`}
         style={{
           ...style,
           background: `${color}33`,
@@ -170,6 +209,7 @@ export default function CalendarEvent({
           // is open — otherwise the popover (which lives inside the chip)
           // can be hidden behind other activities further down the column.
           zIndex: menuOpen ? 40 : undefined,
+          touchAction: dragging ? 'none' : undefined,
         }}
       >
         <div className="flex items-center gap-1 min-w-0 pr-5">
@@ -206,12 +246,18 @@ export default function CalendarEvent({
       exit="exit"
       whileHover={{ x: 1 }}
       onClick={(e) => { e.stopPropagation(); handleChipClick(); }}
-      className="relative rounded-sm px-1.5 py-0.5 cursor-pointer text-[10px] text-stone-100 group"
+      {...(enableLongPressDrag ? longPressHandlers : {})}
+      drag={dragging}
+      dragMomentum={false}
+      onDragEnd={handleDragEnd}
+      whileDrag={{ scale: 1.08, zIndex: 100 }}
+      className={`relative rounded-sm px-1.5 py-0.5 cursor-pointer text-[10px] text-stone-100 group ${dragging ? 'ring-2 ring-amber-300/60 z-50 shadow-[0_8px_24px_rgba(233,195,73,0.4)]' : ''}`}
       style={{
         background: `${color}33`,
         borderLeft: `2px solid ${color}`,
         ...recurringBorder,
         zIndex: menuOpen ? 40 : undefined,
+        touchAction: dragging ? 'none' : undefined,
       }}
     >
       <span className="flex items-center gap-1 min-w-0 pr-4">
