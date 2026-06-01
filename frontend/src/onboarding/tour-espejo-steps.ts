@@ -1,6 +1,6 @@
 // frontend/src/onboarding/tour-espejo-steps.ts
 
-export type StepId = 1 | 2 | 3 | 4 | 5;
+export type StepId = 1 | 2 | 3;
 
 export type StepPlacement = 'top' | 'bottom' | 'left' | 'right';
 
@@ -18,6 +18,10 @@ export interface TourStep {
   autoCloseAfterMs?: number;
 }
 
+// MVP scope: 3 pasos que el usuario nuevo puede completar antes de guardar
+// su primera reflexión. Pasos sobre ReflectionEditor (en AnswersGridModal,
+// post-save) y HistoryList (requiere >1 registros) quedan para una iteración
+// futura cuando esos componentes vivan en la UI pre-save.
 export const STEPS: readonly TourStep[] = [
   {
     id: 1,
@@ -30,7 +34,7 @@ export const STEPS: readonly TourStep[] = [
   {
     id: 2,
     targetId: 'espejo-sefira-tiferet',
-    copy: 'Hacé click en cualquier sefirá para entrar.',
+    copy: 'Haz click en cualquier sefirá para entrar.',
     placement: 'right',
     mode: 'linear',
     advanceOn: 'target-click',
@@ -38,27 +42,10 @@ export const STEPS: readonly TourStep[] = [
   {
     id: 3,
     targetId: 'espejo-pregunta-textarea',
-    copy: 'Respondé desde lo que estás viviendo.',
+    copy: 'Responde desde lo que estás viviendo. Cuando termines, guarda tus respuestas con el botón abajo.',
     placement: 'bottom',
-    mode: 'contextual',
-    advanceOn: 'target-focus',
-  },
-  {
-    id: 4,
-    targetId: 'espejo-reflection-editor',
-    copy: 'Acá escribís tu reflexión libre y nivelás la energía.',
-    placement: 'left',
-    mode: 'contextual',
-    advanceOn: 'target-click',
-  },
-  {
-    id: 5,
-    targetId: 'espejo-history-list',
-    copy: 'Acá vas a ver todas tus reflexiones pasadas. Click en cualquiera para revisitarla.',
-    placement: 'top',
-    mode: 'contextual',
-    advanceOn: 'target-click',
-    autoCloseAfterMs: 30000,
+    mode: 'linear',
+    advanceOn: 'next-button',
   },
 ] as const;
 

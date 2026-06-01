@@ -1,19 +1,16 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Registro } from '../types';
 import HistorialEntryModal from './HistorialEntryModal';
-import { useTourStep } from '../../onboarding';
 
 type Props = { registros: Registro[] };
 
 export default function HistoryList({ registros }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  useTourStep(5, rootRef);
 
   // registros[0] es la entrada actual (ya se renderiza arriba en el panel).
   // De las anteriores, filtrar las que tienen texto real — las que solo traen
@@ -25,7 +22,7 @@ export default function HistoryList({ registros }: Props) {
   if (previous.length === 0) return null;
 
   return (
-    <div ref={rootRef}>
+    <div>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
