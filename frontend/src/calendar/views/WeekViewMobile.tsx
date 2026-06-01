@@ -21,10 +21,8 @@ type Props = {
 
 export default function WeekViewMobile(props: Props) {
   return (
-    <div className="overflow-x-auto -mx-2" style={{ overscrollBehavior: 'contain' }}>
-      <div className="min-w-[760px] px-2">
-        <WeekView {...props} enableLongPressDrag={true} />
-      </div>
+    <div className="w-full">
+      <WeekView {...props} enableLongPressDrag={true} />
     </div>
   );
 }
