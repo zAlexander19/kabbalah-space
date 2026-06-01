@@ -44,10 +44,12 @@ export default function EspejoModule({
   const tour = useTourEspejo();
 
   // Cleanup: if the user navigates away while the tour is still active,
-  // skip it (closes the tooltip + marks done) so it doesn't reappear on
-  // remount. We use a ref so the unmount cleanup reads the LATEST tour
-  // state — capturing `tour` directly would snapshot the first render
-  // (where isActive is false) and the guard would never fire.
+  // cancel it (closes the tooltip WITHOUT marking done) so an accidental
+  // misclick on the logo or another nav doesn't permanently lose the
+  // onboarding. The user gets the tour again next time they enter /espejo.
+  // We use a ref so the unmount cleanup reads the LATEST tour state —
+  // capturing `tour` directly would snapshot the first render (where
+  // isActive is false) and the guard would never fire.
   const tourRef = useRef(tour);
   useEffect(() => {
     tourRef.current = tour;
@@ -55,7 +57,7 @@ export default function EspejoModule({
   useEffect(() => {
     return () => {
       if (tourRef.current.isActive) {
-        tourRef.current.skip();
+        tourRef.current.cancel();
       }
     };
   }, []);

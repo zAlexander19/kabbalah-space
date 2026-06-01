@@ -17,7 +17,13 @@ interface TourEspejoContextValue {
   currentStep: StepId | null;
   start: () => void;
   next: () => void;
+  /** Cierra el tour y lo marca como hecho — el usuario no lo vuelve a ver. */
   skip: () => void;
+  /** Cierra el tour SIN marcarlo como hecho — la próxima visita lo vuelve a
+   *  mostrar. Lo usa el cleanup del EspejoModule cuando el usuario navega fuera
+   *  por accidente (ej. click en el logo), para no penalizar misclicks con la
+   *  pérdida permanente del onboarding. */
+  cancel: () => void;
   registerTarget: (stepId: StepId, ref: RefObject<HTMLElement>) => () => void;
   getTargetRef: (stepId: StepId) => RefObject<HTMLElement> | null;
 }
@@ -75,6 +81,11 @@ export function TourEspejoProvider({ children }: { children: ReactNode }) {
     finish();
   }, [finish]);
 
+  const cancel = useCallback(() => {
+    setIsActive(false);
+    setCurrentStep(null);
+  }, []);
+
   const registerTarget = useCallback(
     (stepId: StepId, ref: RefObject<HTMLElement>) => {
       targetsRef.current.set(stepId, ref);
@@ -106,10 +117,11 @@ export function TourEspejoProvider({ children }: { children: ReactNode }) {
       start,
       next,
       skip,
+      cancel,
       registerTarget,
       getTargetRef,
     }),
-    [isActive, currentStep, start, next, skip, registerTarget, getTargetRef],
+    [isActive, currentStep, start, next, skip, cancel, registerTarget, getTargetRef],
   );
 
   return <TourEspejoContext.Provider value={value}>{children}</TourEspejoContext.Provider>;
