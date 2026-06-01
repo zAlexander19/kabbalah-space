@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchSyncStatus } from './api';
+import { useAuth } from '../auth';
 import type { GcalStatus } from './types';
 
 const POLL_INTERVAL_MS = 2000;
@@ -9,6 +10,7 @@ export function useGcalStatus(enabled: boolean = true): {
   loading: boolean;
   refetch: () => Promise<void>;
 } {
+  const { status: authStatus } = useAuth();
   const [status, setStatus] = useState<GcalStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,7 +26,13 @@ export function useGcalStatus(enabled: boolean = true): {
   };
 
   useEffect(() => {
-    if (!enabled) return;
+    // Solo polleamos si el usuario está autenticado. Anónimo / loading no
+    // tiene token válido — pollear genera 401s en loop hasta que el usuario
+    // se logee.
+    if (!enabled || authStatus !== 'authenticated') {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     const tick = async () => {
       if (cancelled) return;
@@ -36,7 +44,7 @@ export function useGcalStatus(enabled: boolean = true): {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [enabled]);
+  }, [enabled, authStatus]);
 
   return { status, loading, refetch };
 }

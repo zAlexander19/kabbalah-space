@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '../../auth';
+import { apiFetch, useAuth } from '../../auth';
 import type { Activity, VolumeItem, DateRange } from '../types';
 
 function dateToYmd(d: Date): string {
@@ -20,12 +20,19 @@ function attachUtcIfNaive(iso: string): string {
 }
 
 export function useActivities(range: DateRange) {
+  const { status: authStatus } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [volume, setVolume] = useState<VolumeItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
   const load = useCallback(async () => {
+    // Endpoints autenticados — skip si el usuario es anónimo / loading.
+    if (authStatus !== 'authenticated') {
+      setActivities([]);
+      setVolume([]);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -60,7 +67,7 @@ export function useActivities(range: DateRange) {
     } finally {
       setLoading(false);
     }
-  }, [range.start, range.end]);
+  }, [range.start, range.end, authStatus]);
 
   useEffect(() => {
     load();
