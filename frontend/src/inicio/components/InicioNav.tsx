@@ -124,7 +124,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                 >
                   {SECTIONS.map((s) => {
                     const active = activeView === s.key;
-                    const isBlockedByTour = tour.isActive && s.key !== 'espejo';
+                    const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
                     return (
                       <button
                         key={s.key}
@@ -169,7 +169,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
         <div className="hidden md:flex items-center gap-1">
           {SECTIONS.map((s) => {
             const active = activeView === s.key;
-            const isBlockedByTour = tour.isActive && s.key !== 'espejo';
+            const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
             return (
               <button
                 key={s.key}
