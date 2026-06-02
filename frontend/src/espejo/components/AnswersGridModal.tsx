@@ -269,7 +269,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
             <div className="relative flex-1 overflow-y-auto px-6 sm:px-10 py-8">
               <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Answers area — spans 2/3 of the width on lg+ */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 order-2 lg:order-1">
                   {answered.length === 0 ? (
                     <p className="text-center text-stone-500 italic py-16">
                       Todavía no hay respuestas guardadas para esta sefirá.
@@ -331,7 +331,7 @@ export default function AnswersGridModal({ open, onClose, preguntas, resumen, re
                 </div>
 
                 {/* Sidebar — scores flanking the orb, reflexión, then input */}
-                <aside className="lg:col-span-1 space-y-6">
+                <aside className="lg:col-span-1 order-1 lg:order-2 space-y-6">
                   {/* Display block: scores flanking the orb + reflection below */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-center gap-3">
