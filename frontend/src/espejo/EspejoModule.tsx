@@ -133,7 +133,11 @@ export default function EspejoModule({
   // gutter sumada al ancho del árbol no entra en la pantalla, así que la
   // anulamos y reducimos la escala — la card rotativa queda más justa pero al
   // menos el árbol entra completo.
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  // Breakpoint alineado con Tailwind `lg` (1024px). Hasta ahí usamos layout
+  // mobile compacto: árbol centrado + bottom sheet on-tap. Sin esto, en el rango
+  // 768-1023px se activaba `md:flex-row` y el SefiraDetailPanel desktop asomaba
+  // por la derecha cortado (no entran árbol + panel en menos de ~1000px).
+  const isMobile = useMediaQuery('(max-width: 1023px)');
   const TREE_W = 400;
   const TREE_H = 880;
   const TREE_SCALE = isMobile ? 0.85 : 0.95;
@@ -152,7 +156,7 @@ export default function EspejoModule({
           Nueva reflexión libre
         </button>
       </div>
-      <div className="w-full flex flex-col md:flex-row items-center md:items-start justify-between gap-10 xl:gap-12 relative">
+      <div className="w-full flex flex-col lg:flex-row items-center lg:items-start justify-between gap-10 xl:gap-12 relative">
       <div className="relative shrink-0" style={{ width: TREE_W * TREE_SCALE + LEFT_GUTTER, height: TREE_H * TREE_SCALE }}>
         <div
           className="absolute top-0"
@@ -210,7 +214,7 @@ export default function EspejoModule({
           initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
           animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
           transition={{ duration: 0.7, delay: pageRevealed ? 0.75 : 0, ease }}
-          className="w-full flex-1 max-w-md xl:max-w-lg mt-8 md:mt-0"
+          className="w-full flex-1 max-w-md xl:max-w-lg mt-8 lg:mt-0"
         >
           <div className={`p-8 sm:p-10 rounded-3xl min-h-[500px] ${glassEffect}`}>
             <AnimatePresence mode="wait">
