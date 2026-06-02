@@ -127,9 +127,13 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
 
   const gridScores = [1, 3, 5, 7, 9];
 
+  // En mobile el SVG (viewBox 1100×500) se aplastaría al ancho del card
+  // (~540px), dejando los mini-árboles diminutos e ilegibles. Wrapper con
+  // overflow-x-auto + min-w en mobile fuerza scroll horizontal y mantiene
+  // cada círculo tocable. En >=md (768px+) sin scroll, ancho fluido.
   return (
-    <div className="w-full">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block">
+    <div className="w-full overflow-x-auto md:overflow-x-visible -mx-2 px-2 md:mx-0 md:px-0">
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full min-w-[760px] md:min-w-0">
         {/* Y axis gridlines + labels (1..9) */}
         {gridScores.map(s => {
           const y = yFor(s);
