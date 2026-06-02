@@ -77,6 +77,12 @@ export default function SefiraDetailMobileSheet({
             role="dialog"
             aria-modal="true"
             aria-label={`Detalle de ${resumen.sefira_nombre}`}
+            // El tour del onboarding tiene targets adentro de este sheet (paso 3
+            // = textarea del QuestionCarousel). Si el sheet no se marca con
+            // data-tour-pause="false", el MutationObserver del TourTooltip lo
+            // trata como un modal por encima y pausa el tooltip — el usuario
+            // nunca vería el paso 3 en mobile.
+            data-tour-pause="false"
           >
             {/* Drag handle */}
             <div className="shrink-0 flex justify-center pt-3 pb-1">

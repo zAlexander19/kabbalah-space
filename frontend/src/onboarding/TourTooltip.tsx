@@ -188,12 +188,21 @@ export function TourTooltip() {
   useEffect(() => {
     if (!tour.isActive) return;
     const check = () => {
-      const modals = document.querySelectorAll('[aria-modal="true"]');
+      // Excluir contenedores que marcan data-tour-pause="false" — esos son
+      // modales que ALOJAN targets del tour adentro (ej. SefiraDetailMobileSheet
+      // contiene el textarea del paso 3 en mobile), así que pausar el tooltip
+      // cuando se abren lo dejaría inalcanzable.
+      const modals = document.querySelectorAll('[aria-modal="true"]:not([data-tour-pause="false"])');
       setIsPaused(modals.length > 0);
     };
     check();
     const observer = new MutationObserver(check);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal'] });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-modal', 'data-tour-pause'],
+    });
     return () => observer.disconnect();
   }, [tour.isActive]);
 
