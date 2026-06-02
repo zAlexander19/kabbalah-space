@@ -1,20 +1,33 @@
 import { useRef } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import type { InicioNavTarget } from './InicioNav';
 
 type CardData = {
   art: React.ReactNode;
   title: string;
   body: string;
+  target: InicioNavTarget;
 };
 
-function ModuleCard({ art, title, body }: CardData) {
+function ModuleCard({
+  art,
+  title,
+  body,
+  target,
+  onNavigate,
+}: CardData & { onNavigate: (t: InicioNavTarget) => void }) {
   return (
-    <article className="ks-module-card p-7 flex flex-col">
+    <button
+      type="button"
+      onClick={() => onNavigate(target)}
+      aria-label={`Ir a ${title}`}
+      className="ks-module-card p-7 flex flex-col text-left w-full cursor-pointer transition-transform duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+    >
       <div className="h-20">{art}</div>
       <h3 className="ks-serif italic text-gold text-2xl mb-3 mt-6">{title}</h3>
       <p className="ks-body text-sm mb-8 flex-1">{body}</p>
       <span className="ks-eyebrow text-gold mt-auto inline-block">EXPLORAR →</span>
-    </article>
+    </button>
   );
 }
 
@@ -84,20 +97,27 @@ const CARDS: CardData[] = [
     art: EspejoArt,
     title: 'Árbol de la Vida',
     body: 'Respondé preguntas interiores que te permitirán ver cómo estás trabajando en cada dimensión.',
+    target: 'espejo',
   },
   {
     art: CalendarioArt,
     title: 'Calendario Cabalístico',
     body: 'Para organizar tus energías tenés que organizar tu tiempo. En Kabbalah Space podés agregar tus actividades relacionándolas con cada sefirá.',
+    target: 'calendario',
   },
   {
     art: EvolucionArt,
     title: 'Mi Evolución',
     body: 'Los humanos somos personas de patrones. Vé qué patrones tenés y analizá cómo los podés usar a tu favor.',
+    target: 'evolucion',
   },
 ];
 
-export default function InicioModulos() {
+type Props = {
+  onNavigate: (target: InicioNavTarget) => void;
+};
+
+export default function InicioModulos({ onNavigate }: Props) {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: '0px 0px -15% 0px' });
   const reduced = useReducedMotion();
@@ -121,7 +141,7 @@ export default function InicioModulos() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {CARDS.map((card) => (
-            <ModuleCard key={card.title} {...card} />
+            <ModuleCard key={card.title} {...card} onNavigate={onNavigate} />
           ))}
         </div>
       </div>

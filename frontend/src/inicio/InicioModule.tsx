@@ -47,7 +47,7 @@ export default function InicioModule({ onNavigate }: Props) {
       <main className="relative">
         <InicioHero onEnterEspejo={goToEspejo} />
         <InicioPremisa />
-        <InicioModulos />
+        <InicioModulos onNavigate={onNavigate} />
         <InicioSefirot />
         <InicioMarquee />
         <InicioCtaFinal onEnterEspejo={goToEspejo} />
