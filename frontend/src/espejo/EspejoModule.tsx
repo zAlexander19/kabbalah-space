@@ -8,8 +8,10 @@ import RotatingReflectionPreview from './components/RotatingReflectionPreview';
 import EmptyState from './components/EmptyState';
 import SefiraDetailPanel from './components/SefiraDetailPanel';
 import EspejoIntro from './components/EspejoIntro';
+import SefiraDetailMobileSheet from './components/SefiraDetailMobileSheet';
 import { ReflexionLibreEditor } from './ReflexionLibreEditor';
 import { useTourEspejo, TOUR_DONE_FLAG } from '../onboarding';
+import { useMediaQuery } from '../shared/hooks/useMediaQuery';
 
 type Props = {
   sefirot: SefiraNode[];
@@ -131,19 +133,10 @@ export default function EspejoModule({
   // gutter sumada al ancho del árbol no entra en la pantalla, así que la
   // anulamos y reducimos la escala — la card rotativa queda más justa pero al
   // menos el árbol entra completo.
-  const [isMobile, setIsMobile] = useState<boolean>(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(max-width: 767px)');
-    const handler = () => setIsMobile(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const TREE_W = 400;
   const TREE_H = 880;
-  const TREE_SCALE = isMobile ? 0.7 : 0.95;
+  const TREE_SCALE = isMobile ? 0.85 : 0.95;
   const LEFT_GUTTER = isMobile ? 0 : 180;
   return (
     <div className="w-full max-w-[1400px] flex flex-col items-stretch gap-4 relative">
@@ -176,7 +169,7 @@ export default function EspejoModule({
             />
           </motion.div>
 
-          {showRotatingCard && (
+          {showRotatingCard && !isMobile && (
             <RotatingReflectionPreview
               sefirot={sefirot}
               summary={summary}
@@ -202,44 +195,56 @@ export default function EspejoModule({
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
-        animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
-        transition={{ duration: 0.7, delay: pageRevealed ? 0.75 : 0, ease }}
-        className="w-full flex-1 max-w-md xl:max-w-lg mt-8 md:mt-0"
-      >
-        <div className={`p-8 sm:p-10 rounded-3xl min-h-[500px] ${glassEffect}`}>
-          <AnimatePresence mode="wait">
-            {selectedNode && selectedResumen ? (
-              <motion.div
-                key={selectedNode.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <SefiraDetailPanel
-                  resumen={selectedResumen}
-                  description={selectedNode.description}
-                  preguntas={preguntas}
-                  registros={registros}
-                  onDataChanged={handleDataChanged}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <EmptyState />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+      {isMobile ? (
+        <SefiraDetailMobileSheet
+          open={selectedNode !== null && selectedResumen !== null}
+          onClose={() => setSelectedId(null)}
+          resumen={selectedResumen}
+          description={selectedNode?.description ?? ''}
+          preguntas={preguntas}
+          registros={registros}
+          onDataChanged={handleDataChanged}
+        />
+      ) : (
+        <motion.div
+          initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
+          animate={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : 30 }}
+          transition={{ duration: 0.7, delay: pageRevealed ? 0.75 : 0, ease }}
+          className="w-full flex-1 max-w-md xl:max-w-lg mt-8 md:mt-0"
+        >
+          <div className={`p-8 sm:p-10 rounded-3xl min-h-[500px] ${glassEffect}`}>
+            <AnimatePresence mode="wait">
+              {selectedNode && selectedResumen ? (
+                <motion.div
+                  key={selectedNode.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <SefiraDetailPanel
+                    resumen={selectedResumen}
+                    description={selectedNode.description}
+                    preguntas={preguntas}
+                    registros={registros}
+                    onDataChanged={handleDataChanged}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <EmptyState />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
       </div>
 
       <ReflexionLibreEditor
