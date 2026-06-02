@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Sparkles } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Metrics, RangeOption } from './types';
@@ -24,7 +24,11 @@ function monthLabel(mesKey: string): string {
   return txt.charAt(0).toUpperCase() + txt.slice(1);
 }
 
-export default function EvolucionModule() {
+type Props = {
+  onNavigateToEspejo?: () => void;
+};
+
+export default function EvolucionModule({ onNavigateToEspejo }: Props = {}) {
   const [range, setRange] = useState<RangeOption>(12);
   const [metrics, setMetrics] = useState<Metrics>({ usuario: true, ia: true, actividades: true });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -188,24 +192,56 @@ export default function EvolucionModule() {
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={`month-${pinnedMonth}-${mesMetric}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease }}
-          >
-            <ArbolMesGrande
-              snapshot={monthSnapshot}
-              metric={mesMetric}
-              onSefiraClick={handleSefiraClickFromMonth}
-            />
-          </motion.div>
+          {a && a.reflexiones === 0 && a.respuestas === 0 && a.actividades === 0 ? (
+            <motion.div
+              key={`month-empty-${pinnedMonth}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease }}
+              className="flex flex-col items-center text-center py-12 px-4"
+            >
+              <Sparkles size={32} className="text-amber-300/70 mb-4" aria-hidden="true" />
+              <h3 className="font-serif text-xl text-amber-100/90 mb-2">
+                Este mes está en blanco
+              </h3>
+              <p className="text-stone-400 text-sm max-w-md leading-relaxed mb-6">
+                No respondiste preguntas ni dejaste reflexiones en {monthLabel(pinnedMonth)}.
+                Andá a tu Árbol de la Vida para empezar a llenarlo.
+              </p>
+              {onNavigateToEspejo && (
+                <button
+                  type="button"
+                  onClick={onNavigateToEspejo}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/40 text-amber-100 text-xs uppercase tracking-[0.14em] transition-colors"
+                >
+                  Ir a Mi Árbol de la Vida
+                  <span aria-hidden>→</span>
+                </button>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`month-${pinnedMonth}-${mesMetric}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease }}
+            >
+              <ArbolMesGrande
+                snapshot={monthSnapshot}
+                metric={mesMetric}
+                onSefiraClick={handleSefiraClickFromMonth}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
 
-        <p className="text-[10px] uppercase tracking-[0.14em] text-stone-500 mt-6 text-center">
-          Click en una sefirá para ver su evolución completa
-        </p>
+        {(!a || a.reflexiones > 0 || a.respuestas > 0 || a.actividades > 0) && (
+          <p className="text-[10px] uppercase tracking-[0.14em] text-stone-500 mt-6 text-center">
+            Click en una sefirá para ver su evolución completa
+          </p>
+        )}
       </div>
     );
   }

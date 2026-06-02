@@ -170,7 +170,7 @@ function AppInner() {
             {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
             {activeView === 'cuenta' && <CuentaPage onNavigateToPremium={gate.openPlans} />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
-            {activeView === 'evolucion' && <EvolucionModule />}
+            {activeView === 'evolucion' && <EvolucionModule onNavigateToEspejo={() => setActiveView('espejo')} />}
             {activeView === 'espejo' && (
               <EspejoModule
                 sefirot={SEFIROT}
