@@ -94,7 +94,7 @@ export default function SefiraDetailMobileSheet({
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="absolute top-3 left-3 w-9 h-9 flex items-center justify-center rounded-full bg-stone-900/80 hover:bg-stone-800 text-stone-300 z-10"
+              className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-stone-900/80 hover:bg-stone-800 text-stone-300 z-10"
             >
               <X size={18} />
             </button>
