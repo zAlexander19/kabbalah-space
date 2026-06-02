@@ -19,7 +19,7 @@ export type Metrics = {
   actividades: boolean;
 };
 
-export type RangeOption = 'mes' | 3 | 6 | 12 | 'todo';
+export type RangeOption = 'mes' | 3 | 6 | 12;
 
 // "mes" is the weekly drill-down (handled by useEvolucionMes, not by the
 // monthly /espejo/evolucion endpoint), so it has no entry here.
@@ -27,7 +27,6 @@ export const RANGE_TO_MESES: Record<Exclude<RangeOption, 'mes'>, number> = {
   3: 3,
   6: 6,
   12: 12,
-  todo: 120,
 };
 
 export type SemanaBucket = {

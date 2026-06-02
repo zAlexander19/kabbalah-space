@@ -3,10 +3,9 @@ import type { RangeOption } from '../types';
 import { ink } from '../../shared/tokens';
 
 const BASE_OPTIONS: { key: RangeOption; label: string }[] = [
-  { key: 3,      label: '3M' },
-  { key: 6,      label: '6M' },
-  { key: 12,     label: '12M' },
-  { key: 'todo', label: 'Todo' },
+  { key: 3,  label: '3M' },
+  { key: 6,  label: '6M' },
+  { key: 12, label: '12M' },
 ];
 
 type Props = {
