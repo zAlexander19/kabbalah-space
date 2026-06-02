@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
 import { createReflexionLibre } from '../premium';
 import { useScrollLock } from '../shared/hooks/useScrollLock';
@@ -116,6 +117,16 @@ export function ReflexionLibreEditor({
             transition={{ duration: 0.22, ease }}
             className="relative w-full max-w-2xl rounded-2xl bg-stone-950/95 border border-stone-800/70 shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-6 md:p-7 space-y-4"
           >
+            {/* Close X — patrón consistente con AnswersGridModal / HistorialEntryModal */}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:text-amber-200 hover:bg-stone-800/50 transition-colors"
+            >
+              <X size={16} />
+            </button>
+
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-[0.2em] text-stone-500">
                 Reflexión libre
