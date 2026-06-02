@@ -145,10 +145,10 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
                 strokeWidth={1}
               />
               <text
-                x={PL - 10} y={y + 4}
+                x={PL - 10} y={y + 6}
                 textAnchor="end"
-                fill="rgba(168, 162, 158, 0.7)"
-                fontSize={11}
+                fill="rgba(168, 162, 158, 0.8)"
+                fontSize={18}
                 fontFamily="ui-sans-serif, system-ui"
               >
                 {s}
@@ -194,10 +194,10 @@ export default function EvolucionTimeline({ data, onMonthClick }: Props) {
           <text
             key={`xlabel-${m.mes}`}
             x={xFor(i)}
-            y={H - PB / 2 + 4}
+            y={H - PB / 2 + 6}
             textAnchor="middle"
-            fill="rgba(168, 162, 158, 0.85)"
-            fontSize={11}
+            fill="rgba(168, 162, 158, 0.9)"
+            fontSize={16}
             fontFamily="ui-sans-serif, system-ui"
             letterSpacing="0.12em"
           >
