@@ -13,6 +13,7 @@ type Props = {
 };
 
 const SECTIONS: { key: InicioNavTarget; label: string }[] = [
+  { key: 'inicio',     label: 'Inicio' },
   { key: 'espejo',     label: 'Mi Árbol de la Vida' },
   { key: 'calendario', label: 'Calendario Cabalístico' },
   { key: 'evolucion',  label: 'Mi Evolución' },
@@ -96,40 +97,9 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
       }`}
     >
       <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-3 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => onNavigate('inicio')}
-          className="flex items-center rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/60"
-          aria-label="Ir a la bienvenida"
-        >
-          <KabbalahLogo size="sm" />
-        </button>
-
-        <div className="hidden md:flex items-center gap-1">
-          {SECTIONS.map((s) => {
-            const active = activeView === s.key;
-            const isBlockedByTour = tour.isActive && s.key !== 'espejo';
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => onNavigate(s.key)}
-                disabled={isBlockedByTour}
-                aria-disabled={isBlockedByTour ? 'true' : undefined}
-                title={isBlockedByTour ? 'Terminá el tour antes de salir' : undefined}
-                className={`ks-nav-link ${active ? 'text-gold' : ''} ${
-                  isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
-                }`}
-                aria-current={active ? 'page' : undefined}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-2" ref={menuRef}>
-          {/* Mobile hamburger button — visible only on mobile */}
+        {/* Cluster izquierdo: hamburger (mobile) + Logo */}
+        <div className="flex items-center gap-2">
+          {/* Mobile hamburger button — visible only on mobile, a la izquierda del logo */}
           <div className="md:hidden relative" ref={mobileMenuRef}>
             <button
               type="button"
@@ -150,7 +120,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.18, ease }}
-                  className="absolute right-0 mt-2 w-60 origin-top-right rounded-xl bg-stone-950/95 backdrop-blur-xl border border-stone-800/70 shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden"
+                  className="absolute left-0 mt-2 w-60 origin-top-left rounded-xl bg-stone-950/95 backdrop-blur-xl border border-stone-800/70 shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden"
                 >
                   {SECTIONS.map((s) => {
                     const active = activeView === s.key;
@@ -186,6 +156,40 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
             </AnimatePresence>
           </div>
 
+          <button
+            type="button"
+            onClick={() => onNavigate('inicio')}
+            className="flex items-center rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/60"
+            aria-label="Ir a la bienvenida"
+          >
+            <KabbalahLogo size="sm" />
+          </button>
+        </div>
+
+        <div className="hidden md:flex items-center gap-1">
+          {SECTIONS.map((s) => {
+            const active = activeView === s.key;
+            const isBlockedByTour = tour.isActive && s.key !== 'espejo';
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => onNavigate(s.key)}
+                disabled={isBlockedByTour}
+                aria-disabled={isBlockedByTour ? 'true' : undefined}
+                title={isBlockedByTour ? 'Terminá el tour antes de salir' : undefined}
+                className={`ks-nav-link ${active ? 'text-gold' : ''} ${
+                  isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
+                }`}
+                aria-current={active ? 'page' : undefined}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2" ref={menuRef}>
           {auth.status === 'loading' ? null : isAnon ? (
             <button
               type="button"
