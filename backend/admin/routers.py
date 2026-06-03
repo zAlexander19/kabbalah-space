@@ -11,10 +11,11 @@ from admin.deps import require_admin
 from admin.schemas import (
     PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn,
     UsuarioAdminOut, UsuariosListOut,
+    StatsOut, StatsUsuarios, StatsActividad, StatsPremium,
 )
 from billing.models import Subscription
 from database import get_db
-from models import PreguntaSefira, Usuario
+from models import PreguntaSefira, Usuario, RegistroDiario, RespuestaPregunta, Actividad
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -256,3 +257,66 @@ async def delete_usuario(
     await db.delete(u)
     await db.commit()
     return {"ok": True}
+
+
+@router.get("/stats", response_model=StatsOut)
+async def get_stats(
+    _: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    now = datetime.now(timezone.utc)
+    inicio_dia = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    hace_7 = now - timedelta(days=7)
+    hace_30 = now - timedelta(days=30)
+
+    async def _count(stmt) -> int:
+        return (await db.execute(stmt)).scalar() or 0
+
+    total = await _count(select(func.count()).select_from(Usuario))
+    nuevos_hoy = await _count(select(func.count()).select_from(Usuario).where(Usuario.fecha_creacion >= inicio_dia))
+    nuevos_semana = await _count(select(func.count()).select_from(Usuario).where(Usuario.fecha_creacion >= hace_7))
+    nuevos_mes = await _count(select(func.count()).select_from(Usuario).where(Usuario.fecha_creacion >= hace_30))
+
+    provider_rows = (await db.execute(
+        select(Usuario.provider, func.count()).group_by(Usuario.provider)
+    )).all()
+    por_provider = {p: c for p, c in provider_rows}
+
+    premium_count = await _count(
+        select(func.count()).select_from(Subscription).where(Subscription.status.in_(["trial", "active"]))
+    )
+
+    usuarios = StatsUsuarios(
+        total=total, nuevos_hoy=nuevos_hoy, nuevos_semana=nuevos_semana,
+        nuevos_mes=nuevos_mes, por_provider=por_provider, premium=premium_count,
+    )
+
+    reflexiones = await _count(select(func.count()).select_from(RegistroDiario))
+    respuestas = await _count(select(func.count()).select_from(RespuestaPregunta))
+    actividades = await _count(select(func.count()).select_from(Actividad))
+    gcal_activos = await _count(select(func.count()).select_from(Usuario).where(Usuario.gcal_sync_enabled.is_(True)))
+
+    async def _activos(desde) -> int:
+        resp_ids = select(RespuestaPregunta.usuario_id).where(RespuestaPregunta.fecha_registro >= desde)
+        act_ids = select(Actividad.usuario_id).where(Actividad.fecha_creacion >= desde)
+        ids = (await db.execute(resp_ids.union(act_ids))).all()
+        return len({row[0] for row in ids})
+
+    actividad = StatsActividad(
+        reflexiones_total=reflexiones, respuestas_total=respuestas, actividades_total=actividades,
+        usuarios_activos_7d=await _activos(hace_7), usuarios_activos_30d=await _activos(hace_30),
+        gcal_sync_activos=gcal_activos,
+    )
+
+    activos = await _count(select(func.count()).select_from(Subscription).where(Subscription.status == "active"))
+    trial = await _count(select(func.count()).select_from(Subscription).where(Subscription.status == "trial"))
+    cancelados = await _count(select(func.count()).select_from(Subscription).where(Subscription.canceled_at.isnot(None)))
+    plan_rows = (await db.execute(
+        select(Subscription.plan, func.count()).group_by(Subscription.plan)
+    )).all()
+    premium = StatsPremium(
+        activos=activos, trial=trial, cancelados=cancelados,
+        por_plan={p: c for p, c in plan_rows},
+    )
+
+    return StatsOut(usuarios=usuarios, actividad=actividad, premium=premium)

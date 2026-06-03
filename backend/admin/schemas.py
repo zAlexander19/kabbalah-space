@@ -39,3 +39,34 @@ class UsuarioAdminOut(BaseModel):
 class UsuariosListOut(BaseModel):
     total: int
     items: list[UsuarioAdminOut]
+
+
+class StatsUsuarios(BaseModel):
+    total: int
+    nuevos_hoy: int
+    nuevos_semana: int
+    nuevos_mes: int
+    por_provider: dict[str, int]
+    premium: int
+
+
+class StatsActividad(BaseModel):
+    reflexiones_total: int
+    respuestas_total: int
+    actividades_total: int
+    usuarios_activos_7d: int
+    usuarios_activos_30d: int
+    gcal_sync_activos: int
+
+
+class StatsPremium(BaseModel):
+    activos: int
+    trial: int
+    cancelados: int
+    por_plan: dict[str, int]
+
+
+class StatsOut(BaseModel):
+    usuarios: StatsUsuarios
+    actividad: StatsActividad
+    premium: StatsPremium
