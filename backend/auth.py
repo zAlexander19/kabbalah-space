@@ -43,6 +43,7 @@ class UserOut(BaseModel):
     nombre: str
     provider: str = "email"
     ksai_enabled: bool = True
+    is_admin: bool = False
 
 
 class Token(BaseModel):
