@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Sparkles } from 'lucide-react';
 import type { SefiraEvolucion } from '../types';
 import MiniArbolMes from './MiniArbolMes';
 
@@ -27,6 +28,7 @@ type MonthlyAggregate = {
 type Props = {
   data: SefiraEvolucion[];
   onMonthClick: (mes: string) => void;
+  onNavigateToEspejo?: () => void;
 };
 
 function shortMonthLabel(mesKey: string): string {
@@ -63,15 +65,34 @@ function aggregateByMonth(data: SefiraEvolucion[]): MonthlyAggregate[] {
   });
 }
 
-export default function EvolucionTimeline({ data, onMonthClick }: Props) {
+export default function EvolucionTimeline({ data, onMonthClick, onNavigateToEspejo }: Props) {
   const months = useMemo(() => aggregateByMonth(data), [data]);
 
-  if (months.length === 0) {
+  // Vacío real: no hay meses, o todos los meses tienen promedio null
+  // (usuario sin reflexiones/respuestas en el rango). En vez del "sin datos"
+  // mudo, invitamos al usuario a llenar el árbol.
+  const isEmpty = months.length === 0 || months.every(m => m.promedio === null);
+  if (isEmpty) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-stone-400 text-sm font-serif italic">
-          Sin datos para mostrar todavía.
+      <div className="flex flex-col items-center text-center py-12 px-4">
+        <Sparkles size={32} className="text-amber-300/70 mb-4" aria-hidden="true" />
+        <h3 className="font-serif text-xl text-amber-100/90 mb-2">
+          Tu árbol está esperando
+        </h3>
+        <p className="text-stone-400 text-sm max-w-md leading-relaxed mb-6">
+          Todavía no respondiste preguntas en este rango. Empezá por tu Árbol de la Vida
+          para que tu evolución aparezca acá.
         </p>
+        {onNavigateToEspejo && (
+          <button
+            type="button"
+            onClick={onNavigateToEspejo}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/40 text-amber-100 text-xs uppercase tracking-[0.14em] transition-colors"
+          >
+            Ir a Mi Árbol de la Vida
+            <span aria-hidden>→</span>
+          </button>
+        )}
       </div>
     );
   }

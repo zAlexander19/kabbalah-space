@@ -116,6 +116,9 @@ export default function EvolucionModule({ onNavigateToEspejo }: Props = {}) {
 
   // ─── Timeline (primary) view ──────────────────────────────────────
   if (view === 'timeline') {
+    const timelineEmpty =
+      data.length === 0 ||
+      data.every(s => s.meses.every(m => m.score_usuario === null && m.score_ia === null));
     return (
       <div className="w-full bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-6 md:p-8 shadow-2xl">
         <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -145,14 +148,20 @@ export default function EvolucionModule({ onNavigateToEspejo }: Props = {}) {
                 Cargando…
               </p>
             ) : (
-              <EvolucionTimeline data={data} onMonthClick={handleMonthClick} />
+              <EvolucionTimeline
+                data={data}
+                onMonthClick={handleMonthClick}
+                onNavigateToEspejo={onNavigateToEspejo}
+              />
             )}
           </motion.div>
         </AnimatePresence>
 
-        <p className="text-[10px] uppercase tracking-[0.14em] text-stone-500 mt-6 text-center">
-          Click en un mes para ver el detalle por dimensión
-        </p>
+        {!timelineEmpty && (
+          <p className="text-[10px] uppercase tracking-[0.14em] text-stone-500 mt-6 text-center">
+            Click en un mes para ver el detalle por dimensión
+          </p>
+        )}
       </div>
     );
   }
