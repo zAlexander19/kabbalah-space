@@ -137,3 +137,59 @@ async def reorder_preguntas(
         by_id[pid].orden = idx
     await db.commit()
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Helpers for usuario admin management
+# ---------------------------------------------------------------------------
+
+async def _get_user_or_404(db: AsyncSession, user_id: str) -> Usuario:
+    u = (await db.execute(
+        select(Usuario).where(Usuario.id == user_id)
+    )).scalars().first()
+    if u is None:
+        raise HTTPException(404, "Usuario no encontrado")
+    return u
+
+
+async def _count_admins(db: AsyncSession) -> int:
+    return (await db.execute(
+        select(func.count()).select_from(Usuario).where(Usuario.is_admin == True)  # noqa: E712
+    )).scalar() or 0
+
+
+def _usuario_admin_out(u: Usuario) -> UsuarioAdminOut:
+    return UsuarioAdminOut(
+        id=u.id, nombre=u.nombre, email=u.email, provider=u.provider,
+        is_admin=u.is_admin, is_premium=u.is_premium, fecha_creacion=u.fecha_creacion,
+    )
+
+
+@router.post("/usuarios/{user_id}/admin", response_model=UsuarioAdminOut)
+async def promote_admin(
+    user_id: str,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    u = await _get_user_or_404(db, user_id)
+    u.is_admin = True
+    await db.commit()
+    await db.refresh(u)
+    return _usuario_admin_out(u)
+
+
+@router.delete("/usuarios/{user_id}/admin", response_model=UsuarioAdminOut)
+async def demote_admin(
+    user_id: str,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id == admin.id:
+        raise HTTPException(400, "No podés quitarte el rol de admin a vos mismo")
+    u = await _get_user_or_404(db, user_id)
+    if u.is_admin and await _count_admins(db) <= 1:
+        raise HTTPException(400, "No podés dejar la plataforma sin administradores")
+    u.is_admin = False
+    await db.commit()
+    await db.refresh(u)
+    return _usuario_admin_out(u)
