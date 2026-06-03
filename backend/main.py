@@ -57,9 +57,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app):
-    # Startup: arrancar el scheduler de emails sólo si el kill switch está activo.
-    # El seeding inicial de la DB sigue vivo en el handler @app.on_event("startup")
-    # más abajo; FastAPI ejecuta ambos.
+    # Startup: inicializar la DB (create_all + seed de sefirot + bootstrap de
+    # admins) y arrancar el scheduler de emails si el kill switch está activo.
+    # OJO: con `lifespan` definido, Starlette IGNORA los handlers @app.on_event,
+    # así que la inicialización debe vivir acá (se invoca startup() explícito).
+    await startup()
     settings_for_lifespan = get_settings()
     if settings_for_lifespan.emails_enabled:
         start_scheduler()
@@ -261,7 +263,6 @@ async def google_callback(
     return _redirect_to_frontend(s, f"#token={jwt_token}")
 
 
-@app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
