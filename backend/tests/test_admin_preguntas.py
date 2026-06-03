@@ -54,3 +54,26 @@ async def test_delete_pregunta(client, admin_user_headers, seed_sefirot):
     assert r2.status_code == 200
     r3 = await client.get("/admin/preguntas/jesed", headers=admin_user_headers)
     assert all(p["id"] != pid for p in r3.json())
+
+
+async def test_reorder_preguntas(client, admin_user_headers, seed_sefirot):
+    ids = []
+    for texto in ["A", "B", "C"]:
+        r = await client.post("/admin/preguntas",
+            json={"sefira_id": "jesed", "texto": texto}, headers=admin_user_headers)
+        ids.append(r.json()["id"])
+    reordered = list(reversed(ids))
+    r = await client.put("/admin/preguntas/jesed/orden",
+        json={"ids": reordered}, headers=admin_user_headers)
+    assert r.status_code == 200, r.text
+    r2 = await client.get("/admin/preguntas/jesed", headers=admin_user_headers)
+    assert [p["id"] for p in r2.json()] == reordered
+
+
+async def test_reorder_rejects_mismatched_ids(client, admin_user_headers, seed_sefirot):
+    r = await client.post("/admin/preguntas",
+        json={"sefira_id": "jesed", "texto": "A"}, headers=admin_user_headers)
+    pid = r.json()["id"]
+    r2 = await client.put("/admin/preguntas/jesed/orden",
+        json={"ids": [pid, "fantasma"]}, headers=admin_user_headers)
+    assert r2.status_code == 400

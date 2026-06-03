@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from admin.deps import require_admin
-from admin.schemas import PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn
+from admin.schemas import PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn
 from database import get_db
 from models import PreguntaSefira, Usuario
 
@@ -81,5 +81,25 @@ async def delete_pregunta(
     if pregunta is None:
         raise HTTPException(404, "Pregunta no encontrada")
     await db.delete(pregunta)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.put("/preguntas/{sefira_id}/orden")
+async def reorder_preguntas(
+    sefira_id: str,
+    payload: PreguntaReorderIn,
+    _: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (await db.execute(
+        select(PreguntaSefira).where(PreguntaSefira.sefira_id == sefira_id)
+    )).scalars().all()
+    actuales = {p.id for p in rows}
+    if set(payload.ids) != actuales:
+        raise HTTPException(400, "La lista de ids no coincide con las preguntas de la sefira")
+    by_id = {p.id: p for p in rows}
+    for idx, pid in enumerate(payload.ids):
+        by_id[pid].orden = idx
     await db.commit()
     return {"ok": True}
