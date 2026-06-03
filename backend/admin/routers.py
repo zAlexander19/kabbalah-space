@@ -1,4 +1,6 @@
 """Endpoints del panel de administrador. Todos exigen require_admin."""
+import uuid as _uuid
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,6 +12,7 @@ from admin.schemas import (
     PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn,
     UsuarioAdminOut, UsuariosListOut,
 )
+from billing.models import Subscription
 from database import get_db
 from models import PreguntaSefira, Usuario
 
@@ -40,13 +43,7 @@ async def list_usuarios(
     rows = (await db.execute(
         base.order_by(Usuario.fecha_creacion.desc()).limit(limit).offset(offset)
     )).scalars().all()
-    items = [
-        UsuarioAdminOut(
-            id=u.id, nombre=u.nombre, email=u.email, provider=u.provider,
-            is_admin=u.is_admin, is_premium=u.is_premium, fecha_creacion=u.fecha_creacion,
-        )
-        for u in rows
-    ]
+    items = [_usuario_admin_out(u) for u in rows]
     return UsuariosListOut(total=total, items=items)
 
 
@@ -154,7 +151,7 @@ async def _get_user_or_404(db: AsyncSession, user_id: str) -> Usuario:
 
 async def _count_admins(db: AsyncSession) -> int:
     return (await db.execute(
-        select(func.count()).select_from(Usuario).where(Usuario.is_admin == True)  # noqa: E712
+        select(func.count()).select_from(Usuario).where(Usuario.is_admin.is_(True))
     )).scalar() or 0
 
 
@@ -192,4 +189,54 @@ async def demote_admin(
     u.is_admin = False
     await db.commit()
     await db.refresh(u)
+    return _usuario_admin_out(u)
+
+
+@router.post("/usuarios/{user_id}/premium", response_model=UsuarioAdminOut)
+async def grant_premium(
+    user_id: str,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    u = await _get_user_or_404(db, user_id)
+    existing = (await db.execute(
+        select(Subscription).where(Subscription.usuario_id == user_id)
+    )).scalars().first()
+    if existing is not None:
+        raise HTTPException(409, "El usuario ya tiene una suscripción")
+    now = datetime.now(timezone.utc)
+    sub = Subscription(
+        usuario_id=user_id,
+        status="active",
+        plan="manual",
+        lemonsqueezy_subscription_id=f"manual-{_uuid.uuid4()}",
+        lemonsqueezy_customer_id="manual",
+        current_period_start=now,
+        current_period_end=now + timedelta(days=365 * 100),  # indefinido
+    )
+    db.add(sub)
+    await db.commit()
+    await db.refresh(u, attribute_names=["subscription"])
+    return _usuario_admin_out(u)
+
+
+@router.delete("/usuarios/{user_id}/premium", response_model=UsuarioAdminOut)
+async def revoke_premium(
+    user_id: str,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    u = await _get_user_or_404(db, user_id)
+    sub = (await db.execute(
+        select(Subscription).where(Subscription.usuario_id == user_id)
+    )).scalars().first()
+    if sub is not None:
+        if sub.plan != "manual":
+            raise HTTPException(
+                400,
+                "Esta suscripción proviene de Lemonsqueezy; gestionala desde el portal de pagos.",
+            )
+        await db.delete(sub)
+        await db.commit()
+    await db.refresh(u, attribute_names=["subscription"])
     return _usuario_admin_out(u)
