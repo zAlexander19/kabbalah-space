@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     from_email: str = "Kabbalah Space <hola@kabbalahspace.app>"
     emails_enabled: bool = False  # kill switch — set to True to enable the scheduler + sender
 
+    # ---------- Admin ----------
+    # Emails (separados por coma) que se promueven a admin al arrancar la app.
+    admin_bootstrap_emails: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

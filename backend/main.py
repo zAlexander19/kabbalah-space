@@ -282,6 +282,9 @@ async def startup():
                     session.add(Sefira(**s))
                 await session.commit()
 
+            from admin.bootstrap import promote_bootstrap_admins
+            await promote_bootstrap_admins(session, settings.admin_bootstrap_emails)
+
 
 @app.get("/sefirot")
 async def get_sefirot(db: AsyncSession = Depends(get_db)):
