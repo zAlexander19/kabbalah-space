@@ -1,10 +1,15 @@
 """Endpoints del panel de administrador. Todos exigen require_admin."""
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from admin.deps import require_admin
-from admin.schemas import PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn
+from admin.schemas import (
+    PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn,
+    UsuarioAdminOut, UsuariosListOut,
+)
 from database import get_db
 from models import PreguntaSefira, Usuario
 
@@ -14,6 +19,35 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/ping")
 async def ping(_: Usuario = Depends(require_admin)):
     return {"ok": True}
+
+
+@router.get("/usuarios", response_model=UsuariosListOut)
+async def list_usuarios(
+    _: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    base = select(Usuario)
+    count_q = select(func.count()).select_from(Usuario)
+    if search:
+        like = f"%{search.lower()}%"
+        cond = func.lower(Usuario.nombre).like(like) | func.lower(Usuario.email).like(like)
+        base = base.where(cond)
+        count_q = count_q.where(cond)
+    total = (await db.execute(count_q)).scalar() or 0
+    rows = (await db.execute(
+        base.order_by(Usuario.fecha_creacion.desc()).limit(limit).offset(offset)
+    )).scalars().all()
+    items = [
+        UsuarioAdminOut(
+            id=u.id, nombre=u.nombre, email=u.email, provider=u.provider,
+            is_admin=u.is_admin, is_premium=u.is_premium, fecha_creacion=u.fecha_creacion,
+        )
+        for u in rows
+    ]
+    return UsuariosListOut(total=total, items=items)
 
 
 @router.get("/preguntas/{sefira_id}", response_model=list[PreguntaOut])
