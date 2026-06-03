@@ -457,32 +457,14 @@ async def evaluate(
     await db.commit()
     return EvaluationResponse(saved=True)
 
-class PreguntaCreate(BaseModel):
-    sefira_id: str
-    texto: str
-
 @app.get("/preguntas/{sefira_id}")
 async def get_preguntas(sefira_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PreguntaSefira).where(PreguntaSefira.sefira_id == sefira_id))
+    result = await db.execute(
+        select(PreguntaSefira)
+        .where(PreguntaSefira.sefira_id == sefira_id)
+        .order_by(PreguntaSefira.orden)
+    )
     return result.scalars().all()
-
-@app.post("/preguntas")
-async def add_pregunta(pregunta: PreguntaCreate, db: AsyncSession = Depends(get_db)):
-    nueva_pregunta = PreguntaSefira(sefira_id=pregunta.sefira_id, texto_pregunta=pregunta.texto)
-    db.add(nueva_pregunta)
-    await db.commit()
-    await db.refresh(nueva_pregunta)
-    return nueva_pregunta
-
-@app.delete("/preguntas/{pregunta_id}")
-async def delete_pregunta(pregunta_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PreguntaSefira).where(PreguntaSefira.id == pregunta_id))
-    pregunta = result.scalars().first()
-    if not pregunta:
-        raise HTTPException(status_code=404, detail="Pregunta not found")
-    await db.delete(pregunta)
-    await db.commit()
-    return {"message": "Deleted successfully"}
 
 class RespuestaCreate(BaseModel):
     pregunta_id: str

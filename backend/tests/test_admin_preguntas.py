@@ -77,3 +77,20 @@ async def test_reorder_rejects_mismatched_ids(client, admin_user_headers, seed_s
     r2 = await client.put("/admin/preguntas/jesed/orden",
         json={"ids": [pid, "fantasma"]}, headers=admin_user_headers)
     assert r2.status_code == 400
+
+
+async def test_public_get_preguntas_is_ordered(client, admin_user_headers, seed_sefirot):
+    for texto in ["A", "B"]:
+        await client.post("/admin/preguntas",
+            json={"sefira_id": "jesed", "texto": texto}, headers=admin_user_headers)
+    # GET publico (sin auth) sigue existiendo para el modulo Espejo, ahora ordenado
+    r = await client.get("/preguntas/jesed")
+    assert r.status_code == 200
+    assert [p["texto_pregunta"] for p in r.json()] == ["A", "B"]
+
+
+async def test_old_open_post_pregunta_is_gone(client, seed_sefirot):
+    # El POST abierto sin auth ya no debe existir.
+    # FastAPI devuelve 404 porque no hay ninguna ruta POST /preguntas (sin path param).
+    r = await client.post("/preguntas", json={"sefira_id": "jesed", "texto": "x"})
+    assert r.status_code in (404, 405)
