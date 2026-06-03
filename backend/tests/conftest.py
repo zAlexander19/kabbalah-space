@@ -163,3 +163,23 @@ async def premium_user_headers(client: AsyncClient, db_session) -> dict:
     await db_session.commit()
 
     return bundle["headers"]
+
+
+@pytest_asyncio.fixture
+async def admin_user_headers(client, db_session) -> dict:
+    """Auth headers de un usuario con is_admin=True."""
+    from sqlalchemy import select
+    from models import Usuario
+    bundle = await register_and_login(client, "admin@example.com", "secret123", "Admin")
+    user = (await db_session.execute(
+        select(Usuario).where(Usuario.id == bundle["id"])
+    )).scalars().first()
+    user.is_admin = True
+    await db_session.commit()
+    return bundle["headers"]
+
+
+@pytest_asyncio.fixture
+async def normal_user_headers(client) -> dict:
+    bundle = await register_and_login(client, "normal@example.com", "secret123", "Normal")
+    return bundle["headers"]

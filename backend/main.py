@@ -45,6 +45,7 @@ from auth import (
     verify_state_token,
 )
 from admin.bootstrap import promote_bootstrap_admins
+from admin.routers import router as admin_router
 from billing.reflexiones_libres import router as reflexiones_libres_router
 from billing.routers import router as billing_router
 from billing.webhooks import router as webhooks_router
@@ -86,6 +87,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(admin_router)
 app.include_router(reflexiones_libres_router)
 app.include_router(billing_router)
 app.include_router(webhooks_router)
