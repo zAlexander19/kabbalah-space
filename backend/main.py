@@ -44,6 +44,7 @@ from auth import (
     verify_password,
     verify_state_token,
 )
+from admin.bootstrap import promote_bootstrap_admins
 from billing.reflexiones_libres import router as reflexiones_libres_router
 from billing.routers import router as billing_router
 from billing.webhooks import router as webhooks_router
@@ -282,7 +283,6 @@ async def startup():
                     session.add(Sefira(**s))
                 await session.commit()
 
-            from admin.bootstrap import promote_bootstrap_admins
             await promote_bootstrap_admins(session, settings.admin_bootstrap_emails)
 
 

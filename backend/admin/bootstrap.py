@@ -3,7 +3,7 @@
 Resuelve el problema huevo-y-gallina: sin un admin inicial, nadie podria
 nombrar admins desde la UI. Idempotente: correrlo dos veces no cambia nada.
 """
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Usuario
@@ -14,7 +14,7 @@ async def promote_bootstrap_admins(db: AsyncSession, emails_csv: str) -> None:
     if not emails:
         return
     rows = (await db.execute(
-        select(Usuario).where(Usuario.email.in_(emails))
+        select(Usuario).where(func.lower(Usuario.email).in_(emails))
     )).scalars().all()
     changed = False
     for u in rows:

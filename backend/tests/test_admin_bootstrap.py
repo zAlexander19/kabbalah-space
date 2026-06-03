@@ -4,7 +4,7 @@ from sqlalchemy import select
 pytestmark = pytest.mark.asyncio
 
 
-async def test_bootstrap_promotes_listed_emails(db_session, monkeypatch):
+async def test_bootstrap_promotes_listed_emails(db_session):
     from models import Usuario
     from admin.bootstrap import promote_bootstrap_admins
 
