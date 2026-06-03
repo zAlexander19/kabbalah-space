@@ -28,3 +28,29 @@ async def test_list_preguntas_returns_ordered(client, admin_user_headers, seed_s
     assert r.status_code == 200
     textos = [p["texto_pregunta"] for p in r.json()]
     assert textos == ["A", "B"]
+
+
+async def test_edit_pregunta_updates_texto(client, admin_user_headers, seed_sefirot):
+    r = await client.post("/admin/preguntas",
+        json={"sefira_id": "jesed", "texto": "Vieja"}, headers=admin_user_headers)
+    pid = r.json()["id"]
+    r2 = await client.patch(f"/admin/preguntas/{pid}",
+        json={"texto": "Nueva"}, headers=admin_user_headers)
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["texto_pregunta"] == "Nueva"
+
+
+async def test_edit_pregunta_404_unknown(client, admin_user_headers, seed_sefirot):
+    r = await client.patch("/admin/preguntas/nope",
+        json={"texto": "x"}, headers=admin_user_headers)
+    assert r.status_code == 404
+
+
+async def test_delete_pregunta(client, admin_user_headers, seed_sefirot):
+    r = await client.post("/admin/preguntas",
+        json={"sefira_id": "jesed", "texto": "Borrar"}, headers=admin_user_headers)
+    pid = r.json()["id"]
+    r2 = await client.delete(f"/admin/preguntas/{pid}", headers=admin_user_headers)
+    assert r2.status_code == 200
+    r3 = await client.get("/admin/preguntas/jesed", headers=admin_user_headers)
+    assert all(p["id"] != pid for p in r3.json())
