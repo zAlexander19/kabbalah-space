@@ -240,3 +240,19 @@ async def revoke_premium(
         await db.commit()
     await db.refresh(u, attribute_names=["subscription"])
     return _usuario_admin_out(u)
+
+
+@router.delete("/usuarios/{user_id}")
+async def delete_usuario(
+    user_id: str,
+    admin: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id == admin.id:
+        raise HTTPException(400, "No podés eliminar tu propia cuenta desde el panel")
+    u = await _get_user_or_404(db, user_id)
+    if u.is_admin and await _count_admins(db) <= 1:
+        raise HTTPException(400, "No podés eliminar al último administrador")
+    await db.delete(u)
+    await db.commit()
+    return {"ok": True}

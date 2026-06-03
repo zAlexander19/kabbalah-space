@@ -88,3 +88,27 @@ async def test_grant_premium_twice_conflicts(client, admin_user_headers, db_sess
     assert r1.status_code == 200
     r2 = await client.post(f"/admin/usuarios/{u.id}/premium", headers=admin_user_headers)
     assert r2.status_code == 409
+
+
+async def test_delete_user(client, admin_user_headers, normal_user_headers, db_session):
+    from sqlalchemy import select
+    from models import Usuario
+    normal = (await db_session.execute(
+        select(Usuario).where(Usuario.email == "normal@example.com")
+    )).scalars().first()
+    r = await client.delete(f"/admin/usuarios/{normal.id}", headers=admin_user_headers)
+    assert r.status_code == 200
+    gone = (await db_session.execute(
+        select(Usuario).where(Usuario.id == normal.id)
+    )).scalars().first()
+    assert gone is None
+
+
+async def test_cannot_delete_self(client, admin_user_headers, db_session):
+    from sqlalchemy import select
+    from models import Usuario
+    me = (await db_session.execute(
+        select(Usuario).where(Usuario.email == "admin@example.com")
+    )).scalars().first()
+    r = await client.delete(f"/admin/usuarios/{me.id}", headers=admin_user_headers)
+    assert r.status_code == 400
