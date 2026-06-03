@@ -245,6 +245,21 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
 
                     <div className="h-px bg-stone-800/70" />
 
+                    {auth.user.is_admin && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          window.dispatchEvent(new CustomEvent('navigate:admin'));
+                        }}
+                        className="w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]" aria-hidden="true">admin_panel_settings</span>
+                        Panel de administrador
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       role="menuitem"

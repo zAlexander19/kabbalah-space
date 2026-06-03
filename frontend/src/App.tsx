@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import AdminPanel from "./AdminPanel";
+import { AdminModule } from "./admin";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
 import EvolucionModule from "./evolucion";
@@ -89,6 +89,12 @@ function AppInner() {
     return () => window.removeEventListener('navigate:calendario', handler);
   }, [setActiveView]);
 
+  useEffect(() => {
+    const handler = () => setActiveView('admin');
+    window.addEventListener('navigate:admin', handler);
+    return () => window.removeEventListener('navigate:admin', handler);
+  }, [setActiveView]);
+
   const handleIntroComplete = useCallback(() => {
     setIntroPlaying(false);
     setPageRevealed(true);
@@ -167,7 +173,7 @@ function AppInner() {
           </header>
 
           <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
-            {activeView === 'admin' && <AdminPanel sefirot={SEFIROT} glowText={glowText} />}
+            {activeView === 'admin' && <AdminModule sefirot={SEFIROT} glowText={glowText} />}
             {activeView === 'cuenta' && <CuentaPage onNavigateToPremium={gate.openPlans} />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
             {activeView === 'evolucion' && <EvolucionModule onNavigateToEspejo={() => setActiveView('espejo')} />}
