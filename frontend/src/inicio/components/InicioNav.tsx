@@ -100,7 +100,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
         {/* Cluster izquierdo: hamburger (mobile) + Logo */}
         <div className="flex items-center gap-2">
           {/* Mobile hamburger button — visible only on mobile, a la izquierda del logo */}
-          <div className="md:hidden relative" ref={mobileMenuRef}>
+          <div className="md:hidden" ref={mobileMenuRef}>
             <button
               type="button"
               onClick={() => setMobileMenuOpen((v) => !v)}
@@ -113,45 +113,73 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
 
             <AnimatePresence>
               {mobileMenuOpen && (
-                <motion.div
-                  key="mobile-dropdown"
-                  role="menu"
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18, ease }}
-                  className="absolute left-0 mt-2 w-60 origin-top-left rounded-xl bg-stone-950/95 backdrop-blur-xl border border-stone-800/70 shadow-[0_16px_40px_rgba(0,0,0,0.55)] overflow-hidden"
-                >
-                  {SECTIONS.map((s) => {
-                    const active = activeView === s.key;
-                    const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
-                    return (
+                <>
+                  {/* Backdrop oscuro — clic para cerrar */}
+                  <motion.div
+                    key="drawer-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm"
+                  />
+
+                  {/* Barra lateral que entra desde la izquierda */}
+                  <motion.aside
+                    key="drawer-panel"
+                    role="menu"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '-100%' }}
+                    transition={{ type: 'tween', duration: 0.28, ease }}
+                    className="fixed left-0 top-0 z-[60] h-full w-72 max-w-[80%] bg-stone-950/95 backdrop-blur-xl border-r border-stone-800/70 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col"
+                  >
+                    <div className="flex items-center justify-between px-5 h-16 border-b border-stone-800/60 shrink-0">
+                      <KabbalahLogo size="sm" />
                       <button
-                        key={s.key}
                         type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          onNavigate(s.key);
-                        }}
-                        disabled={isBlockedByTour}
-                        aria-disabled={isBlockedByTour ? 'true' : undefined}
-                        title={isBlockedByTour ? 'Termina el tour antes de salir' : undefined}
-                        className={`w-full px-4 py-3 flex items-center justify-between text-sm tracking-wide transition-colors border-b border-stone-800/60 last:border-b-0 ${
-                          active
-                            ? 'text-gold bg-stone-900/50'
-                            : 'text-stone-200 hover:text-amber-200 hover:bg-stone-900/60'
-                        } ${isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
-                        aria-current={active ? 'page' : undefined}
+                        onClick={() => setMobileMenuOpen(false)}
+                        aria-label="Cerrar menú"
+                        className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-800/50 text-stone-300"
                       >
-                        <span>{s.label}</span>
-                        {active && (
-                          <span className="text-[10px] uppercase tracking-[0.18em] text-gold/70">Acá</span>
-                        )}
+                        <X size={20} />
                       </button>
-                    );
-                  })}
-                </motion.div>
+                    </div>
+
+                    <div className="flex flex-col py-2 overflow-y-auto">
+                      {SECTIONS.map((s) => {
+                        const active = activeView === s.key;
+                        const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
+                        return (
+                          <button
+                            key={s.key}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              onNavigate(s.key);
+                            }}
+                            disabled={isBlockedByTour}
+                            aria-disabled={isBlockedByTour ? 'true' : undefined}
+                            title={isBlockedByTour ? 'Termina el tour antes de salir' : undefined}
+                            className={`w-full px-5 py-3.5 flex items-center justify-between text-sm tracking-wide transition-colors ${
+                              active
+                                ? 'text-gold bg-stone-900/50'
+                                : 'text-stone-200 hover:text-amber-200 hover:bg-stone-900/60'
+                            } ${isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            <span>{s.label}</span>
+                            {active && (
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-gold/70">Acá</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.aside>
+                </>
               )}
             </AnimatePresence>
           </div>
