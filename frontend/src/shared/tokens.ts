@@ -32,18 +32,41 @@ export const SEFIRA_COLORS: Record<string, string> = {
   maljut: '#a16207',
 };
 
+// Topología y letras del Árbol de la Vida (esquema tradicional del diagrama de
+// referencia). 22 senderos: incluye los cruces Jojmá–Gevurá (ט) y Biná–Jésed (ק),
+// y Maljut conecta sólo con Yesod.
 export const CONNECTIONS: { n1: string; n2: string; label?: string }[] = [
-  { n1: 'keter',   n2: 'jojma',   label: 'א' }, { n1: 'keter',   n2: 'bina',    label: 'ב' },
-  { n1: 'keter',   n2: 'tiferet', label: 'ג' }, { n1: 'jojma',   n2: 'bina',    label: 'ד' },
-  { n1: 'jojma',   n2: 'tiferet', label: 'ה' }, { n1: 'bina',    n2: 'tiferet', label: 'ז' },
-  { n1: 'jojma',   n2: 'jesed',   label: 'ו' }, { n1: 'bina',    n2: 'gevura',  label: 'ח' },
-  { n1: 'jesed',   n2: 'netzaj',  label: 'כ' }, { n1: 'gevura',  n2: 'hod',     label: 'מ' },
-  { n1: 'jesed',   n2: 'gevura',  label: 'ט' }, { n1: 'netzaj',  n2: 'hod',     label: 'פ' },
-  { n1: 'jesed',   n2: 'tiferet', label: 'י' }, { n1: 'gevura',  n2: 'tiferet', label: 'ל' },
-  { n1: 'netzaj',  n2: 'tiferet', label: 'נ' }, { n1: 'hod',     n2: 'tiferet', label: 'ע' },
-  { n1: 'yesod',   n2: 'tiferet', label: 'ס' }, { n1: 'netzaj',  n2: 'yesod',   label: 'צ' },
-  { n1: 'hod',     n2: 'yesod',   label: 'ר' }, { n1: 'netzaj',  n2: 'maljut',  label: 'ק' },
-  { n1: 'hod',     n2: 'maljut',  label: 'ש' }, { n1: 'yesod',   n2: 'maljut',  label: 'ת' },
+  // Desde Kéter
+  { n1: 'keter',   n2: 'bina',    label: 'ו' }, // Vav
+  { n1: 'keter',   n2: 'jojma',   label: 'ה' }, // Hei
+  { n1: 'keter',   n2: 'tiferet', label: 'ד' }, // Dálet
+  // Desde Jojmá
+  { n1: 'jojma',   n2: 'bina',    label: 'ש' }, // Shin (horizontal)
+  { n1: 'jojma',   n2: 'jesed',   label: 'ב' }, // Bet
+  { n1: 'jojma',   n2: 'tiferet', label: 'ז' }, // Zayin
+  { n1: 'jojma',   n2: 'gevura',  label: 'ט' }, // Tet (diagonal cruzada)
+  // Desde Biná
+  { n1: 'bina',    n2: 'gevura',  label: 'ג' }, // Guímel
+  { n1: 'bina',    n2: 'tiferet', label: 'ע' }, // Áin
+  { n1: 'bina',    n2: 'jesed',   label: 'ק' }, // Kuf (diagonal cruzada)
+  // Desde Gevurá
+  { n1: 'gevura',  n2: 'jesed',   label: 'א' }, // Álef (horizontal)
+  { n1: 'gevura',  n2: 'tiferet', label: 'צ' }, // Tsadi
+  { n1: 'gevura',  n2: 'hod',     label: 'פ' }, // Pei
+  // Desde Jésed
+  { n1: 'jesed',   n2: 'tiferet', label: 'ח' }, // Jet
+  { n1: 'jesed',   n2: 'netzaj',  label: 'כ' }, // Kaf
+  // Desde Tiféret
+  { n1: 'tiferet', n2: 'hod',     label: 'ס' }, // Sámej
+  { n1: 'tiferet', n2: 'netzaj',  label: 'י' }, // Yud
+  { n1: 'tiferet', n2: 'yesod',   label: 'ר' }, // Reish
+  // Desde Hod
+  { n1: 'hod',     n2: 'netzaj',  label: 'מ' }, // Mem (horizontal)
+  { n1: 'hod',     n2: 'yesod',   label: 'ל' }, // Lámed
+  // Desde Nétsaj
+  { n1: 'netzaj',  n2: 'yesod',   label: 'נ' }, // Nun
+  // Desde Yesod
+  { n1: 'yesod',   n2: 'maljut',  label: 'ת' }, // Tav
 ];
 
 export const API_BASE = 'http://127.0.0.1:8000';
