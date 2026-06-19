@@ -10,6 +10,11 @@ export function UsuariosPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Edición por fila
+  const [editId, setEditId] = useState<string | null>(null);
+  const [draftAdmin, setDraftAdmin] = useState(false);
+  const [draftPremium, setDraftPremium] = useState(false);
+
   const load = async () => {
     try { const r = await listUsuarios(search); setItems(r.items); setTotal(r.total); setError(null); }
     catch (e) { setError((e as Error).message); }
@@ -21,11 +26,40 @@ export function UsuariosPanel() {
     // eslint-disable-next-line
   }, [search]);
 
-  const act = async (id: string, fn: () => Promise<unknown>) => {
-    setBusy(id);
-    try { await fn(); await load(); }
-    catch (e) { setError((e as Error).message); }
-    finally { setBusy(null); }
+  const startEdit = (u: UsuarioAdmin) => {
+    setError(null);
+    setEditId(u.id);
+    setDraftAdmin(u.is_admin);
+    setDraftPremium(u.is_premium);
+  };
+
+  const cancelEdit = () => setEditId(null);
+
+  const saveEdit = async (u: UsuarioAdmin) => {
+    setBusy(u.id);
+    try {
+      // Aplicar solo lo que cambió. El backend valida los guards (p. ej. no
+      // podés quitarte admin a vos mismo) y devuelve el error correspondiente.
+      if (draftAdmin !== u.is_admin) await setAdmin(u.id, draftAdmin);
+      if (draftPremium !== u.is_premium) await setPremium(u.id, draftPremium);
+      setEditId(null);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+      await load();        // re-sincronizar con la verdad del servidor
+      setEditId(null);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onDelete = (u: UsuarioAdmin) => {
+    if (!window.confirm(`¿Eliminar a ${u.email}? Esta acción es irreversible.`)) return;
+    setBusy(u.id);
+    deleteUsuario(u.id)
+      .then(load)
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setBusy(null));
   };
 
   return (
@@ -52,38 +86,87 @@ export function UsuariosPanel() {
             </tr>
           </thead>
           <tbody>
-            {items.map((u) => (
-              <tr key={u.id} className="border-b border-stone-800/30 text-stone-300">
-                <td className="py-2.5 pr-3">{u.nombre}</td>
-                <td className="py-2.5 pr-3 text-stone-400">{u.email}</td>
-                <td className="py-2.5 pr-3 text-stone-400">{u.provider}</td>
-                <td className="py-2.5 pr-3">{u.is_premium ? '★' : '—'}</td>
-                <td className="py-2.5 pr-3">{u.is_admin ? '✓' : '—'}</td>
-                <td className="py-2.5 pr-3">
-                  <div className="flex gap-2 items-center">
-                    <button type="button" disabled={busy === u.id}
-                      onClick={() => act(u.id, () => setPremium(u.id, !u.is_premium))}
-                      className="text-[11px] text-amber-200/80 hover:text-amber-200 disabled:opacity-40">
-                      {u.is_premium ? 'Quitar premium' : 'Dar premium'}
-                    </button>
-                    <button type="button" disabled={busy === u.id}
-                      onClick={() => act(u.id, () => setAdmin(u.id, !u.is_admin))}
-                      className="text-[11px] text-indigo-300/80 hover:text-indigo-300 disabled:opacity-40">
-                      {u.is_admin ? 'Quitar admin' : 'Hacer admin'}
-                    </button>
-                    <button type="button" disabled={busy === u.id}
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar a ${u.email}? Esta acción es irreversible.`)) {
-                          act(u.id, () => deleteUsuario(u.id));
-                        }
-                      }}
-                      className="text-[11px] text-red-400/70 hover:text-red-400 disabled:opacity-40">
-                      Eliminar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {items.map((u) => {
+              const editing = editId === u.id;
+              return (
+                <tr key={u.id} className="border-b border-stone-800/30 text-stone-300">
+                  <td className="py-2.5 pr-3">{u.nombre}</td>
+                  <td className="py-2.5 pr-3 text-stone-400">{u.email}</td>
+                  <td className="py-2.5 pr-3 text-stone-400">{u.provider}</td>
+
+                  {/* Premium */}
+                  <td className="py-2.5 pr-3">
+                    {editing ? (
+                      <button
+                        type="button"
+                        onClick={() => setDraftPremium((v) => !v)}
+                        className={`px-2 py-0.5 rounded-md text-[11px] border transition-colors ${
+                          draftPremium
+                            ? 'border-amber-400/50 text-amber-200 bg-amber-400/10'
+                            : 'border-stone-700 text-stone-500 hover:text-stone-300'
+                        }`}
+                      >
+                        {draftPremium ? '★ Premium' : '— Sin premium'}
+                      </button>
+                    ) : (
+                      u.is_premium ? '★' : '—'
+                    )}
+                  </td>
+
+                  {/* Admin */}
+                  <td className="py-2.5 pr-3">
+                    {editing ? (
+                      <button
+                        type="button"
+                        onClick={() => setDraftAdmin((v) => !v)}
+                        className={`px-2 py-0.5 rounded-md text-[11px] border transition-colors ${
+                          draftAdmin
+                            ? 'border-indigo-400/50 text-indigo-200 bg-indigo-400/10'
+                            : 'border-stone-700 text-stone-500 hover:text-stone-300'
+                        }`}
+                      >
+                        {draftAdmin ? '✓ Admin' : '— No admin'}
+                      </button>
+                    ) : (
+                      u.is_admin ? '✓' : '—'
+                    )}
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="py-2.5 pr-3">
+                    {editing ? (
+                      <div className="flex gap-3 items-center">
+                        <button type="button" disabled={busy === u.id}
+                          onClick={() => saveEdit(u)}
+                          className="text-[11px] text-amber-200 hover:text-amber-100 disabled:opacity-40">
+                          Guardar
+                        </button>
+                        <button type="button" disabled={busy === u.id}
+                          onClick={cancelEdit}
+                          className="text-[11px] text-stone-500 hover:text-stone-300 disabled:opacity-40">
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 items-center">
+                        <button type="button" disabled={busy === u.id}
+                          onClick={() => startEdit(u)}
+                          title="Editar roles"
+                          className="text-stone-500 hover:text-amber-200 p-1.5 rounded-lg hover:bg-stone-800/50 disabled:opacity-40">
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button type="button" disabled={busy === u.id}
+                          onClick={() => onDelete(u)}
+                          title="Eliminar usuario"
+                          className="text-red-400/60 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-400/10 disabled:opacity-40">
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
