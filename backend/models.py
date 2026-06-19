@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index, Boolean
 
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, false
 
 from sqlalchemy.orm import relationship
 
@@ -43,7 +43,7 @@ class Usuario(Base):
     google_calendar_id       = Column(String(255), nullable=True)
     gcal_sync_enabled        = Column(Boolean, nullable=False, default=False, server_default="false")
     ksai_enabled             = Column(Boolean, nullable=False, default=True, server_default="true")
-    is_admin                 = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_admin                 = Column(Boolean, nullable=False, default=False, server_default=false())
 
     __table_args__ = (
         Index("ix_usuarios_provider_provider_id", "provider", "provider_id"),

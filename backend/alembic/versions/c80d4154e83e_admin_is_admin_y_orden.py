@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('usuarios', sa.Column('is_admin', sa.Boolean(), server_default='false', nullable=False))
+    op.add_column('usuarios', sa.Column('is_admin', sa.Boolean(), server_default=sa.false(), nullable=False))
     op.add_column('preguntas_sefirot', sa.Column('orden', sa.Integer(), server_default='0', nullable=False))
     # Backfill: numerar las preguntas existentes por sefira segun fecha_creacion.
     conn = op.get_bind()
