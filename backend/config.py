@@ -6,6 +6,7 @@ at import time can call `get_settings()` directly.
 """
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +20,18 @@ class Settings(BaseSettings):
 
     # ---------- Database ----------
     database_url: str = "sqlite+aiosqlite:///./kabbalah.db"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_db_url(cls, v: str) -> str:
+        """Render/Heroku entregan 'postgres://' o 'postgresql://'; SQLAlchemy async
+        necesita el driver asyncpg explícito. Normalizamos para que DATABASE_URL
+        funcione tal cual viene del proveedor."""
+        if v.startswith("postgres://"):
+            return "postgresql+asyncpg://" + v[len("postgres://"):]
+        if v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://"):]
+        return v
 
     # ---------- CORS ----------
     # Comma-separated list of allowed origins. Default = Vite dev server only.

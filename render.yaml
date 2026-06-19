@@ -1,0 +1,91 @@
+# Render Blueprint — Kabbalah Space
+# Deploy: Render Dashboard -> New -> Blueprint -> conectá este repo.
+# Las variables con `sync: false` quedan vacías y las cargás en el dashboard
+# (son secretos o dependen del dominio final). Ver docs/DEPLOY-RENDER.md.
+#
+# Nota: si tu cuenta de Render usa el schema viejo, cambiá `runtime:` por `env:`.
+
+databases:
+  - name: kabbalah-db
+    databaseName: kabbalah
+    user: kabbalah
+    plan: basic-256mb        # NO uses la free de Postgres (expira a los 30 días)
+
+services:
+  # ----------------------------- Backend (FastAPI) -----------------------------
+  - type: web
+    name: kabbalah-backend
+    runtime: python
+    rootDir: backend
+    plan: starter            # always-on (no free: el free se duerme y mata el scheduler)
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head   # corre migraciones antes de cada release
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kabbalah-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: JWT_SECRET
+        generateValue: true            # Render genera un secreto fuerte
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: EMAILS_ENABLED
+        value: "true"
+      - key: RUN_SCHEDULER
+        value: "true"                  # una sola instancia -> dejalo en true
+      # ---- Secretos / dependientes del dominio: cargalos en el dashboard ----
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false                    # https://<backend>/auth/google/callback
+      - key: GCAL_REDIRECT_URI
+        sync: false                    # https://<backend>/sync/google/callback
+      - key: FRONTEND_URL
+        sync: false                    # https://<frontend>
+      - key: CORS_ORIGINS
+        sync: false                    # https://<frontend>
+      - key: FERNET_KEY
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAILS
+        sync: false
+      - key: LEMONSQUEEZY_API_KEY
+        sync: false
+      - key: LEMONSQUEEZY_STORE_ID
+        sync: false
+      - key: LEMONSQUEEZY_VARIANT_MONTHLY
+        sync: false
+      - key: LEMONSQUEEZY_VARIANT_YEARLY
+        sync: false
+      - key: LEMONSQUEEZY_WEBHOOK_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+
+  # ----------------------------- Frontend (Vite) -----------------------------
+  - type: web
+    name: kabbalah-frontend
+    runtime: static
+    rootDir: frontend
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE
+        sync: false                    # https://<backend>  (sin slash final)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
