@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AdminModule } from "./admin";
 import CalendarModule from "./calendar";
@@ -11,6 +11,7 @@ import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPlansModal } from "./premium/PremiumPlansModal";
 import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
+import { useAuth } from "./auth";
 import { TourEspejoProvider, TourTooltip, useTourEspejo } from "./onboarding";
 
 const SEFIROT = [
@@ -54,6 +55,8 @@ function AppInner() {
 
   const gate = useGate();
   const tour = useTourEspejo();
+  const auth = useAuth();
+  const adminRedirected = useRef(false);
 
   const setActiveView = useCallback(
     (target: ViewKey) => {
@@ -64,6 +67,18 @@ function AppInner() {
     },
     [tour.isActive],
   );
+
+  // Al autenticarse como admin, llevarlo directo al panel (una vez por sesión).
+  // Después puede navegar libremente; se resetea al cerrar sesión para que el
+  // próximo login vuelva a redirigir.
+  useEffect(() => {
+    if (auth.status === 'authenticated' && auth.user?.is_admin && !adminRedirected.current) {
+      adminRedirected.current = true;
+      setActiveView('admin');
+    } else if (auth.status === 'anonymous') {
+      adminRedirected.current = false;
+    }
+  }, [auth.status, auth.user, setActiveView]);
 
   useEffect(() => {
     setPaymentRequiredHandler((err) => {
