@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { Menu, X } from 'lucide-react';
 import KabbalahLogo from './KabbalahLogo';
 import { useAuth } from '../../auth';
@@ -111,6 +112,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
+            {createPortal(
             <AnimatePresence>
               {mobileMenuOpen && (
                 <>
@@ -129,6 +131,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                   <motion.aside
                     key="drawer-panel"
                     role="menu"
+                    onMouseDown={(e) => e.stopPropagation()}
                     initial={{ x: '-100%' }}
                     animate={{ x: 0 }}
                     exit={{ x: '-100%' }}
@@ -181,7 +184,8 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                   </motion.aside>
                 </>
               )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body)}
           </div>
 
           <button
