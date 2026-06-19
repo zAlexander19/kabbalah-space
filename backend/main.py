@@ -63,7 +63,7 @@ async def lifespan(app):
     # así que la inicialización debe vivir acá (se invoca startup() explícito).
     await startup()
     settings_for_lifespan = get_settings()
-    if settings_for_lifespan.emails_enabled:
+    if settings_for_lifespan.emails_enabled and settings_for_lifespan.run_scheduler:
         start_scheduler()
     yield
     # Shutdown

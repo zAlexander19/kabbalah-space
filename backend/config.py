@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     resend_webhook_secret: str = ""
     from_email: str = "Kabbalah Space <hola@kabbalahspace.app>"
     emails_enabled: bool = False  # kill switch — set to True to enable the scheduler + sender
+    # El scheduler de emails corre in-process. Si escalás a varios workers/instancias,
+    # dejá run_scheduler=True en UNA sola y False en el resto (si no, emails duplicados).
+    run_scheduler: bool = True
 
     # ---------- Admin ----------
     # Emails (separados por coma) que se promueven a admin al arrancar la app.
