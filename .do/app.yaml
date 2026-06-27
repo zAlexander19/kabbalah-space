@@ -1,0 +1,67 @@
+# DigitalOcean App Platform — Kabbalah Space (backend + Postgres)
+#
+# Crea: un servicio web (FastAPI), una base Postgres gestionada y un job
+# PRE_DEPLOY que corre las migraciones antes de cada release.
+# El FRONTEND va como Static Site aparte (gratis) — ver docs/DEPLOY-RENDER.md
+# adaptado, o las instrucciones del chat.
+#
+# Los secretos y las variables que dependen del dominio NO van acá: se cargan
+# en el dashboard de DO después de crear la app (Settings -> envs).
+
+name: kabbalah-space
+region: nyc
+
+databases:
+  - name: kabbalah-db
+    engine: PG
+    version: "16"
+    production: false        # dev database (más barata; estira el crédito). Subible luego.
+
+services:
+  - name: backend
+    github:
+      repo: zAlexander19/kabbalah-space
+      branch: main
+      deploy_on_push: true
+    source_dir: /backend
+    environment_slug: python
+    build_command: pip install -r requirements.txt
+    run_command: uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
+    http_port: 8080
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    health_check:
+      http_path: /health
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${kabbalah-db.DATABASE_URL}
+      - key: LLM_PROVIDER
+        scope: RUN_TIME
+        value: gemini
+      - key: EMAILS_ENABLED
+        scope: RUN_TIME
+        value: "true"
+      - key: RUN_SCHEDULER
+        scope: RUN_TIME
+        value: "true"
+      # Secretos + URLs (GEMINI_API_KEY, GOOGLE_*, FERNET_KEY, ADMIN_BOOTSTRAP_EMAILS,
+      # LEMONSQUEEZY_*, RESEND_*, FROM_EMAIL, GOOGLE_REDIRECT_URI, GCAL_REDIRECT_URI,
+      # FRONTEND_URL, CORS_ORIGINS) se cargan en el dashboard.
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: zAlexander19/kabbalah-space
+      branch: main
+      deploy_on_push: true
+    source_dir: /backend
+    environment_slug: python
+    build_command: pip install -r requirements.txt
+    run_command: alembic upgrade head
+    instance_size_slug: basic-xxs
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${kabbalah-db.DATABASE_URL}

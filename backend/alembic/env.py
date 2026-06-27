@@ -29,7 +29,8 @@ config = context.config
 # Override the URL from alembic.ini with the one from our Settings.
 # Allow override via env var ALEMBIC_DATABASE_URL for one-off uses (e.g.
 # autogenerating against an empty DB, or pointing at a staging cluster).
-url = os.getenv("ALEMBIC_DATABASE_URL") or get_settings().database_url
+_settings = get_settings()
+url = os.getenv("ALEMBIC_DATABASE_URL") or _settings.sqlalchemy_url
 config.set_main_option("sqlalchemy.url", url)
 
 if config.config_file_name is not None:
@@ -61,6 +62,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_settings.db_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

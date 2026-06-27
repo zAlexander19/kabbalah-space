@@ -5,6 +5,7 @@ Handlers can inject Settings via `Depends(get_settings)`; modules that run
 at import time can call `get_settings()` directly.
 """
 from functools import lru_cache
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,6 +33,31 @@ class Settings(BaseSettings):
         if v.startswith("postgresql://"):
             return "postgresql+asyncpg://" + v[len("postgresql://"):]
         return v
+
+    @property
+    def sqlalchemy_url(self) -> str:
+        """URL para el engine async, sin params que asyncpg no entiende.
+
+        Los Postgres gestionados (DigitalOcean, Render, Heroku) entregan la URL
+        con `?sslmode=require` (y a veces `channel_binding`). asyncpg no acepta
+        `sslmode` en la URL —> lo sacamos acá y lo traducimos a connect_args
+        (ver `db_connect_args`). Para SQLite devuelve la URL tal cual.
+        """
+        if not self.database_url.startswith("postgresql+asyncpg"):
+            return self.database_url
+        parts = urlsplit(self.database_url)
+        query = {k: v for k, v in parse_qsl(parts.query) if k not in ("sslmode", "channel_binding")}
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+    @property
+    def db_connect_args(self) -> dict:
+        """Traduce el `sslmode` de la URL (libpq) al parámetro `ssl` de asyncpg."""
+        if not self.database_url.startswith("postgresql+asyncpg"):
+            return {}
+        sslmode = dict(parse_qsl(urlsplit(self.database_url).query)).get("sslmode")
+        if sslmode and sslmode != "disable":
+            return {"ssl": "require"}
+        return {}
 
     # ---------- CORS ----------
     # Comma-separated list of allowed origins. Default = Vite dev server only.
