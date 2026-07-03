@@ -7,10 +7,10 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
 from dateutil.rrule import rrulestr
-from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -19,7 +19,8 @@ from urllib.parse import urlencode
 
 import httpx
 
-from config import Settings, get_settings
+from config import INSECURE_JWT_DEFAULT, Settings, assert_production_secrets, get_settings
+from rate_limit import client_ip, limiter
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
 import gcal_sync
@@ -61,8 +62,13 @@ async def lifespan(app):
     # admins) y arrancar el scheduler de emails si el kill switch está activo.
     # OJO: con `lifespan` definido, Starlette IGNORA los handlers @app.on_event,
     # así que la inicialización debe vivir acá (se invoca startup() explícito).
-    await startup()
     settings_for_lifespan = get_settings()
+    assert_production_secrets(settings_for_lifespan)
+    if settings_for_lifespan.jwt_secret == INSECURE_JWT_DEFAULT:
+        logger.warning(
+            "JWT_SECRET está en el default inseguro — aceptable solo en desarrollo local."
+        )
+    await startup()
     if settings_for_lifespan.emails_enabled and settings_for_lifespan.run_scheduler:
         start_scheduler()
     yield
@@ -89,6 +95,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 1 MB alcanza de sobra para cualquier payload legítimo (el texto más largo
+# permitido son 20k chars); frena payloads gigantes antes de parsearlos.
+MAX_BODY_BYTES = 1_000_000
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_BODY_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "Payload demasiado grande"})
+
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    # HSTS solo si el request llegó por https (directo o detrás del proxy del PaaS).
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    if proto == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=63072000; includeSubDomains"
+        )
+    return response
+
+
+# ------------------------------------------------------------- RATE LIMITS
+# Ventana deslizante in-memory (ver rate_limit.py). Los límites son generosos
+# para uso humano y solo frenan fuerza bruta / abuso de costo (LLM).
+
+async def login_rate_limit(request: Request) -> None:
+    limiter.check(f"login:{client_ip(request)}", limit=10, window_seconds=300)
+
+
+async def register_rate_limit(request: Request) -> None:
+    limiter.check(f"register:{client_ip(request)}", limit=20, window_seconds=3600)
+
+
+async def ia_rate_limit(user: Usuario = Depends(get_current_user)) -> None:
+    limiter.check(f"ia:{user.id}", limit=60, window_seconds=3600)
+
 app.include_router(admin_router)
 app.include_router(reflexiones_libres_router)
 app.include_router(billing_router)
@@ -112,7 +158,12 @@ async def auth_config(s: Settings = Depends(get_settings)):
 
 # ---------------------------------------------------------------- AUTH
 
-@app.post("/auth/register", response_model=UserOut, status_code=201)
+@app.post(
+    "/auth/register",
+    response_model=UserOut,
+    status_code=201,
+    dependencies=[Depends(register_rate_limit)],
+)
 async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     existing = (await db.execute(
         select(Usuario).where(Usuario.email == payload.email)
@@ -132,7 +183,7 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
     return user
 
 
-@app.post("/auth/login", response_model=Token)
+@app.post("/auth/login", response_model=Token, dependencies=[Depends(login_rate_limit)])
 async def login(
     payload: UserLogin,
     db: AsyncSession = Depends(get_db),
@@ -302,12 +353,12 @@ def normalize_datetime(dt: datetime) -> datetime:
 
 
 class ActividadCreate(BaseModel):
-    titulo: str
-    descripcion: Optional[str] = None
+    titulo: str = Field(max_length=200)
+    descripcion: Optional[str] = Field(default=None, max_length=5000)
     inicio: datetime
     fin: datetime
     sefirot_ids: list[str]
-    rrule: Optional[str] = None
+    rrule: Optional[str] = Field(default=None, max_length=500)
 
 
 class ActividadSefiraOut(BaseModel):
@@ -427,9 +478,9 @@ async def materialize_series(
 
 
 class EvaluationRequest(BaseModel):
-    sefira: str
-    sefira_id: str
-    text: str
+    sefira: str = Field(max_length=100)
+    sefira_id: str = Field(max_length=64)
+    text: str = Field(max_length=20_000)
     score: float
 
 class EvaluationResponse(BaseModel):
@@ -468,8 +519,8 @@ async def get_preguntas(sefira_id: str, db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 class RespuestaCreate(BaseModel):
-    pregunta_id: str
-    respuesta_texto: str
+    pregunta_id: str = Field(max_length=64)
+    respuesta_texto: str = Field(max_length=20_000)
 
 
 class PreguntaConEstado(BaseModel):
@@ -1096,7 +1147,11 @@ class FelicitacionResponse(BaseModel):
     message: Optional[str] = None
 
 
-@app.post("/ia/calendario/felicitacion", response_model=FelicitacionResponse)
+@app.post(
+    "/ia/calendario/felicitacion",
+    response_model=FelicitacionResponse,
+    dependencies=[Depends(ia_rate_limit)],
+)
 async def ia_calendario_felicitacion(
     payload: FelicitacionRequest,
     db: AsyncSession = Depends(get_db),
@@ -1204,7 +1259,11 @@ class EvaluarRespuestasResponse(BaseModel):
     feedback: str
 
 
-@app.post("/ia/respuestas/evaluar", response_model=EvaluarRespuestasResponse)
+@app.post(
+    "/ia/respuestas/evaluar",
+    response_model=EvaluarRespuestasResponse,
+    dependencies=[Depends(ia_rate_limit)],
+)
 async def ia_respuestas_evaluar(
     payload: EvaluarRespuestasRequest,
     db: AsyncSession = Depends(get_db),

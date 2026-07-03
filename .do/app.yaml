@@ -36,6 +36,9 @@ services:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${kabbalah-db.DATABASE_URL}
+      - key: ENVIRONMENT
+        scope: RUN_TIME
+        value: production   # activa el guard de secretos default al arrancar
       - key: LLM_PROVIDER
         scope: RUN_TIME
         value: gemini

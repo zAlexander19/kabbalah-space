@@ -12,7 +12,7 @@ from typing import Optional
 from dateutil.tz import gettz
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, model_validator, ConfigDict
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +27,8 @@ router = APIRouter(prefix="/reflexiones-libres", tags=["reflexiones-libres"])
 
 class ReflexionLibreCreate(BaseModel):
     tipo: str  # 'sefira' | 'arbol'
-    sefira_id: Optional[str] = None
-    contenido: str
+    sefira_id: Optional[str] = Field(default=None, max_length=64)
+    contenido: str = Field(max_length=20_000)
 
     @model_validator(mode="after")
     def check_tipo_and_sefira(self):

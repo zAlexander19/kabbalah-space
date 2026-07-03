@@ -30,6 +30,8 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: "3.12.7"
+      - key: ENVIRONMENT
+        value: production              # activa el guard de secretos default al arrancar
       - key: JWT_SECRET
         generateValue: true            # Render genera un secreto fuerte
       - key: LLM_PROVIDER

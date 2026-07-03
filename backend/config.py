@@ -59,6 +59,11 @@ class Settings(BaseSettings):
             return {"ssl": "require"}
         return {}
 
+    # ---------- Entorno ----------
+    # "development" | "production". En producción la app se niega a arrancar
+    # con secretos default (ver assert_production_secrets).
+    environment: str = "development"
+
     # ---------- CORS ----------
     # Comma-separated list of allowed origins. Default = Vite dev server only.
     cors_origins: str = "http://localhost:5173"
@@ -122,6 +127,24 @@ class Settings(BaseSettings):
     @property
     def resend_configured(self) -> bool:
         return bool(self.resend_api_key and self.from_email)
+
+
+INSECURE_JWT_DEFAULT = "change-me-in-prod"
+
+
+def assert_production_secrets(settings: "Settings") -> None:
+    """Aborta el arranque si estamos en producción con secretos default.
+
+    Un JWT_SECRET conocido permite forjar tokens de cualquier usuario
+    (incluido admin), así que preferimos no arrancar a arrancar inseguro.
+    """
+    if settings.environment.strip().lower() != "production":
+        return
+    if settings.jwt_secret == INSECURE_JWT_DEFAULT:
+        raise RuntimeError(
+            "JWT_SECRET sigue en el valor default inseguro. "
+            "Configurá un secreto fuerte antes de desplegar a producción."
+        )
 
 
 @lru_cache(maxsize=1)

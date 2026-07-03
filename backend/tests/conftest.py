@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -19,6 +20,15 @@ from main import app
 from models import PreguntaSefira, Sefira
 from billing.models import Subscription  # Ensure Subscription is in the registry
 from emails.models import EmailLog  # noqa: F401 — register email_log for in-memory test DB
+from rate_limit import limiter
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """El limiter es estado global del proceso; sin esto, los hits de un test
+    contaminan al siguiente (p.ej. registros repetidos desde la misma IP)."""
+    limiter.reset()
+    yield
 
 
 @pytest_asyncio.fixture
