@@ -9,6 +9,7 @@ import InicioNav from "./inicio/components/InicioNav";
 import { PremiumGateProvider, useGate } from "./premium/PremiumGateContext";
 import { PremiumGate } from "./premium/PremiumGate";
 import { PremiumPlansModal } from "./premium/PremiumPlansModal";
+import { PremiumPromoPopup } from "./premium/PremiumPromoPopup";
 import { CuentaPage } from "./cuenta/CuentaPage";
 import { setPaymentRequiredHandler } from "./auth/api";
 import { useAuth } from "./auth";
@@ -230,6 +231,15 @@ function AppInner() {
     </div>
     <PremiumGate onNavigateToPremium={gate.openPlans} />
     <PremiumPlansModal />
+    <PremiumPromoPopup
+      suppressed={
+        tour.isActive ||
+        introPlaying ||
+        auth.isLoginModalOpen ||
+        activeView === 'admin' ||
+        activeView === 'cuenta'
+      }
+    />
     <TourTooltip />
     </>
   );
