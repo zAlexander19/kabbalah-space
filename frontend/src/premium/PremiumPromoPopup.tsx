@@ -77,6 +77,12 @@ export function PremiumPromoPopup({ suppressed }: Props) {
 
     const tryShow = () => {
       if (blocked || shownThisSession()) return;
+      // No montar con la pestaña oculta: las animaciones (rAF) están
+      // congeladas y el popup aparecería a medio renderizar al volver.
+      if (document.visibilityState !== 'visible') return;
+      // No montar sobre la LoadingScreen de la landing (rAF-driven; si el
+      // navegador la frena, puede seguir activa mucho después del load).
+      if (document.querySelector('[aria-label="Cargando la bienvenida"]')) return;
       if (mountedAt.current === 0 || Date.now() - mountedAt.current < SHOW_DELAY_MS) return;
       if (Date.now() - readLastShown() < COOLDOWN_MS) return;
       markShown();
