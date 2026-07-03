@@ -88,6 +88,15 @@ export default function CalendarEvent({
     setMenuOpen(v => !v);
   }
 
+  // El chip es la acción primaria del calendario: tiene que poder operarse
+  // con Enter/Espacio, no solo con mouse.
+  function handleChipKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleChipClick();
+    }
+  }
+
   function handleEditFromMenu(e: React.MouseEvent) {
     e.stopPropagation();
     setMenuOpen(false);
@@ -206,6 +215,10 @@ export default function CalendarEvent({
         exit="exit"
         whileHover={{ y: -1 }}
         onClick={handleChipClick}
+        onKeyDown={handleChipKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Actividad: ${activity.titulo}`}
         {...(enableLongPressDrag ? longPressHandlers : {})}
         drag={dragging}
         dragMomentum={false}
@@ -224,20 +237,20 @@ export default function CalendarEvent({
           touchAction: dragging ? 'none' : undefined,
         }}
       >
-        <div className="flex items-center gap-1 min-w-0 pr-5">
+        <div className="flex items-center gap-1 min-w-0 pr-7">
           <span className="text-[11px] font-semibold text-stone-100 truncate">{activity.titulo}</span>
           {gcalEnabled && activity.sync_status && (
             <ActividadSyncBadge actividadId={activity.id} status={activity.sync_status} />
           )}
         </div>
-        <div className="text-[10px] text-stone-300/80 truncate pr-5">{sefirotLabel}</div>
+        <div className="text-[10px] text-stone-300/80 truncate pr-7">{sefirotLabel}</div>
         <button
           type="button"
           onClick={handleKebabClick}
           aria-label="Opciones"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          className={`absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center text-stone-300 hover:bg-black/30 transition-opacity ${
+          className={`absolute top-0 right-0 w-7 h-7 rounded flex items-center justify-center text-stone-300 hover:bg-black/30 transition-opacity ${
             menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
           }`}
         >
@@ -258,6 +271,10 @@ export default function CalendarEvent({
       exit="exit"
       whileHover={{ x: 1 }}
       onClick={(e) => { e.stopPropagation(); handleChipClick(); }}
+      onKeyDown={handleChipKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Actividad: ${activity.titulo}`}
       {...(enableLongPressDrag ? longPressHandlers : {})}
       drag={dragging}
       dragMomentum={false}
@@ -272,7 +289,7 @@ export default function CalendarEvent({
         touchAction: dragging ? 'none' : undefined,
       }}
     >
-      <span className="flex items-center gap-1 min-w-0 pr-4">
+      <span className="flex items-center gap-1 min-w-0 pr-5">
         <span className="truncate">{activity.titulo}</span>
         {gcalEnabled && activity.sync_status && (
           <ActividadSyncBadge actividadId={activity.id} status={activity.sync_status} />
@@ -284,7 +301,7 @@ export default function CalendarEvent({
         aria-label="Opciones"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        className={`absolute top-0 right-0 w-4 h-4 rounded flex items-center justify-center text-stone-300 hover:bg-black/30 transition-opacity ${
+        className={`absolute -top-0.5 -right-0.5 w-6 h-6 rounded flex items-center justify-center text-stone-300 hover:bg-black/30 transition-opacity ${
           menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
         }`}
       >

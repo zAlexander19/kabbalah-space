@@ -81,6 +81,7 @@ export default function CalendarToolbar({ date, view, onPrev, onNext, onToday, o
 
         <div className="flex items-center gap-2">
           <motion.button
+            type="button"
             whileHover={{ x: -2 }}
             transition={{ duration: 0.2 }}
             onClick={onPrev}
@@ -90,6 +91,7 @@ export default function CalendarToolbar({ date, view, onPrev, onNext, onToday, o
             <ChevronLeft size={18} />
           </motion.button>
           <motion.button
+            type="button"
             whileHover={{ x: 2 }}
             transition={{ duration: 0.2 }}
             onClick={onNext}

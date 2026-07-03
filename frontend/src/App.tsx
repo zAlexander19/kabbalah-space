@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AdminModule } from "./admin";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
@@ -57,6 +57,13 @@ function AppInner() {
   const tour = useTourEspejo();
   const auth = useAuth();
   const adminRedirected = useRef(false);
+  const reducedMotion = useReducedMotion();
+
+  // Cada vista arranca desde arriba; sin esto se hereda el scroll de la
+  // vista anterior (p.ej. calendario scrolleado -> espejo a mitad de página).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeView]);
 
   const setActiveView = useCallback(
     (target: ViewKey) => {
@@ -162,10 +169,25 @@ function AppInner() {
         onNavigate={(target) => setActiveView(target)}
       />
 
+      <AnimatePresence mode="wait" initial={false}>
       {activeView === 'inicio' ? (
-        <InicioModule onNavigate={(target) => setActiveView(target)} />
+        <motion.div
+          key="inicio"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reducedMotion ? 0 : 0.22, ease }}
+        >
+          <InicioModule onNavigate={(target) => setActiveView(target)} />
+        </motion.div>
       ) : (
-        <main className="flex-1 pt-24 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
+        <motion.main
+          key={activeView}
+          initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: reducedMotion ? 0 : -6 }}
+          transition={{ duration: reducedMotion ? 0 : 0.22, ease }}
+          className="flex-1 pt-24 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
           <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-8 px-4 py-6 text-center overflow-hidden">
             <motion.h2
               initial={{ opacity: pageRevealed ? 1 : 0, x: pageRevealed ? 0 : -80 }}
@@ -187,7 +209,7 @@ function AppInner() {
             </motion.p>
           </header>
 
-          <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative" key={activeView}>
+          <section className="w-full max-w-[1400px] 2xl:max-w-[1600px] px-2 relative">
             {activeView === 'admin' && <AdminModule sefirot={SEFIROT} glowText={glowText} />}
             {activeView === 'cuenta' && <CuentaPage onNavigateToPremium={gate.openPlans} />}
             {activeView === 'calendario' && <CalendarModule sefirot={SEFIROT as any} glowText={glowText} />}
@@ -202,8 +224,9 @@ function AppInner() {
               />
             )}
           </section>
-        </main>
+        </motion.main>
       )}
+      </AnimatePresence>
     </div>
     <PremiumGate onNavigateToPremium={gate.openPlans} />
     <PremiumPlansModal />

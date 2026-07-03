@@ -21,8 +21,10 @@ type Props = {
 
 export default function WeekViewMobile(props: Props) {
   return (
-    <div className="w-full">
-      <WeekView {...props} enableLongPressDrag={true} hourColumnWidth={40} />
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[560px]">
+        <WeekView {...props} enableLongPressDrag={true} hourColumnWidth={40} />
+      </div>
     </div>
   );
 }

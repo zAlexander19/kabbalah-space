@@ -12,6 +12,8 @@ export function PreguntasPanel({ sefirot }: { sefirot: { id: string; name: strin
   const [editId, setEditId] = useState<string | null>(null);
   const [editTexto, setEditTexto] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // 'add' | id de la pregunta en vuelo | null — evita doble-submit en acciones async.
+  const [busy, setBusy] = useState<string | null>(null);
 
   // Espejo del orden actual para persistir al soltar el drag (evita closure stale).
   const itemsRef = useRef(items);
@@ -26,20 +28,28 @@ export function PreguntasPanel({ sefirot }: { sefirot: { id: string; name: strin
 
   const onAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevo.trim()) return;
+    if (!nuevo.trim() || busy) return;
+    setBusy('add');
     try { await createPregunta(sefiraId, nuevo.trim()); setNuevo(''); await load(); }
     catch (e) { setError((e as Error).message); }
+    finally { setBusy(null); }
   };
 
   const onSaveEdit = async (id: string) => {
+    if (busy) return;
+    setBusy(id);
     try { await updatePregunta(id, editTexto.trim()); setEditId(null); await load(); }
     catch (e) { setError((e as Error).message); }
+    finally { setBusy(null); }
   };
 
   const onDelete = async (id: string) => {
+    if (busy) return;
     if (!window.confirm('¿Borrar esta pregunta? Afecta a todos los usuarios.')) return;
+    setBusy(id);
     try { await deletePregunta(id); await load(); }
     catch (e) { setError((e as Error).message); }
+    finally { setBusy(null); }
   };
 
   // Persistir el orden actual cuando el usuario suelta una pregunta arrastrada.
@@ -70,6 +80,7 @@ export function PreguntasPanel({ sefirot }: { sefirot: { id: string; name: strin
               key={p.id}
               p={p}
               editing={editId === p.id}
+              busy={busy === p.id}
               editTexto={editTexto}
               setEditTexto={setEditTexto}
               onStartEdit={() => { setEditId(p.id); setEditTexto(p.texto_pregunta); }}
@@ -87,9 +98,9 @@ export function PreguntasPanel({ sefirot }: { sefirot: { id: string; name: strin
         <textarea value={nuevo} onChange={(e) => setNuevo(e.target.value)} required
           placeholder="Escribí una pregunta para la dimensión..."
           className="w-full bg-stone-900/30 border border-stone-800 rounded-xl p-4 text-stone-300 placeholder:text-stone-600 mb-4 min-h-[90px] focus:outline-none focus:border-amber-400/50" />
-        <button type="submit"
-          className="w-full bg-gradient-to-r from-amber-200 to-amber-400 text-stone-950 font-medium font-serif tracking-wide py-3 px-6 rounded-xl hover:-translate-y-0.5 transition-all">
-          Guardar pregunta
+        <button type="submit" disabled={busy === 'add'}
+          className="w-full bg-gradient-to-r from-amber-200 to-amber-400 text-stone-950 font-medium font-serif tracking-wide py-3 px-6 rounded-xl hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-wait disabled:hover:translate-y-0">
+          {busy === 'add' ? 'Guardando…' : 'Guardar pregunta'}
         </button>
       </form>
     </div>
@@ -99,6 +110,7 @@ export function PreguntasPanel({ sefirot }: { sefirot: { id: string; name: strin
 type RowProps = {
   p: PreguntaAdmin;
   editing: boolean;
+  busy: boolean;
   editTexto: string;
   setEditTexto: (v: string) => void;
   onStartEdit: () => void;
@@ -109,7 +121,7 @@ type RowProps = {
 };
 
 function PreguntaRow({
-  p, editing, editTexto, setEditTexto, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onDragEnd,
+  p, editing, busy, editTexto, setEditTexto, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onDragEnd,
 }: RowProps) {
   const controls = useDragControls();
 
@@ -128,9 +140,9 @@ function PreguntaRow({
         onPointerDown={(e) => controls.start(e)}
         title="Arrastrar para reordenar"
         aria-label="Arrastrar para reordenar"
-        className="cursor-grab active:cursor-grabbing touch-none select-none text-stone-500 hover:text-amber-200 pt-0.5"
+        className="cursor-grab active:cursor-grabbing touch-none select-none text-stone-500 hover:text-amber-200 flex items-center justify-center w-9 h-9 -ml-1.5 rounded-lg hover:bg-stone-800/50"
       >
-        <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
+        <span className="material-symbols-outlined text-[20px]" aria-hidden="true">drag_indicator</span>
       </button>
 
       <div className="flex-1 min-w-0">
@@ -139,8 +151,14 @@ function PreguntaRow({
             <textarea value={editTexto} onChange={(e) => setEditTexto(e.target.value)}
               className="w-full bg-stone-900/30 border border-stone-800 rounded-lg p-2 text-stone-200 text-sm" />
             <div className="flex gap-2">
-              <button type="button" onClick={onSaveEdit} className="text-amber-200 text-xs">Guardar</button>
-              <button type="button" onClick={onCancelEdit} className="text-stone-500 text-xs">Cancelar</button>
+              <button type="button" onClick={onSaveEdit} disabled={busy}
+                className="text-amber-200 text-xs px-2 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-wait">
+                {busy ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button type="button" onClick={onCancelEdit} disabled={busy}
+                className="text-stone-500 text-xs px-2 py-1.5 rounded-lg disabled:opacity-50">
+                Cancelar
+              </button>
             </div>
           </div>
         ) : (
@@ -150,13 +168,15 @@ function PreguntaRow({
 
       {!editing && (
         <div className="flex gap-1 shrink-0">
-          <button type="button" onClick={onStartEdit}
-            className="text-stone-500 hover:text-amber-200 p-1.5 rounded-lg hover:bg-stone-800/50">
-            <span className="material-symbols-outlined text-[18px]">edit</span>
+          <button type="button" onClick={onStartEdit} disabled={busy}
+            aria-label="Editar pregunta" title="Editar pregunta"
+            className="flex items-center justify-center w-9 h-9 text-stone-500 hover:text-amber-200 rounded-lg hover:bg-stone-800/50 disabled:opacity-50">
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
           </button>
-          <button type="button" onClick={onDelete}
-            className="text-red-400/60 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-400/10">
-            <span className="material-symbols-outlined text-[18px]">delete</span>
+          <button type="button" onClick={onDelete} disabled={busy}
+            aria-label="Borrar pregunta" title="Borrar pregunta"
+            className="flex items-center justify-center w-9 h-9 text-red-400/60 hover:text-red-400 rounded-lg hover:bg-red-400/10 disabled:opacity-50 disabled:cursor-wait">
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
           </button>
         </div>
       )}

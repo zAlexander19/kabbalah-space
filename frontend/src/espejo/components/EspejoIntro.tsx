@@ -96,6 +96,15 @@ export default function EspejoIntro({ sefirot, onComplete }: Props) {
     <div
       className="absolute inset-0 z-40 cursor-pointer"
       onClick={onComplete}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+          e.preventDefault();
+          onComplete();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label="Saltar introducción"
       title="Saltar"
     >
       <svg viewBox="0 0 400 880" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">

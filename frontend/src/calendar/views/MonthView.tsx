@@ -63,6 +63,15 @@ export default function MonthView({ date, activities, onDayClick, onEventClick, 
             <div
               key={dayKey}
               onClick={() => onDayClick?.(day)}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                  e.preventDefault();
+                  onDayClick?.(day);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Crear actividad el ${format(day, 'd/M/yyyy')}`}
               className={`bg-[#15181d] hover:bg-[#1b1f25] cursor-pointer p-1.5 flex flex-col gap-0.5 transition-colors ${inMonth ? '' : 'opacity-40'}`}
             >
               <div className="flex items-center justify-end relative">

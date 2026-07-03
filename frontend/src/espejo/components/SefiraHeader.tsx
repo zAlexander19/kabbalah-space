@@ -20,7 +20,7 @@ export default function SefiraHeader({ resumen, description, registros }: Props)
 
   return (
     <div>
-      <h3 className="font-serif text-4xl text-amber-100/95 tracking-tight">{resumen.sefira_nombre}</h3>
+      <h3 className="font-serif text-3xl md:text-4xl text-amber-100/95 tracking-tight">{resumen.sefira_nombre}</h3>
       <div className="h-px w-32 bg-gradient-to-r from-amber-300/60 to-transparent my-4" />
       <p className="text-stone-300/90 text-sm leading-relaxed mb-6">{description}</p>
 

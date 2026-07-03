@@ -151,15 +151,15 @@ export function UsuariosPanel() {
                       <div className="flex gap-2 items-center">
                         <button type="button" disabled={busy === u.id}
                           onClick={() => startEdit(u)}
-                          title="Editar roles"
-                          className="text-stone-500 hover:text-amber-200 p-1.5 rounded-lg hover:bg-stone-800/50 disabled:opacity-40">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                          title="Editar roles" aria-label="Editar roles"
+                          className="flex items-center justify-center w-9 h-9 text-stone-500 hover:text-amber-200 rounded-lg hover:bg-stone-800/50 disabled:opacity-40">
+                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">edit</span>
                         </button>
                         <button type="button" disabled={busy === u.id}
                           onClick={() => onDelete(u)}
-                          title="Eliminar usuario"
-                          className="text-red-400/60 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-400/10 disabled:opacity-40">
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                          title="Eliminar usuario" aria-label="Eliminar usuario"
+                          className="flex items-center justify-center w-9 h-9 text-red-400/60 hover:text-red-400 rounded-lg hover:bg-red-400/10 disabled:opacity-40">
+                          <span className="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
                         </button>
                       </div>
                     )}

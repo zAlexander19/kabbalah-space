@@ -89,6 +89,29 @@ body {
   color: #e5e2e1;
   overflow-x: hidden;
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Evita el rubber-band/scroll-chaining del body detrás de modales y paneles. */
+  overscroll-behavior-y: none;
+}
+
+/* Focus ring dorado consistente para navegación por teclado. Los inputs que
+   ya marcan foco con borde propio usan `focus:outline-none` (mayor
+   especificidad que :where), así que no se duplica el indicador. */
+:where(button, a, [role="button"], [role="menuitem"], [role="switch"], [tabindex]):focus-visible {
+  outline: 2px solid rgba(233, 195, 73, 0.65);
+  outline-offset: 2px;
+}
+
+/* iOS Safari hace zoom automático al enfocar inputs con font-size < 16px.
+   En mobile forzamos 16px para que el layout no salte. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* Custom Scrollbar for Webkit (Chrome, Edge, Safari) */

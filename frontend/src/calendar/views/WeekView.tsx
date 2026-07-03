@@ -128,6 +128,15 @@ export default function WeekView({ date, activities, onSlotClick, onEventClick, 
                 <div
                   key={h}
                   onClick={() => handleSlotClick(day, h)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSlotClick(day, h);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Crear actividad el ${format(day, 'd/M')} a las ${String(h).padStart(2, '0')}:00`}
                   className="border-b border-stone-800/30 hover:bg-stone-800/20 transition-colors cursor-pointer"
                   style={{ height: HOUR_HEIGHT }}
                 />

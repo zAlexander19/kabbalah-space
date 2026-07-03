@@ -76,7 +76,7 @@ export function ConfirmSaveDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.28, ease }}
-            className="relative w-full max-w-md bg-stone-950/90 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-stone-950/90 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
           >
             <div className="relative p-6">
               <h2

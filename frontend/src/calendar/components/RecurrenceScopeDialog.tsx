@@ -37,7 +37,7 @@ export default function RecurrenceScopeDialog({ open, mode, onChoose, onCancel }
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-1/2 left-1/2 z-[81] -translate-x-1/2 -translate-y-1/2 w-[min(420px,90vw)] bg-[#15181d] border border-stone-700/50 rounded-2xl p-6 shadow-2xl"
+            className="fixed top-1/2 left-1/2 z-[81] -translate-x-1/2 -translate-y-1/2 w-[min(420px,90vw)] max-h-[90vh] overflow-y-auto bg-[#15181d] border border-stone-700/50 rounded-2xl p-6 shadow-2xl"
             style={{ willChange: 'transform' }}
           >
             <h4 className="font-serif text-xl text-amber-100/90 mb-1">{verb} actividad</h4>

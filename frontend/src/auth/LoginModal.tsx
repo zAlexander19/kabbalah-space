@@ -111,11 +111,14 @@ export function LoginModal() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.32, ease }}
-            className="relative w-full max-w-md bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)] overflow-hidden"
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
           >
-            {/* Subtle cosmic glow */}
-            <div className="absolute -top-20 -right-16 w-60 h-60 bg-amber-700/10 rounded-full blur-[80px] pointer-events-none" />
-            <div className="absolute -bottom-20 -left-16 w-60 h-60 bg-indigo-800/10 rounded-full blur-[80px] pointer-events-none" />
+            {/* Subtle cosmic glow — clipped en su propio wrapper para no generar
+                overflow fantasma ahora que el card scrollea */}
+            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
+              <div className="absolute -top-20 -right-16 w-60 h-60 bg-amber-700/10 rounded-full blur-[80px]" />
+              <div className="absolute -bottom-20 -left-16 w-60 h-60 bg-indigo-800/10 rounded-full blur-[80px]" />
+            </div>
 
             {/* Close X — z-20 so it stays clickable above the form content */}
             <button

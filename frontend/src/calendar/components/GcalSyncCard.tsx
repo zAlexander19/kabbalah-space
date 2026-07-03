@@ -96,9 +96,10 @@ export default function GcalSyncCard() {
                 <button
                   type="button"
                   onClick={() => { void backfill().then(refetch); }}
-                  className="underline ml-2 text-amber-100"
+                  disabled={working}
+                  className="underline ml-2 text-amber-100 disabled:opacity-50 disabled:cursor-wait"
                 >
-                  Reintentar
+                  {working ? 'Reintentando…' : 'Reintentar'}
                 </button>
               </p>
             </div>

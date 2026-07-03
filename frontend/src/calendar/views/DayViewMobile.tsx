@@ -136,6 +136,15 @@ export default function DayViewMobile({
                 key={h}
                 data-slot={`${dayKey}|${h}`}
                 onClick={() => handleSlotClick(h)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSlotClick(h);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Crear actividad a las ${String(h).padStart(2, '0')}:00`}
                 className="border-b border-stone-800/30 hover:bg-stone-800/20 transition-colors cursor-pointer"
                 style={{ height: HOUR_HEIGHT }}
               />

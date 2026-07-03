@@ -69,6 +69,7 @@ export default function ActivityForm({
   const [shake, setShake] = useState(0);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const confirmTimer = useRef<number | null>(null);
 
   // Snapshot of the form fields used for both autosave and gated POST.
@@ -253,13 +254,18 @@ export default function ActivityForm({
   }
 
   async function doDelete() {
-    if (!editing) return;
-    const res = await apiFetch(`/actividades/${editing.id}?scope=${scope}`, { method: 'DELETE' });
-    if (!res.ok) {
-      setError('No se pudo eliminar');
-      return;
+    if (!editing || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/actividades/${editing.id}?scope=${scope}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setError('No se pudo eliminar');
+        return;
+      }
+      onDeleted?.();
+    } finally {
+      setDeleting(false);
     }
-    onDeleted?.();
   }
 
   const inputBase = "w-full bg-transparent border-0 border-b border-stone-700/50 focus:border-b-2 focus:border-amber-300/70 focus:outline-none text-sm text-stone-100 px-0 py-2 transition-colors";
@@ -371,13 +377,16 @@ export default function ActivityForm({
           <button
             type="button"
             onClick={handleDeleteClick}
-            className={`w-full rounded-xl font-semibold text-[10px] uppercase tracking-[0.18em] py-3 border transition-colors ${
+            disabled={deleting}
+            className={`w-full rounded-xl font-semibold text-[10px] uppercase tracking-[0.18em] py-3 border transition-colors disabled:opacity-60 disabled:cursor-wait ${
               confirmDelete
                 ? 'bg-red-500 text-stone-900 border-red-500'
                 : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
             }`}
           >
-            {editing.serie_id ? 'Borrar actividad…' : (confirmDelete ? 'Click otra vez para confirmar' : 'Borrar actividad')}
+            {deleting
+              ? 'Eliminando…'
+              : editing.serie_id ? 'Borrar actividad…' : (confirmDelete ? 'Click otra vez para confirmar' : 'Borrar actividad')}
           </button>
         )}
       </div>
