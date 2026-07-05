@@ -99,3 +99,7 @@ build/
 out/
 coverage/
 *.tsbuildinfo
+
+# smoke test throwaway DB
+backend/smoke_premium.db
+backend/smoke_premium.db-*
