@@ -39,6 +39,9 @@ services:
       - key: ENVIRONMENT
         scope: RUN_TIME
         value: production   # activa el guard de secretos default al arrancar
+      - key: PYTHONUTF8
+        scope: RUN_AND_BUILD_TIME
+        value: "1"          # UTF-8 mode (defensa; el fix real es alembic.ini ASCII)
       - key: LLM_PROVIDER
         scope: RUN_TIME
         value: gemini
@@ -68,3 +71,6 @@ jobs:
       - key: DATABASE_URL
         scope: RUN_TIME
         value: ${kabbalah-db.DATABASE_URL}
+      - key: PYTHONUTF8
+        scope: RUN_AND_BUILD_TIME
+        value: "1"
