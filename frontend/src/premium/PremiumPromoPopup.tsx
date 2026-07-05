@@ -8,38 +8,12 @@ import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-// "De vez en cuando", sin ser invasivo: nunca apenas entra, máximo una vez
-// por sesión, y con días de descanso entre apariciones.
+// Aparece una vez por entrada a la app (cada carga de página), tras un rato
+// de uso. Sin cooldown entre días: si el usuario entra 3 veces, lo ve 3 veces.
+// El único freno es el delay en-app (que se vea que hubo uso, no un pop seco
+// al abrir).
 const SHOW_DELAY_MS = 45_000;
 const RECHECK_MS = 15_000;
-const COOLDOWN_MS = 4 * 24 * 60 * 60 * 1000; // 4 días entre apariciones
-const LS_LAST_SHOWN = 'ks_premium_promo_last_shown';
-const SS_SHOWN_THIS_SESSION = 'ks_premium_promo_shown';
-
-function readLastShown(): number {
-  try {
-    return Number(window.localStorage.getItem(LS_LAST_SHOWN)) || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function shownThisSession(): boolean {
-  try {
-    return window.sessionStorage.getItem(SS_SHOWN_THIS_SESSION) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function markShown(): void {
-  try {
-    window.localStorage.setItem(LS_LAST_SHOWN, String(Date.now()));
-    window.sessionStorage.setItem(SS_SHOWN_THIS_SESSION, '1');
-  } catch {
-    // Modo privado: sin storage el popup queda limitado por la sesión en memoria.
-  }
-}
 
 interface Props {
   /** El caller (App) sabe cuándo NO molestar: tour activo, intro, login
@@ -50,7 +24,7 @@ interface Props {
 /**
  * Popup promocional de Premium para usuarios free/anónimos.
  *
- * Aparece de vez en cuando (delay de sesión + cooldown en localStorage),
+ * Aparece 45s después de entrar a la app, una vez por carga de página,
  * muestra qué ofrece Premium y deriva al modal de planes. Nunca se muestra
  * a usuarios premium ni encima de otro modal.
  */
@@ -62,6 +36,9 @@ export function PremiumPromoPopup({ suppressed }: Props) {
   const ctaRef = useRef<HTMLButtonElement>(null);
   // Se setea en un effect (no en render) para cumplir react-hooks/purity.
   const mountedAt = useRef<number>(0);
+  // Una vez por carga de página (in-memory, no persiste): evita que reaparezca
+  // cada 15s tras cerrarlo, pero un reload/reingreso lo vuelve a disparar.
+  const shownThisLoad = useRef(false);
 
   const blocked = suppressed || isPlansOpen || isGateOpen;
 
@@ -73,10 +50,10 @@ export function PremiumPromoPopup({ suppressed }: Props) {
 
   useEffect(() => {
     // status === null: todavía no sabemos el tier — no decidir con eso.
-    if (visible || isPremium || status === null) return;
+    if (visible || isPremium || status === null || shownThisLoad.current) return;
 
     const tryShow = () => {
-      if (blocked || shownThisSession()) return;
+      if (blocked || shownThisLoad.current) return;
       // No montar con la pestaña oculta: las animaciones (rAF) están
       // congeladas y el popup aparecería a medio renderizar al volver.
       if (document.visibilityState !== 'visible') return;
@@ -84,8 +61,7 @@ export function PremiumPromoPopup({ suppressed }: Props) {
       // navegador la frena, puede seguir activa mucho después del load).
       if (document.querySelector('[aria-label="Cargando la bienvenida"]')) return;
       if (mountedAt.current === 0 || Date.now() - mountedAt.current < SHOW_DELAY_MS) return;
-      if (Date.now() - readLastShown() < COOLDOWN_MS) return;
-      markShown();
+      shownThisLoad.current = true;
       setVisible(true);
     };
 
