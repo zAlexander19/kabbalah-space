@@ -79,8 +79,9 @@ async def test_grant_and_revoke_manual_premium(client, admin_user_headers, norma
 async def test_grant_premium_twice_conflicts(client, admin_user_headers, db_session):
     from sqlalchemy import select
     from models import Usuario
+    from tests.conftest import register_and_login
     normal_email = "premium2@example.com"
-    await client.post("/auth/register", json={"email": normal_email, "password": "secret123", "nombre": "P2"})
+    await register_and_login(db_session, normal_email, "secret123", "P2")
     u = (await db_session.execute(
         select(Usuario).where(Usuario.email == normal_email)
     )).scalars().first()

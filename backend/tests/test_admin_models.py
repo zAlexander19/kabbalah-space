@@ -3,13 +3,18 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 
-async def test_new_user_defaults_is_admin_false(client):
-    r = await client.post("/auth/register", json={
-        "email": "nb@example.com", "password": "password1", "nombre": "NB",
-    })
-    assert r.status_code in (200, 201), r.text
-    # UserOut debe exponer is_admin, por defecto False
-    assert r.json()["is_admin"] is False
+async def test_new_user_defaults_is_admin_false(db_session):
+    # El registro por email fue eliminado; las cuentas nuevas nacen igual con
+    # is_admin=False. Creamos un usuario directo y verificamos el default.
+    from models import Usuario
+    u = Usuario(
+        email="nb@example.com", nombre="NB",
+        provider="google", provider_id="sub-nb", password_hash=None,
+    )
+    db_session.add(u)
+    await db_session.commit()
+    await db_session.refresh(u)
+    assert u.is_admin is False
 
 
 async def test_pregunta_has_orden_column(db_session, seed_sefirot):

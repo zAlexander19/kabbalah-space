@@ -7,7 +7,6 @@ import {
   getStoredToken,
   googleAuthorizeUrl,
   loginEmail,
-  registerEmail,
   setStoredToken,
   setUnauthorizedHandler,
 } from './api';
@@ -122,21 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLastTriggeredBy(null);
   }, [lastTriggeredBy]);
 
-  const registerWithEmail = useCallback(async (email: string, password: string, nombre: string) => {
-    await registerEmail(email, password, nombre);
-    // Auto-login so the user lands authenticated.
-    const { access_token } = await loginEmail(email, password);
-    setStoredToken(access_token);
-    const me = await fetchMe();
-    adoptAnonymous(me.id);
-    setUser(me);
-    setStatus('authenticated');
-    setIsLoginModalOpen(false);
-    if (lastTriggeredBy === 'gated-save') {
-      setGatedSaveSignal((n) => n + 1);
-    }
-    setLastTriggeredBy(null);
-  }, [lastTriggeredBy]);
+  // NOTA: el registro con email+contraseña fue eliminado (cuentas nuevas solo
+  // por Google). `loginWithEmail` queda como fallback dormido para cuentas
+  // viejas; la UI ya no lo expone.
 
   const startGoogleOAuth = useCallback(() => {
     window.location.href = googleAuthorizeUrl();
@@ -174,7 +161,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     openLoginModal,
     closeLoginModal,
     loginWithEmail,
-    registerWithEmail,
     startGoogleOAuth,
     logout,
     gatedSaveSignal,
@@ -182,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }), [
     user, status, oauthError, clearOAuthError,
     googleOAuthEnabled, isLoginModalOpen, openLoginModal, closeLoginModal,
-    loginWithEmail, registerWithEmail, startGoogleOAuth, logout,
+    loginWithEmail, startGoogleOAuth, logout,
     gatedSaveSignal, updateUser,
   ]);
 

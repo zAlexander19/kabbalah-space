@@ -118,14 +118,9 @@ export async function loginEmail(email: string, password: string): Promise<Login
   return res.json();
 }
 
-export async function registerEmail(email: string, password: string, nombre: string): Promise<User> {
-  const res = await apiFetch('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, nombre }),
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
-}
+// El registro con email+contraseña fue eliminado del backend (cuentas nuevas
+// solo por Google). `loginEmail` queda para el fallback dormido de cuentas
+// viejas; la UI no lo usa.
 
 export function googleAuthorizeUrl(): string {
   return `${API_BASE}/auth/google/authorize`;

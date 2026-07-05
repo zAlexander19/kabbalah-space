@@ -88,27 +88,42 @@ async def seed_sefirot(db_session: AsyncSession):
     return sefirot
 
 
-async def register_and_login(client: AsyncClient, email: str, password: str, nombre: str) -> dict:
-    """Helper: register a user and return {'id', 'email', 'token', 'headers'}."""
-    r = await client.post("/auth/register", json={"email": email, "password": password, "nombre": nombre})
-    assert r.status_code in (200, 201), r.text
-    user = r.json()
-    r = await client.post("/auth/login", json={"email": email, "password": password})
-    assert r.status_code == 200, r.text
-    token = r.json()["access_token"]
+async def register_and_login(db: AsyncSession, email: str, password: str, nombre: str) -> dict:
+    """Helper: crea un usuario de email+contraseña y devuelve auth bundle.
+
+    El registro público (POST /auth/register) fue eliminado — las cuentas
+    nuevas se crean solo por Google. Para los tests seguimos necesitando
+    usuarios de email, así que los insertamos DIRECTO en la DB (misma sesión
+    in-memory que comparte el client) y firmamos el JWT con create_access_token.
+    """
+    from auth import create_access_token, hash_password
+    from config import get_settings
+    from models import Usuario
+
+    user = Usuario(
+        email=email,
+        nombre=nombre.strip(),
+        password_hash=hash_password(password),
+        provider="email",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    token = create_access_token(user.id, get_settings())
     return {
-        "id": user["id"],
-        "email": user["email"],
+        "id": user.id,
+        "email": email,
         "token": token,
         "headers": {"Authorization": f"Bearer {token}"},
     }
 
 
 @pytest_asyncio.fixture
-async def two_users(client: AsyncClient):
+async def two_users(client: AsyncClient, db_session):
     """Register two users A and B; return both auth bundles."""
-    a = await register_and_login(client, "alice@example.com", "password1", "Alice")
-    b = await register_and_login(client, "bob@example.com",   "password2", "Bob")
+    a = await register_and_login(db_session, "alice@example.com", "password1", "Alice")
+    b = await register_and_login(db_session, "bob@example.com",   "password2", "Bob")
     return {"alice": a, "bob": b}
 
 
@@ -139,9 +154,9 @@ async def google_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def free_user_headers(client: AsyncClient) -> dict:
+async def free_user_headers(client: AsyncClient, db_session) -> dict:
     """Auth headers for a fresh email user without subscription (free tier)."""
-    bundle = await register_and_login(client, "free@example.com", "secret123", "Free")
+    bundle = await register_and_login(db_session, "free@example.com", "secret123", "Free")
     return bundle["headers"]
 
 
@@ -151,7 +166,7 @@ async def premium_user_headers(client: AsyncClient, db_session) -> dict:
     from datetime import datetime, timedelta, timezone
     from billing.models import Subscription
 
-    bundle = await register_and_login(client, "premium@example.com", "secret123", "Premium")
+    bundle = await register_and_login(db_session, "premium@example.com", "secret123", "Premium")
     user_id = bundle["id"]
 
     sub = Subscription(
@@ -180,7 +195,7 @@ async def admin_user_headers(client, db_session) -> dict:
     """Auth headers de un usuario con is_admin=True."""
     from sqlalchemy import select
     from models import Usuario
-    bundle = await register_and_login(client, "admin@example.com", "secret123", "Admin")
+    bundle = await register_and_login(db_session, "admin@example.com", "secret123", "Admin")
     user = (await db_session.execute(
         select(Usuario).where(Usuario.id == bundle["id"])
     )).scalars().first()
@@ -190,6 +205,6 @@ async def admin_user_headers(client, db_session) -> dict:
 
 
 @pytest_asyncio.fixture
-async def normal_user_headers(client) -> dict:
-    bundle = await register_and_login(client, "normal@example.com", "secret123", "Normal")
+async def normal_user_headers(client, db_session) -> dict:
+    bundle = await register_and_login(db_session, "normal@example.com", "secret123", "Normal")
     return bundle["headers"]

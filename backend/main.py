@@ -31,7 +31,6 @@ from auth import (
     EmailCollisionError,
     GOOGLE_AUTH_URL,
     Token,
-    UserCreate,
     UserLogin,
     UserOut,
     build_google_authorize_url,
@@ -41,7 +40,6 @@ from auth import (
     fetch_google_userinfo,
     find_or_create_google_user,
     get_current_user,
-    hash_password,
     verify_password,
     verify_state_token,
 )
@@ -128,10 +126,6 @@ async def login_rate_limit(request: Request) -> None:
     limiter.check(f"login:{client_ip(request)}", limit=10, window_seconds=300)
 
 
-async def register_rate_limit(request: Request) -> None:
-    limiter.check(f"register:{client_ip(request)}", limit=20, window_seconds=3600)
-
-
 async def ia_rate_limit(user: Usuario = Depends(get_current_user)) -> None:
     limiter.check(f"ia:{user.id}", limit=60, window_seconds=3600)
 
@@ -158,29 +152,10 @@ async def auth_config(s: Settings = Depends(get_settings)):
 
 # ---------------------------------------------------------------- AUTH
 
-@app.post(
-    "/auth/register",
-    response_model=UserOut,
-    status_code=201,
-    dependencies=[Depends(register_rate_limit)],
-)
-async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
-    existing = (await db.execute(
-        select(Usuario).where(Usuario.email == payload.email)
-    )).scalars().first()
-    if existing:
-        raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese email")
-
-    user = Usuario(
-        email=payload.email,
-        nombre=payload.nombre.strip(),
-        password_hash=hash_password(payload.password),
-        provider="email",
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+# NOTA: el registro con email+contraseña fue eliminado a propósito. Las cuentas
+# nuevas se crean SOLO con Google (cuentas reales, sin registros falsos). El
+# login con email (abajo) queda como fallback dormido para cuentas viejas; la
+# UI no lo expone. Ver docs/superpowers/specs/2026-07-05-registro-solo-google-design.md
 
 
 @app.post("/auth/login", response_model=Token, dependencies=[Depends(login_rate_limit)])

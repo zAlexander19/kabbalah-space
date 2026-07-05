@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { useAuth } from './AuthContext';
@@ -6,8 +6,6 @@ import type { OAuthErrorCode } from './types';
 import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
-
-type Tab = 'login' | 'register';
 
 const OAUTH_ERROR_MESSAGES: Record<OAuthErrorCode, string> = {
   access_denied: 'Cancelaste el ingreso con Google.',
@@ -17,32 +15,22 @@ const OAUTH_ERROR_MESSAGES: Record<OAuthErrorCode, string> = {
   no_access_token: 'Google no devolvió un access token.',
   userinfo_failed: 'No pudimos leer tus datos de Google.',
   incomplete_profile: 'Tu cuenta de Google no tiene email o nombre disponible.',
-  email_already_registered: 'Este email ya tiene cuenta. Iniciá sesión con tu contraseña.',
+  email_already_registered: 'Este email ya está asociado a otro método de acceso.',
 };
 
+/**
+ * Modal de acceso — solo Google.
+ *
+ * El registro con email+contraseña fue eliminado: las cuentas nuevas se crean
+ * exclusivamente con Google (cuentas reales). Si un email ya existía como
+ * cuenta de contraseña, "Continuar con Google" la adopta (mismo Gmail).
+ */
 export function LoginModal() {
   const auth = useAuth();
-  const [tab, setTab] = useState<Tab>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const firstFieldRef = useRef<HTMLInputElement>(null);
 
   useScrollLock(auth.isLoginModalOpen);
 
-  // Reset on open and focus first field
-  useEffect(() => {
-    if (!auth.isLoginModalOpen) return;
-    setFormError(null);
-    setSubmitting(false);
-    // small delay so the focus lands after the entry animation
-    const t = setTimeout(() => firstFieldRef.current?.focus(), 80);
-    return () => clearTimeout(t);
-  }, [auth.isLoginModalOpen, tab]);
-
-  // ESC closes
+  // ESC cierra
   useEffect(() => {
     if (!auth.isLoginModalOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -51,35 +39,6 @@ export function LoginModal() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [auth.isLoginModalOpen, auth]);
-
-  const validate = (): string | null => {
-    const e = email.trim();
-    if (!e || !/^\S+@\S+\.\S+$/.test(e)) return 'Email inválido.';
-    if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
-    if (tab === 'register' && nombre.trim().length === 0) return 'Decinos cómo te llamás.';
-    return null;
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    const err = validate();
-    if (err) { setFormError(err); return; }
-    setSubmitting(true);
-    try {
-      if (tab === 'login') {
-        await auth.loginWithEmail(email.trim(), password);
-      } else {
-        await auth.registerWithEmail(email.trim(), password, nombre.trim());
-      }
-      // Modal closes itself on success (AuthContext sets isLoginModalOpen=false).
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Algo salió mal.';
-      setFormError(msg);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -111,113 +70,41 @@ export function LoginModal() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.32, ease }}
-            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+            className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto bg-stone-950/85 backdrop-blur-2xl border border-stone-800/60 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
           >
-            {/* Subtle cosmic glow — clipped en su propio wrapper para no generar
-                overflow fantasma ahora que el card scrollea */}
+            {/* Subtle cosmic glow — clipped en su propio wrapper */}
             <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
               <div className="absolute -top-20 -right-16 w-60 h-60 bg-amber-700/10 rounded-full blur-[80px]" />
               <div className="absolute -bottom-20 -left-16 w-60 h-60 bg-indigo-800/10 rounded-full blur-[80px]" />
             </div>
 
-            {/* Close X — z-20 so it stays clickable above the form content */}
+            {/* Close X */}
             <button
               type="button"
               onClick={auth.closeLoginModal}
               className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-amber-200 hover:bg-stone-800/50 transition-colors"
               aria-label="Cerrar"
             >
-              <span className="material-symbols-outlined text-[18px]">close</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
             </button>
 
-            <div className="relative p-7 pt-8">
+            <div className="relative p-8 pt-9 text-center">
               <h2
                 id="login-modal-title"
-                className="font-serif text-2xl text-amber-100/90 font-light text-center mb-1 tracking-tight"
+                className="font-serif text-2xl text-amber-100/90 font-light mb-1 tracking-tight"
               >
-                {tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                Entrá a Kabbalah Space
               </h2>
-              <p className="text-center text-stone-400 text-xs mb-6 tracking-wide">
-                Kabbalah Space
+              <p className="text-stone-400 text-sm mb-7 tracking-wide leading-relaxed">
+                Creá tu cuenta o iniciá sesión con Google.
               </p>
-
-              {/* Tabs */}
-              <div className="flex bg-stone-900/60 border border-stone-800/60 rounded-xl p-1 mb-5">
-                {(['login', 'register'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { setTab(t); setFormError(null); }}
-                    className={`flex-1 py-2 text-xs uppercase tracking-[0.14em] rounded-lg transition-colors ${
-                      tab === t
-                        ? 'bg-amber-300/15 text-amber-100 shadow-[0_0_12px_rgba(233,195,73,0.15)]'
-                        : 'text-stone-500 hover:text-stone-300'
-                    }`}
-                  >
-                    {t === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
-                  </button>
-                ))}
-              </div>
 
               {/* OAuth error from URL fragment */}
               {auth.oauthError && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-red-950/40 border border-red-900/60 text-red-200 text-xs leading-relaxed">
+                <div className="mb-5 px-3 py-2 rounded-lg bg-red-950/40 border border-red-900/60 text-red-200 text-xs leading-relaxed text-left">
                   {OAUTH_ERROR_MESSAGES[auth.oauthError]}
                 </div>
               )}
-
-              {/* Form error */}
-              {formError && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-red-950/40 border border-red-900/60 text-red-200 text-xs leading-relaxed">
-                  {formError}
-                </div>
-              )}
-
-              <form onSubmit={onSubmit} className="space-y-3">
-                {tab === 'register' && (
-                  <Field
-                    label="Nombre"
-                    type="text"
-                    autoComplete="name"
-                    value={nombre}
-                    onChange={setNombre}
-                    inputRef={firstFieldRef}
-                  />
-                )}
-                <Field
-                  label="Email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={setEmail}
-                  inputRef={tab === 'login' ? firstFieldRef : undefined}
-                />
-                <Field
-                  label="Contraseña"
-                  type="password"
-                  autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={setPassword}
-                  hint={tab === 'register' ? 'Mínimo 8 caracteres.' : undefined}
-                />
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full mt-2 py-2.5 rounded-lg bg-amber-300/15 hover:bg-amber-300/25 active:bg-amber-300/30 border border-amber-300/30 text-amber-100 text-sm tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_18px_rgba(233,195,73,0.12)]"
-                >
-                  {submitting
-                    ? 'Procesando…'
-                    : tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
-                </button>
-              </form>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-stone-800/70" />
-                <span className="text-stone-500 text-[10px] uppercase tracking-[0.18em]">o</span>
-                <div className="flex-1 h-px bg-stone-800/70" />
-              </div>
 
               {/* Google button */}
               <button
@@ -225,50 +112,25 @@ export function LoginModal() {
                 onClick={() => auth.googleOAuthEnabled && auth.startGoogleOAuth()}
                 disabled={!auth.googleOAuthEnabled}
                 title={auth.googleOAuthEnabled ? '' : 'OAuth pendiente de configurar'}
-                className="w-full py-2.5 rounded-lg bg-stone-100 hover:bg-white text-stone-800 text-sm font-medium flex items-center justify-center gap-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full py-3 rounded-lg bg-stone-100 hover:bg-white text-stone-800 text-sm font-medium flex items-center justify-center gap-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <GoogleGlyph />
                 Continuar con Google
               </button>
               {!auth.googleOAuthEnabled && (
-                <p className="text-stone-500 text-[11px] text-center mt-2">
+                <p className="text-stone-500 text-[11px] mt-3">
                   Google OAuth no está configurado en este backend.
                 </p>
               )}
+
+              <p className="text-stone-600 text-[11px] mt-6 leading-relaxed">
+                Usamos Google para verificar que tu cuenta sea real. No publicamos nada en tu nombre.
+              </p>
             </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-interface FieldProps {
-  label: string;
-  type: 'email' | 'password' | 'text';
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete?: string;
-  hint?: string;
-  inputRef?: React.RefObject<HTMLInputElement | null>;
-}
-
-function Field({ label, type, value, onChange, autoComplete, hint, inputRef }: FieldProps) {
-  return (
-    <label className="block">
-      <span className="block text-[10px] uppercase tracking-[0.18em] text-stone-500 mb-1">
-        {label}
-      </span>
-      <input
-        ref={inputRef}
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-stone-900/70 border border-stone-700/70 focus:border-amber-300/50 focus:bg-stone-900 rounded-lg px-3 py-2 text-sm text-stone-100 outline-none transition-colors placeholder:text-stone-600"
-      />
-      {hint && <span className="block text-[10px] text-stone-500 mt-1">{hint}</span>}
-    </label>
   );
 }
 

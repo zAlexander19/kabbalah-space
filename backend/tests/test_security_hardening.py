@@ -9,9 +9,9 @@ from tests.conftest import register_and_login
 # ---------------------------------------------------------------- rate limits
 
 @pytest.mark.asyncio
-async def test_login_rate_limited_after_10_attempts(client):
-    await register_and_login(client, "brute@example.com", "correcta1", "Brute")
-    for _ in range(9):  # register_and_login ya consumió 1 login OK
+async def test_login_rate_limited_after_10_attempts(client, db_session):
+    await register_and_login(db_session, "brute@example.com", "correcta1", "Brute")
+    for _ in range(10):
         r = await client.post(
             "/auth/login", json={"email": "brute@example.com", "password": "incorrecta"}
         )
@@ -21,21 +21,6 @@ async def test_login_rate_limited_after_10_attempts(client):
     )
     assert r.status_code == 429
     assert "Retry-After" in r.headers
-
-
-@pytest.mark.asyncio
-async def test_register_rate_limited_after_20(client):
-    for i in range(20):
-        r = await client.post(
-            "/auth/register",
-            json={"email": f"bulk{i}@example.com", "password": "password1", "nombre": "Bulk"},
-        )
-        assert r.status_code == 201
-    r = await client.post(
-        "/auth/register",
-        json={"email": "bulk20@example.com", "password": "password1", "nombre": "Bulk"},
-    )
-    assert r.status_code == 429
 
 
 # ------------------------------------------------------------ security headers

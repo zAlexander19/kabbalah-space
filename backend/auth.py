@@ -244,6 +244,19 @@ async def find_or_create_google_user(
         select(Usuario).where(Usuario.email == email)
     )).scalars().first()
     if email_match:
+        # Google ya verificó que quien inicia sesión es dueño de este email.
+        # Si existe una cuenta de email+contraseña con ese mismo email, la
+        # ADOPTAMOS (misma cuenta: conserva id, is_admin, suscripción, datos)
+        # y la convertimos a cuenta de Google. Es seguro y evita lockouts al
+        # pasar el registro a "solo Google".
+        if email_match.provider == "email":
+            email_match.provider = "google"
+            email_match.provider_id = google_sub
+            email_match.password_hash = None
+            await db.commit()
+            await db.refresh(email_match)
+            return email_match
+        # Otro provider OAuth con el mismo email: no auto-linkeamos.
         raise EmailCollisionError(
             f"El email {email} ya está registrado con provider='{email_match.provider}'"
         )

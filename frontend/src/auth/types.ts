@@ -45,7 +45,6 @@ export interface AuthContextValue {
   closeLoginModal: () => void;
 
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string, nombre: string) => Promise<void>;
   startGoogleOAuth: () => void;
   logout: () => void;
   updateUser: (patch: Partial<User>) => void;
