@@ -228,7 +228,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
               onClick={() => auth.openLoginModal('manual')}
               className="ks-nav-cta"
             >
-              Iniciar sesión <span aria-hidden>↗</span>
+              Iniciar sesión <span aria-hidden>{'↗︎'}</span>
             </button>
           ) : auth.user ? (
             <div className="relative">

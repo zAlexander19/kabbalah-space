@@ -14,7 +14,7 @@ export default function InicioFooter() {
             rel="noopener noreferrer"
             className="ks-eyebrow text-ink/60 hover:text-gold transition-colors"
           >
-            GitHub ↗
+            GitHub <span aria-hidden>{'↗︎'}</span>
           </a>
         </nav>
         <p className="ks-eyebrow text-ink/40">

@@ -68,12 +68,18 @@ function AppInner() {
 
   const setActiveView = useCallback(
     (target: ViewKey) => {
-      if (tour.isActive && target !== 'espejo' && target !== 'inicio') {
-        return; // navegación bloqueada durante el tour
+      // Antes se bloqueaba la navegación mientras el tour del Espejo estaba
+      // activo, pero eso creaba un deadlock: al bloquear el click a Calendario,
+      // el Espejo no se desmontaba y su cleanup nunca cancelaba el tour, dejando
+      // al usuario trabado. Ahora navegamos libre: si el tour sigue activo y el
+      // usuario sale del Espejo, lo cancelamos (el cleanup del EspejoModule
+      // también lo hace al desmontar, esto es defensa extra).
+      if (tour.isActive && target !== 'espejo') {
+        tour.cancel();
       }
       setActiveViewRaw(target);
     },
-    [tour.isActive],
+    [tour],
   );
 
   // Al autenticarse como admin, llevarlo directo al panel (una vez por sesión).
