@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { AdminModule } from "./admin";
 import CalendarModule from "./calendar";
 import EspejoModule from "./espejo";
@@ -153,7 +153,7 @@ function AppInner() {
 
   return (
     <>
-    <div className="min-h-screen bg-[#070709] text-stone-300 font-body relative overflow-hidden">
+    <div data-active-view={activeView} className="min-h-screen bg-[#070709] text-stone-300 font-body relative overflow-hidden">
       {/* Background cosmic gradients */}
       <motion.div
         className="fixed inset-0 z-0 pointer-events-none"
@@ -176,13 +176,18 @@ function AppInner() {
         onNavigate={(target) => setActiveView(target)}
       />
 
-      <AnimatePresence mode="wait" initial={false}>
+      {/* OJO: acá NO va AnimatePresence. Las vistas contienen layoutIds (pills
+          del calendario/evolución, timeline) y AnimatePresence anidados; un
+          layoutId que se movió dentro de un subtree que luego "sale" por un
+          AnimatePresence mode="wait" deja el exit colgado para siempre (bug de
+          framer-motion): la vista vieja queda en opacity 0 y la nueva nunca
+          monta. El remount por key + fade-in evita toda esa maquinaria; solo
+          se pierde el fade-out de 0.22s de la vista saliente. */}
       {activeView === 'inicio' ? (
         <motion.div
           key="inicio"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
           transition={{ duration: reducedMotion ? 0 : 0.22, ease }}
         >
           <InicioModule onNavigate={(target) => setActiveView(target)} />
@@ -192,7 +197,6 @@ function AppInner() {
           key={activeView}
           initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: reducedMotion ? 0 : -6 }}
           transition={{ duration: reducedMotion ? 0 : 0.22, ease }}
           className="flex-1 pt-24 relative flex flex-col items-center px-6 min-h-screen mb-10 overflow-auto">
           <header className="w-full max-w-[1400px] 2xl:max-w-[1600px] mb-8 px-4 py-6 text-center overflow-hidden">
@@ -233,7 +237,6 @@ function AppInner() {
           </section>
         </motion.main>
       )}
-      </AnimatePresence>
     </div>
     <PremiumGate onNavigateToPremium={gate.openPlans} />
     <PremiumPlansModal />

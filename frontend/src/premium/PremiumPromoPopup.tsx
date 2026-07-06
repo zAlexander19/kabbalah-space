@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useGate } from './PremiumGateContext';
 import { PREMIUM_HIGHLIGHTS } from './gateCopy';
+import { getBillingStatus } from './api';
 import { usePremium } from './usePremium';
+import { useAuth } from '../auth';
 import { useScrollLock } from '../shared/hooks/useScrollLock';
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -31,6 +33,7 @@ interface Props {
 export function PremiumPromoPopup({ suppressed }: Props) {
   const { openPlans, isPlansOpen, isOpen: isGateOpen } = useGate();
   const { isPremium, status } = usePremium();
+  const auth = useAuth();
   const [visible, setVisible] = useState(false);
   const reducedMotion = useReducedMotion();
   const ctaRef = useRef<HTMLButtonElement>(null);
@@ -52,7 +55,7 @@ export function PremiumPromoPopup({ suppressed }: Props) {
     // status === null: todavía no sabemos el tier — no decidir con eso.
     if (visible || isPremium || status === null || shownThisLoad.current) return;
 
-    const tryShow = () => {
+    const tryShow = async () => {
       if (blocked || shownThisLoad.current) return;
       // No montar con la pestaña oculta: las animaciones (rAF) están
       // congeladas y el popup aparecería a medio renderizar al volver.
@@ -61,13 +64,26 @@ export function PremiumPromoPopup({ suppressed }: Props) {
       // navegador la frena, puede seguir activa mucho después del load).
       if (document.querySelector('[aria-label="Cargando la bienvenida"]')) return;
       if (mountedAt.current === 0 || Date.now() - mountedAt.current < SHOW_DELAY_MS) return;
+      // Reclamar el one-shot ANTES del await: evita doble disparo del interval.
       shownThisLoad.current = true;
+      // Verificación fresca al momento de mostrar: el `isPremium` del mount
+      // puede estar viejo (compra o grant de premium a mitad de sesión, o un
+      // fetch fallido que cayó al fail-safe 'free'). Nunca molestar a un
+      // usuario que YA es premium; ante la duda (error), no mostrar.
+      if (auth.status === 'authenticated') {
+        try {
+          const fresh = await getBillingStatus();
+          if (fresh.tier === 'premium') return;
+        } catch {
+          return;
+        }
+      }
       setVisible(true);
     };
 
-    const id = window.setInterval(tryShow, RECHECK_MS);
+    const id = window.setInterval(() => void tryShow(), RECHECK_MS);
     return () => window.clearInterval(id);
-  }, [visible, isPremium, status, blocked]);
+  }, [visible, isPremium, status, blocked, auth.status]);
 
   const close = useCallback(() => setVisible(false), []);
 
