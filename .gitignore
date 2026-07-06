@@ -103,3 +103,5 @@ coverage/
 # smoke test throwaway DB
 backend/smoke_premium.db
 backend/smoke_premium.db-*
+backend/seed_check.db
+backend/seed_check.db-*

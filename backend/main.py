@@ -312,6 +312,23 @@ async def startup():
                     session.add(Sefira(**s))
                 await session.commit()
 
+            # Sembrar preguntas guía (idempotente). Requiere que las sefirot
+            # existan (sembradas arriba). Mismo set que scripts/seed_preguntas.py.
+            try:
+                from scripts.seed_preguntas import PREGUNTAS
+                for sefira_id, textos in PREGUNTAS.items():
+                    existentes = {t.strip() for t in (await session.execute(
+                        select(PreguntaSefira.texto_pregunta).where(
+                            PreguntaSefira.sefira_id == sefira_id
+                        )
+                    )).scalars().all()}
+                    for texto in textos:
+                        if texto.strip() not in existentes:
+                            session.add(PreguntaSefira(sefira_id=sefira_id, texto_pregunta=texto))
+                await session.commit()
+            except Exception:
+                logger.exception("No se pudieron sembrar las preguntas guia en el startup")
+
             await promote_bootstrap_admins(session, settings.admin_bootstrap_emails)
 
 
