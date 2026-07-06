@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { Menu, X } from 'lucide-react';
 import KabbalahLogo from './KabbalahLogo';
 import { useAuth } from '../../auth';
-import { useTourEspejo } from '../../onboarding';
 
 export type InicioNavTarget = 'inicio' | 'espejo' | 'calendario' | 'evolucion';
 
@@ -31,7 +30,6 @@ function getInitials(nombre: string): string {
 
 export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) {
   const auth = useAuth();
-  const tour = useTourEspejo();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -153,7 +151,6 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                     <div className="flex flex-col py-2 overflow-y-auto">
                       {SECTIONS.map((s) => {
                         const active = activeView === s.key;
-                        const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
                         return (
                           <button
                             key={s.key}
@@ -163,14 +160,11 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                               setMobileMenuOpen(false);
                               onNavigate(s.key);
                             }}
-                            disabled={isBlockedByTour}
-                            aria-disabled={isBlockedByTour ? 'true' : undefined}
-                            title={isBlockedByTour ? 'Termina el tour antes de salir' : undefined}
                             className={`w-full px-5 py-3.5 flex items-center justify-between text-sm tracking-wide transition-colors ${
                               active
                                 ? 'text-gold bg-stone-900/50'
                                 : 'text-stone-200 hover:text-amber-200 hover:bg-stone-900/60'
-                            } ${isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+                            }`}
                             aria-current={active ? 'page' : undefined}
                           >
                             <span>{s.label}</span>
@@ -201,18 +195,12 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
         <div className="hidden md:flex items-center gap-1">
           {SECTIONS.map((s) => {
             const active = activeView === s.key;
-            const isBlockedByTour = tour.isActive && s.key !== 'espejo' && s.key !== 'inicio';
             return (
               <button
                 key={s.key}
                 type="button"
                 onClick={() => onNavigate(s.key)}
-                disabled={isBlockedByTour}
-                aria-disabled={isBlockedByTour ? 'true' : undefined}
-                title={isBlockedByTour ? 'Terminá el tour antes de salir' : undefined}
-                className={`ks-nav-link ${active ? 'text-gold' : ''} ${
-                  isBlockedByTour ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
-                }`}
+                className={`ks-nav-link ${active ? 'text-gold' : ''}`}
                 aria-current={active ? 'page' : undefined}
               >
                 {s.label}
@@ -299,10 +287,7 @@ export default function InicioNav({ onNavigate, activeView = 'inicio' }: Props) 
                         setMenuOpen(false);
                         window.dispatchEvent(new CustomEvent('navigate:cuenta'));
                       }}
-                      disabled={tour.isActive}
-                      aria-disabled={tour.isActive ? 'true' : undefined}
-                      title={tour.isActive ? 'Termina el tour antes de salir' : undefined}
-                      className={`w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors ${tour.isActive ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+                      className="w-full px-4 py-2.5 flex items-center gap-2 text-stone-300 hover:text-amber-200 hover:bg-stone-900/80 text-xs tracking-wide transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]" aria-hidden="true">person</span>
                       Mi cuenta
