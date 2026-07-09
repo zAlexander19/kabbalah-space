@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useIaLectura } from '../hooks/useIaLectura';
+import { useGate } from '../../premium/PremiumGateContext';
 import { SEFIRA_COLORS } from '../../shared/tokens';
 
 /** Key en sessionStorage para "el usuario cerró la card hoy". */
@@ -19,6 +20,7 @@ type Props = {
 
 export default function CalendarioIaLectura({ refreshKey }: Props) {
   const { data, loading, error } = useIaLectura(refreshKey);
+  const { openPlans } = useGate();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return sessionStorage.getItem(DISMISS_KEY_PREFIX + todayKey()) === '1';
@@ -120,6 +122,21 @@ export default function CalendarioIaLectura({ refreshKey }: Props) {
             <p className="text-[11px] text-amber-200/70 mt-2">
               Abrí el menú de tu cuenta (arriba a la derecha) y activá <span className="font-medium">Evaluación KSpace-AI</span>.
             </p>
+          </div>
+        )}
+
+        {data.status === 'premium' && (
+          <div className="pr-6">
+            <p className="text-stone-400 text-sm leading-relaxed font-serif">
+              KSpace-AI lee tu mes y te dice qué dimensiones piden atención.
+            </p>
+            <button
+              type="button"
+              onClick={openPlans}
+              className="mt-3 px-4 py-1.5 rounded-full bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/40 text-amber-100 text-[11px] tracking-wide transition-colors"
+            >
+              Disponible con Premium
+            </button>
           </div>
         )}
       </motion.div>

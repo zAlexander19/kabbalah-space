@@ -1053,6 +1053,16 @@ async def ia_calendario_lectura(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
+    # Gating premium: la IA consume Gemini (costo real por llamada). Se responde
+    # 200 con status="premium" (no 402) para que el handler global de 402 del
+    # frontend no abra el modal de planes sin que el usuario lo pida — la card
+    # del calendario muestra la invitación de forma pasiva.
+    if not user.is_premium:
+        return LecturaResponse(
+            status="premium",
+            weak_sefirot=[],
+            message="La lectura del mes con IA es parte de Premium.",
+        )
     if not user.ksai_enabled:
         return LecturaResponse(
             status="disabled",
@@ -1261,6 +1271,15 @@ async def ia_respuestas_evaluar(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
+    # Gating premium: la evaluación IA consume Gemini (costo real). Se responde
+    # 200 con ai_score=None (no 402) porque el frontend dispara esta llamada
+    # fire-and-forget al guardar respuestas — un 402 abriría el modal de planes
+    # sin que el usuario lo pida, interrumpiendo el flujo de guardado.
+    if not user.is_premium:
+        return EvaluarRespuestasResponse(
+            ai_score=None,
+            feedback="El análisis con IA es parte de Premium.",
+        )
     if not user.ksai_enabled:
         return EvaluarRespuestasResponse(
             ai_score=None,

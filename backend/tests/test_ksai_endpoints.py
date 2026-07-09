@@ -44,9 +44,33 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from unittest.mock import patch, AsyncMock
 
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def premium_two_users(two_users, db_session):
+    """Upgradea a alice y bob a premium: los endpoints IA (lectura del mes y
+    evaluación de respuestas) son premium-only — consumen Gemini."""
+    from datetime import timedelta
+    from billing.models import Subscription
+
+    for key in ("alice", "bob"):
+        u = two_users[key]
+        db_session.add(Subscription(
+            usuario_id=u["id"],
+            status="active",
+            plan="monthly",
+            lemonsqueezy_subscription_id=f"ls-ksai-{u['id']}",
+            lemonsqueezy_customer_id=f"lc-ksai-{u['id']}",
+            current_period_start=datetime.now(timezone.utc),
+            current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+        ))
+    await db_session.commit()
+    return two_users
+
 
 @pytest.mark.asyncio
-async def test_lectura_status_no_data_sin_reflexiones(client, seed_sefirot, two_users):
+async def test_lectura_status_no_data_sin_reflexiones(client, seed_sefirot, two_users, premium_two_users):
     """Usuario sin reflexiones este mes → no_data."""
     alice = two_users["alice"]
     r = await client.get("/ia/calendario/lectura", headers=alice["headers"])
@@ -59,7 +83,7 @@ async def test_lectura_status_no_data_sin_reflexiones(client, seed_sefirot, two_
 
 @pytest.mark.asyncio
 async def test_lectura_status_disabled_si_toggle_off(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     alice = two_users["alice"]
     from models import Usuario
@@ -79,7 +103,7 @@ async def test_lectura_status_disabled_si_toggle_off(
 
 @pytest.mark.asyncio
 async def test_lectura_status_balanced_si_promedio_alto(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     """Reflexión este mes con scores altos → balanced."""
     alice = two_users["alice"]
@@ -104,7 +128,7 @@ async def test_lectura_status_balanced_si_promedio_alto(
 
 @pytest.mark.asyncio
 async def test_lectura_status_weak_llama_a_kspace_ai(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     """Una sefirá con promedio < 5 → status=weak, llama al LLM."""
     alice = two_users["alice"]
@@ -136,7 +160,7 @@ async def test_lectura_status_weak_llama_a_kspace_ai(
 
 @pytest.mark.asyncio
 async def test_lectura_status_weak_message_null_si_llm_falla(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     alice = two_users["alice"]
     from models import RegistroDiario
@@ -157,7 +181,7 @@ async def test_lectura_status_weak_message_null_si_llm_falla(
 
 
 @pytest.mark.asyncio
-async def test_lectura_aisla_por_usuario(client, db_session, seed_sefirot, two_users):
+async def test_lectura_aisla_por_usuario(client, db_session, seed_sefirot, two_users, premium_two_users):
     """Reflexiones de Bob no afectan la lectura de Alice."""
     alice = two_users["alice"]
     bob = two_users["bob"]
@@ -353,7 +377,7 @@ async def test_felicitacion_404_actividad_de_otro_usuario(
 
 @pytest.mark.asyncio
 async def test_evaluar_respuestas_400_si_no_hay_respuestas(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     """Sin respuestas en la sefirá → 400."""
     alice = two_users["alice"]
@@ -367,7 +391,7 @@ async def test_evaluar_respuestas_400_si_no_hay_respuestas(
 
 @pytest.mark.asyncio
 async def test_evaluar_respuestas_devuelve_disabled_si_toggle_off(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     alice = two_users["alice"]
     # Toggle off
@@ -397,7 +421,7 @@ async def test_evaluar_respuestas_devuelve_disabled_si_toggle_off(
 
 @pytest.mark.asyncio
 async def test_evaluar_respuestas_llama_a_kspace_ai_y_guarda(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     from unittest.mock import patch, AsyncMock
     from models import PreguntaSefira, RespuestaPregunta, RegistroDiario
@@ -453,7 +477,7 @@ async def test_evaluar_respuestas_llama_a_kspace_ai_y_guarda(
 
 @pytest.mark.asyncio
 async def test_evaluar_respuestas_usa_solo_ultima_respuesta_por_pregunta(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     """Si el usuario contestó una pregunta varias veces, se usa la más reciente."""
     from unittest.mock import patch, AsyncMock
@@ -490,7 +514,7 @@ async def test_evaluar_respuestas_usa_solo_ultima_respuesta_por_pregunta(
 
 @pytest.mark.asyncio
 async def test_evaluar_respuestas_no_guarda_si_llm_falla(
-    client, db_session, seed_sefirot, two_users,
+    client, db_session, seed_sefirot, two_users, premium_two_users,
 ):
     """Si el LLM devuelve (None, '') → no insert, mensaje genérico."""
     from unittest.mock import patch, AsyncMock
@@ -519,6 +543,60 @@ async def test_evaluar_respuestas_no_guarda_si_llm_falla(
     assert "No pudimos evaluar" in data["feedback"]
 
     # No se creó RegistroDiario.
+    rows = (await db_session.execute(
+        select(RegistroDiario).where(RegistroDiario.usuario_id == alice["id"])
+    )).scalars().all()
+    assert len(rows) == 0
+
+
+# ---------------- Gating premium de la IA ----------------
+# La IA consume Gemini (costo real por llamada) → premium-only. Se responde
+# 200 (no 402) para no disparar el modal de planes del frontend sin intención
+# del usuario: la lectura es una card pasiva y evaluar es fire-and-forget.
+
+
+@pytest.mark.asyncio
+async def test_lectura_free_devuelve_status_premium(client, seed_sefirot, two_users):
+    """Usuario free (sin Subscription) → status='premium', sin llamar al LLM."""
+    alice = two_users["alice"]
+    with patch("main.kspace_ai.generate_calendar_reading", new_callable=AsyncMock) as mock:
+        r = await client.get("/ia/calendario/lectura", headers=alice["headers"])
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "premium"
+    assert body["weak_sefirot"] == []
+    assert "Premium" in body["message"]
+    mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_evaluar_free_no_llama_ia_ni_guarda(
+    client, db_session, seed_sefirot, two_users,
+):
+    """Usuario free con respuestas → 200 con ai_score=None, sin LLM ni insert."""
+    from models import PreguntaSefira, RespuestaPregunta, RegistroDiario
+
+    alice = two_users["alice"]
+    p = PreguntaSefira(sefira_id="tiferet", texto_pregunta="¿Equilibrás?")
+    db_session.add(p)
+    await db_session.flush()
+    db_session.add(RespuestaPregunta(
+        usuario_id=alice["id"], pregunta_id=p.id, respuesta_texto="A veces.",
+    ))
+    await db_session.commit()
+
+    with patch("main.kspace_ai.evaluate_question_answers", new_callable=AsyncMock) as mock:
+        r = await client.post(
+            "/ia/respuestas/evaluar",
+            json={"sefira_id": "tiferet"},
+            headers=alice["headers"],
+        )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ai_score"] is None
+    assert "Premium" in data["feedback"]
+    mock.assert_not_awaited()
+
     rows = (await db_session.execute(
         select(RegistroDiario).where(RegistroDiario.usuario_id == alice["id"])
     )).scalars().all()

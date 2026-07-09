@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, useAuth } from '../../auth';
 
-export type LecturaStatus = 'weak' | 'balanced' | 'no_data' | 'disabled';
+export type LecturaStatus = 'weak' | 'balanced' | 'no_data' | 'disabled' | 'premium';
 
 export type WeakSefira = {
   id: string;
