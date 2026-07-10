@@ -8,6 +8,8 @@ export default function InicioFooter() {
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
           <a href="#premisa" className="ks-eyebrow text-ink/60 hover:text-gold transition-colors">Manifiesto</a>
           <a href="#sefirot" className="ks-eyebrow text-ink/60 hover:text-gold transition-colors">Sefirot</a>
+          <a href="/privacidad" className="ks-eyebrow text-ink/60 hover:text-gold transition-colors">Privacidad</a>
+          <a href="/terminos" className="ks-eyebrow text-ink/60 hover:text-gold transition-colors">Términos</a>
           <a
             href="https://github.com/zAlexander19/kabbalah-space"
             target="_blank"
