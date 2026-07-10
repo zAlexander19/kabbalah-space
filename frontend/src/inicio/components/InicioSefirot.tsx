@@ -9,7 +9,7 @@ const SEFIROT_INFO: SefiraInfo[] = [
   { id: 'jojma',   name: 'Jojmá',    meaning: 'El destello inicial de inspiración.' },
   { id: 'bina',    name: 'Biná',     meaning: 'El entendimiento que da estructura.' },
   { id: 'jesed',   name: 'Jésed',    meaning: 'La misericordia y el amor expansivo.' },
-  { id: 'gevura',  name: 'Gueburá',  meaning: 'El rigor y el juicio que contiene.' },
+  { id: 'gevura',  name: 'Gevurá',  meaning: 'El rigor y el juicio que contiene.' },
   { id: 'tiferet', name: 'Tiféret',  meaning: 'La belleza, el equilibrio del corazón.' },
   { id: 'netzaj',  name: 'Nétsaj',   meaning: 'La perseverancia, la victoria sostenida.' },
   { id: 'hod',     name: 'Hod',      meaning: 'El esplendor de la inteligencia práctica.' },

@@ -380,3 +380,18 @@ body {
   50%      { opacity: 1; }
 }
 
+/* Indicadores nativos de los inputs date/time (calendarito/reloj): el browser
+   los pinta oscuros por defecto y desaparecen sobre el tema oscuro.
+   color-scheme: dark hace que el navegador use la variante clara (y el picker
+   nativo salga en tema oscuro); el filter tiñe el icono blanco a dorado. */
+input[type='date'],
+input[type='time'] {
+  color-scheme: dark;
+}
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator {
+  filter: sepia(1) saturate(2.4) hue-rotate(-8deg) brightness(1.15);
+  opacity: 0.85;
+  cursor: pointer;
+}
+

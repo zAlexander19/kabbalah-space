@@ -301,7 +301,7 @@ async def startup():
                     {"id": "jojma", "nombre": "Jojmá", "pilar": "Derecho", "descripcion": "La Sabiduria."},
                     {"id": "bina", "nombre": "Biná", "pilar": "Izquierdo", "descripcion": "El Entendimiento."},
                     {"id": "jesed", "nombre": "Jésed", "pilar": "Derecho", "descripcion": "La Misericordia."},
-                    {"id": "gevura", "nombre": "Gueburá", "pilar": "Izquierdo", "descripcion": "La Severidad."},
+                    {"id": "gevura", "nombre": "Gevurá", "pilar": "Izquierdo", "descripcion": "La Severidad."},
                     {"id": "tiferet", "nombre": "Tiféret", "pilar": "Central", "descripcion": "La Belleza."},
                     {"id": "netzaj", "nombre": "Nétsaj", "pilar": "Derecho", "descripcion": "La Victoria."},
                     {"id": "hod", "nombre": "Hod", "pilar": "Izquierdo", "descripcion": "El Esplendor."},

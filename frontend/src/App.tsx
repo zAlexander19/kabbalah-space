@@ -20,7 +20,7 @@ const SEFIROT = [
   { id: "jojma",   name: "Jojmá",   x: 320, y: 180, colorClass: "", textClass: "", description: "La Sabiduría. El destello inicial de inspiración." },
   { id: "bina",    name: "Biná",    x: 80,  y: 180, colorClass: "", textClass: "", description: "El Entendimiento. La vasija que da estructura." },
   { id: "jesed",   name: "Jésed",   x: 320, y: 310, colorClass: "", textClass: "", description: "La Misericordia. Generosidad y amor incondicional." },
-  { id: "gevura",  name: "Gueburá", x: 80,  y: 310, colorClass: "", textClass: "", description: "La Severidad. Rigor y juicio." },
+  { id: "gevura",  name: "Gevurá", x: 80,  y: 310, colorClass: "", textClass: "", description: "La Severidad. Rigor y juicio." },
   { id: "tiferet", name: "Tiféret", x: 200, y: 410, colorClass: "", textClass: "", description: "La Belleza. Equilibrio entre Misericordia y Severidad." },
   { id: "netzaj",  name: "Nétsaj",  x: 320, y: 530, colorClass: "", textClass: "", description: "La Victoria. Perseverancia." },
   { id: "hod",     name: "Hod",     x: 80,  y: 530, colorClass: "", textClass: "", description: "El Esplendor. Intelectualidad práctica." },

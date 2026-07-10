@@ -61,7 +61,7 @@ def test_monthly_summary_includes_month_label():
     html = render_monthly_summary(
         nombre="Alex",
         month_label="mayo de 2026",
-        sefirot_breakdown=[("Jésed", 12), ("Gueburá", 5)],
+        sefirot_breakdown=[("Jésed", 12), ("Gevurá", 5)],
         reflexiones_count=8,
         delta_vs_prev_month=+3,
         insight=None,
@@ -70,7 +70,7 @@ def test_monthly_summary_includes_month_label():
     )
     assert "mayo de 2026" in html
     assert "Jésed" in html
-    assert "Gueburá" in html
+    assert "Gevurá" in html
 
 
 def test_monthly_summary_positive_delta_message():
@@ -106,12 +106,12 @@ def test_monthly_summary_negative_delta_message():
 def test_imbalance_alert_includes_sefira_and_days():
     html = render_imbalance_alert(
         nombre="Alex",
-        sefira_nombre="Gueburá",
+        sefira_nombre="Gevurá",
         days_since=18,
         app_url="https://x.com",
         preferences_url="https://x.com/cuenta",
     )
-    assert "Gueburá" in html
+    assert "Gevurá" in html
     assert "18" in html
 
 
