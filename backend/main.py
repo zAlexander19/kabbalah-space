@@ -1533,7 +1533,12 @@ async def ensure_series_materialized(db: AsyncSession, end: datetime, user_id: s
             select(Actividad).where(Actividad.serie_id == seed.serie_id)
             .order_by(Actividad.inicio.desc()).limit(1)
         )).scalars().first()
-        if not last or last.inicio >= end:
+        # last.inicio viene con tz desde Postgres, naive desde SQLite; `end` ya
+        # llega normalizado (naive). Normalizar para comparar/operar sin mezclar
+        # aware vs naive (y para que rule.between reciba ventanas naive, como el
+        # dtstart naive que arma materialize_series).
+        last_inicio = normalize_datetime(last.inicio) if last else None
+        if last_inicio is None or last_inicio >= end:
             continue
 
         sefirot_rows = (await db.execute(
@@ -1549,8 +1554,8 @@ async def ensure_series_materialized(db: AsyncSession, end: datetime, user_id: s
             rrule=rule_str,
         )
 
-        new_window_start = last.inicio + timedelta(seconds=1)
-        new_window_end = last.inicio + timedelta(days=MATERIALIZATION_CAP_DAYS)
+        new_window_start = last_inicio + timedelta(seconds=1)
+        new_window_end = last_inicio + timedelta(days=MATERIALIZATION_CAP_DAYS)
         if new_window_end < end:
             new_window_end = end + timedelta(days=30)
 
@@ -1894,8 +1899,13 @@ async def get_volumen_semanal(
     )
 
     for row in rows.all():
-        overlap_start = max(row.inicio, week_start_dt)
-        overlap_end = min(row.fin, week_end_dt)
+        # Postgres devuelve estos datetimes con tz (columna DateTime(timezone=True));
+        # SQLite los devuelve naive. week_start/end_dt son naive → normalizar antes
+        # de comparar para no romper con "can't compare offset-naive and aware".
+        row_inicio = normalize_datetime(row.inicio)
+        row_fin = normalize_datetime(row.fin)
+        overlap_start = max(row_inicio, week_start_dt)
+        overlap_end = min(row_fin, week_end_dt)
         duration_hours = max(0.0, (overlap_end - overlap_start).total_seconds() / 3600.0)
 
         item = aggregate[row.sefira_id]
