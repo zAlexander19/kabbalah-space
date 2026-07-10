@@ -243,7 +243,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
             onClick={() => document.getElementById('arbol-energetico')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             className="ks-btn-ghost w-full justify-center text-[13px]"
           >
-            <span className="material-symbols-outlined text-[18px] text-amber-300/70" aria-hidden="true">account_tree</span>
+            <span className="material-symbols-outlined text-[18px] text-amber-300/70" aria-hidden="true">hub</span>
             Ver árbol de actividades semanales
           </button>
           <button
