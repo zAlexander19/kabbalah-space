@@ -237,24 +237,22 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
         {/* Atajos de scroll — solo en responsive (< lg), donde el árbol y el
             sync quedan apilados abajo. En desktop están al lado, no hacen falta. */}
-        <div className="lg:hidden flex flex-col gap-2 mb-4">
+        <div className="lg:hidden flex flex-col gap-2.5 mb-4">
           <button
             type="button"
             onClick={() => document.getElementById('arbol-energetico')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-300/10 hover:bg-amber-300/20 border border-amber-300/30 text-amber-100 text-sm tracking-wide transition-colors"
+            className="ks-btn-ghost w-full justify-center text-[13px]"
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">account_tree</span>
+            <span className="material-symbols-outlined text-[18px] text-amber-300/70" aria-hidden="true">account_tree</span>
             Ver árbol de actividades semanales
-            <span className="material-symbols-outlined text-[16px] opacity-70" aria-hidden="true">expand_more</span>
           </button>
           <button
             type="button"
             onClick={() => document.getElementById('gcal-sync-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-300/10 hover:bg-amber-300/20 border border-amber-300/30 text-amber-100 text-sm tracking-wide transition-colors"
+            className="ks-btn-ghost w-full justify-center text-[13px]"
           >
-            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">sync</span>
+            <span className="material-symbols-outlined text-[18px] text-amber-300/70" aria-hidden="true">sync</span>
             Sincronizar con Google Calendar
-            <span className="material-symbols-outlined text-[16px] opacity-70" aria-hidden="true">expand_more</span>
           </button>
         </div>
 
