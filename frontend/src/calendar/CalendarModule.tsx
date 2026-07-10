@@ -235,6 +235,29 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
 
         <CalendarioIaLectura refreshKey={actividadCreadaCount} />
 
+        {/* Atajos de scroll — solo en responsive (< lg), donde el árbol y el
+            sync quedan apilados abajo. En desktop están al lado, no hacen falta. */}
+        <div className="lg:hidden flex flex-col gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => document.getElementById('arbol-energetico')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-300/10 hover:bg-amber-300/20 border border-amber-300/30 text-amber-100 text-sm tracking-wide transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">account_tree</span>
+            Ver árbol de actividades semanales
+            <span className="material-symbols-outlined text-[16px] opacity-70" aria-hidden="true">expand_more</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => document.getElementById('gcal-sync-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-300/10 hover:bg-amber-300/20 border border-amber-300/30 text-amber-100 text-sm tracking-wide transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">sync</span>
+            Sincronizar con Google Calendar
+            <span className="material-symbols-outlined text-[16px] opacity-70" aria-hidden="true">expand_more</span>
+          </button>
+        </div>
+
         <div className="border border-stone-700/40 rounded-2xl p-4 bg-[#0e1014] relative overflow-hidden">
           {loading && (
             <div
@@ -345,7 +368,7 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
         </div>
       </div>
 
-      <div className="lg:col-span-5 xl:col-span-5 2xl:col-span-4 w-full bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-6 shadow-2xl">
+      <div id="arbol-energetico" className="scroll-mt-24 lg:col-span-5 xl:col-span-5 2xl:col-span-4 w-full bg-[#15181d] border border-stone-700/40 rounded-[2rem] p-6 shadow-2xl">
         <h3 className={`font-serif text-2xl mb-2 ${glowText}`}>Árbol Energético Semanal</h3>
         <p className="text-stone-400 text-sm mb-6">Cada sefirá crece según las actividades que cargues en esa dimensión.</p>
 
@@ -391,7 +414,9 @@ export default function CalendarModule({ sefirot, glowText }: Props) {
       />
     </div>
 
-      <GcalSyncCard />
+      <div id="gcal-sync-card" className="scroll-mt-24">
+        <GcalSyncCard />
+      </div>
       <FelicitacionToast felicitacion={felicitacion} onDismiss={dismiss} />
     </div>
   );
