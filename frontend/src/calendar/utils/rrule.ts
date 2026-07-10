@@ -13,7 +13,9 @@ export type RRuleParts = {
   count?: number;
 };
 
-const DAY_LABELS: Record<ByDay, string> = {
+// Plurales correctos en español: lunes–viernes son invariantes ("los viernes"),
+// solo sábado/domingo agregan 's'. Fuente única para descripciones y presets.
+export const DAY_LABELS: Record<ByDay, string> = {
   MO: 'lunes', TU: 'martes', WE: 'miércoles', TH: 'jueves',
   FR: 'viernes', SA: 'sábados', SU: 'domingos',
 };

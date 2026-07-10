@@ -1,9 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import {
   type ByDay, type Freq,
-  buildRRule, parseRRule, describeRRule, WEEKDAY_FROM_DATE,
+  buildRRule, parseRRule, describeRRule, WEEKDAY_FROM_DATE, DAY_LABELS,
 } from '../utils/rrule';
 
 type Props = {
@@ -29,15 +28,14 @@ export default function RecurrencePicker({ value, startDate, disabled, onChange,
   const containerRef = useRef<HTMLDivElement>(null);
   const startWeekday = WEEKDAY_FROM_DATE[startDate.getDay()];
   const startDayOfMonth = startDate.getDate();
-  const startWeekdayLabel = format(startDate, 'EEEE', { locale: es });
 
   const presets = useMemo(() => ([
     { id: 'none',    label: 'No se repite',                                               rrule: null },
     { id: 'daily',   label: 'Diariamente',                                                rrule: 'FREQ=DAILY' },
-    { id: 'weekly',  label: `Semanalmente los ${startWeekdayLabel}s`,                      rrule: `FREQ=WEEKLY;BYDAY=${startWeekday}` },
+    { id: 'weekly',  label: `Semanalmente los ${DAY_LABELS[startWeekday]}`,               rrule: `FREQ=WEEKLY;BYDAY=${startWeekday}` },
     { id: 'wkdays',  label: 'Días de semana (L-V)',                                       rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
     { id: 'monthly', label: `Mensualmente el día ${startDayOfMonth}`,                      rrule: `FREQ=MONTHLY;BYMONTHDAY=${startDayOfMonth}` },
-  ]), [startWeekday, startWeekdayLabel, startDayOfMonth]);
+  ]), [startWeekday, startDayOfMonth]);
 
   const matchedPreset = presets.find(p => p.rrule === value);
   const selectedKey = matchedPreset ? matchedPreset.id : (value ? 'custom' : 'none');
