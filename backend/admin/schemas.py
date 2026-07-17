@@ -25,6 +25,31 @@ class PreguntaOut(BaseModel):
     fecha_creacion: Optional[datetime] = None
 
 
+class SefiraContentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    nombre: str
+    esencia: Optional[str] = None
+    palabras_clave: list[str] = []
+    que_observa: Optional[str] = None
+
+    @classmethod
+    def from_sefira(cls, s) -> "SefiraContentOut":
+        return cls(
+            id=s.id,
+            nombre=s.nombre,
+            esencia=s.esencia,
+            palabras_clave=list(s.palabras_clave) if s.palabras_clave else [],
+            que_observa=s.que_observa,
+        )
+
+
+class SefiraContentUpdateIn(BaseModel):
+    esencia: Optional[str] = None
+    palabras_clave: Optional[list[str]] = None
+    que_observa: Optional[str] = None
+
+
 class UsuarioAdminOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str

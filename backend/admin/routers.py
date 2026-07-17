@@ -10,12 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from admin.deps import require_admin
 from admin.schemas import (
     PreguntaCreateIn, PreguntaOut, PreguntaUpdateIn, PreguntaReorderIn,
+    SefiraContentOut, SefiraContentUpdateIn,
     UsuarioAdminOut, UsuariosListOut,
     StatsOut, StatsUsuarios, StatsActividad, StatsPremium,
 )
 from billing.models import Subscription
 from database import get_db
-from models import PreguntaSefira, Usuario, RegistroDiario, RespuestaPregunta, Actividad
+from models import PreguntaSefira, Sefira, Usuario, RegistroDiario, RespuestaPregunta, Actividad
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -135,6 +136,35 @@ async def reorder_preguntas(
         by_id[pid].orden = idx
     await db.commit()
     return {"ok": True}
+
+
+@router.get("/sefirot", response_model=list[SefiraContentOut])
+async def list_sefirot_contenido(
+    _: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
+    return [SefiraContentOut.from_sefira(s) for s in rows]
+
+
+@router.patch("/sefirot/{sefira_id}", response_model=SefiraContentOut)
+async def update_sefira_contenido(
+    sefira_id: str,
+    payload: SefiraContentUpdateIn,
+    _: Usuario = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    sefira = (await db.execute(
+        select(Sefira).where(Sefira.id == sefira_id)
+    )).scalars().first()
+    if sefira is None:
+        raise HTTPException(404, "Sefirá no encontrada")
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(sefira, field, value)
+    await db.commit()
+    await db.refresh(sefira)
+    return SefiraContentOut.from_sefira(sefira)
 
 
 # ---------------------------------------------------------------------------
