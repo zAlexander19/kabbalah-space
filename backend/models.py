@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index, Boolean
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime, Index, Boolean, JSON
 
 from sqlalchemy.sql import func, false
 
@@ -75,6 +75,10 @@ class Sefira(Base):
     pilar = Column(String(50), nullable=False)
 
     descripcion = Column(Text)
+
+    esencia = Column(Text, nullable=True)
+    que_observa = Column(Text, nullable=True)
+    palabras_clave = Column(JSON, nullable=True)  # lista de strings
 
 
 
