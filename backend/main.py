@@ -338,6 +338,27 @@ async def get_sefirot(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+class SefiraContenidoPublicOut(BaseModel):
+    id: str
+    esencia: Optional[str] = None
+    palabras_clave: list[str] = []
+    que_observa: Optional[str] = None
+
+
+@app.get("/sefirot/contenido", response_model=list[SefiraContenidoPublicOut])
+async def sefirot_contenido_publico(db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(Sefira).order_by(Sefira.nombre))).scalars().all()
+    return [
+        SefiraContenidoPublicOut(
+            id=s.id,
+            esencia=s.esencia,
+            palabras_clave=list(s.palabras_clave) if s.palabras_clave else [],
+            que_observa=s.que_observa,
+        )
+        for s in rows
+    ]
+
+
 def normalize_datetime(dt: datetime) -> datetime:
     if dt.tzinfo:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
