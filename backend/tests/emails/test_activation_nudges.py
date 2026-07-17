@@ -213,6 +213,25 @@ async def test_stage_b_tree_incomplete_fires_when_idle(emails_on, db_session):
 
 
 @pytest.mark.asyncio
+async def test_stage_b_skips_when_recently_active(emails_on, db_session):
+    """Regresión: si la última respuesta es reciente (< ACTIVATION_FIRST_DELAY_DAYS),
+    el usuario sigue "activo" y NO debe recibir el nudge de etapa B, aunque ya
+    tenga respuestas (no es etapa A) y le falten sefirot por clasificar."""
+    now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+    ids = await _seed_sefirot(db_session)
+    await _seed_user(db_session, uid="s5", email="s5@x.com", signup=now - timedelta(days=10))
+    # clasifica 3 de 10, última respuesta hace apenas 1 día (activo, no idle)
+    for sid in ids[:3]:
+        await _classify(db_session, usuario_id="s5", sefira_id=sid, when=now - timedelta(days=1))
+    with respx.mock(base_url="https://api.resend.com", assert_all_called=False) as mock:
+        route = mock.post("/emails")
+        from scheduler.jobs import _activation_for_now
+        await _activation_for_now(db_session, now)
+    log = (await db_session.execute(select(EmailLog).where(EmailLog.usuario_id == "s5"))).scalars().first()
+    assert log is None and len(route.calls) == 0
+
+
+@pytest.mark.asyncio
 async def test_stage_c_no_activity_only_when_tree_complete(emails_on, db_session):
     now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
     ids = await _seed_sefirot(db_session)
