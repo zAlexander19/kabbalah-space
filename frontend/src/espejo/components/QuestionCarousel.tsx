@@ -21,7 +21,9 @@ type Props = {
 export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: Props) {
   // Todas las preguntas entran al carrusel (disponibles + respondidas/cooldown).
   // Las bloqueadas se muestran en modo lectura.
-  const items = useMemo(() => preguntas, [preguntas]);
+  // `items` is a pure alias of `preguntas` (same reference on every render,
+  // since there's no transformation) — no useMemo needed.
+  const items = preguntas;
 
   // Persist the in-progress answers map per sefirá. `hydrated` (set on mount)
   // seeds the initial state so a refresh or a return visit resumes where we left off.
@@ -76,8 +78,14 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
   useTourStep(3, textareaRef);
 
   // Reset session state if the underlying questions change (e.g. after save —
-  // questions reload with new bloqueada flags, possibly different ids).
-  const itemKey = useMemo(() => items.map((p) => p.pregunta_id).join('|'), [items]);
+  // questions reload with new bloqueada flags, possibly different ids). Must
+  // include `bloqueada` in the signature: a save flips the saved question's
+  // bloqueada to true without changing the id set/order, so an id-only key
+  // would stay identical post-save and this effect would never fire.
+  const itemKey = useMemo(
+    () => items.map((p) => `${p.pregunta_id}:${p.bloqueada ? 1 : 0}`).join('|'),
+    [items],
+  );
   const lastItemKeyRef = useRef(itemKey);
   useEffect(() => {
     if (lastItemKeyRef.current === itemKey) return;
