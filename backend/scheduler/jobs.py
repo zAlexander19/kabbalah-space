@@ -11,6 +11,7 @@ This keeps APScheduler config trivial and timezone handling per-user.
 """
 import logging
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 try:
     from zoneinfo import ZoneInfo
@@ -470,3 +471,97 @@ async def _evolucion_nudge_for_now(db: AsyncSession, now: datetime):
             )
         except Exception as e:
             logger.warning("evolucion_nudge failed for usuario_id=%s: %s", user.id, e)
+
+
+# ---------------- ACTIVACIÓN (embudo A→B→C, free + premium) ----------------
+
+TOTAL_SEFIROT = 10
+
+
+async def nightly_activation_nudge_tick():
+    settings = get_settings()
+    if not settings.emails_enabled:
+        return
+    from database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await _activation_for_now(db, _now_utc())
+
+
+async def _activation_for_now(db: AsyncSession, now: datetime):
+    """Para cada usuario, determina su etapa del embudo por precedencia A→B→C y
+    envía como mucho un correo de activación. El tope/espaciado lo aplica el sender.
+
+    - A (no_start): 0 respuestas y signup >= 2 días.
+    - B (tree_incomplete): >=1 respuesta, <10 sefirot clasificadas, sin nueva
+      respuesta en >= 2 días.
+    - C (no_activity): 10 sefirot clasificadas, 0 actividades, sin nueva
+      respuesta en >= 2 días.
+    """
+    from models import Usuario, RespuestaPregunta, RegistroDiario, Actividad
+    from emails.sender import send_activation_nudge, ACTIVATION_FIRST_DELAY_DAYS
+
+    def _days_since(dt: Optional[datetime]) -> Optional[float]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (now - dt).total_seconds() / 86400.0
+
+    users = (await db.execute(select(Usuario))).scalars().all()
+
+    for user in users:
+        signup_days = _days_since(user.fecha_creacion)
+        if signup_days is None or signup_days < ACTIVATION_FIRST_DELAY_DAYS:
+            continue
+
+        total_respuestas = (await db.execute(
+            select(sql_func.count(RespuestaPregunta.id)).where(
+                RespuestaPregunta.usuario_id == user.id
+            )
+        )).scalar() or 0
+
+        # ---- Etapa A ----
+        if total_respuestas == 0:
+            try:
+                await send_activation_nudge(db, user=user, stage="no_start", app_url=_get_app_url(), now=now)
+            except Exception as e:
+                logger.warning("activation no_start failed for usuario_id=%s: %s", user.id, e)
+            continue
+
+        # idle: días desde la última respuesta
+        last_resp = (await db.execute(
+            select(sql_func.max(RespuestaPregunta.fecha_registro)).where(
+                RespuestaPregunta.usuario_id == user.id
+            )
+        )).scalar()
+        idle_days = _days_since(last_resp)
+        if idle_days is None or idle_days < ACTIVATION_FIRST_DELAY_DAYS:
+            continue  # todavía activo respondiendo — no molestar
+
+        # sefirot clasificadas (RegistroDiario con puntuacion_ia)
+        clasificadas = (await db.execute(
+            select(sql_func.count(sql_func.distinct(RegistroDiario.sefira_id))).where(
+                RegistroDiario.usuario_id == user.id,
+                RegistroDiario.puntuacion_ia.is_not(None),
+            )
+        )).scalar() or 0
+
+        # ---- Etapa B ----
+        if clasificadas < TOTAL_SEFIROT:
+            faltan = TOTAL_SEFIROT - int(clasificadas)
+            try:
+                await send_activation_nudge(db, user=user, stage="tree_incomplete", app_url=_get_app_url(), now=now, faltan=faltan)
+            except Exception as e:
+                logger.warning("activation tree_incomplete failed for usuario_id=%s: %s", user.id, e)
+            continue
+
+        # ---- Etapa C ----
+        total_actividades = (await db.execute(
+            select(sql_func.count(Actividad.id)).where(Actividad.usuario_id == user.id)
+        )).scalar() or 0
+        if total_actividades == 0:
+            try:
+                await send_activation_nudge(db, user=user, stage="no_activity", app_url=_get_app_url(), now=now)
+            except Exception as e:
+                logger.warning("activation no_activity failed for usuario_id=%s: %s", user.id, e)
+            continue

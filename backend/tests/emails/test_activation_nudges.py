@@ -132,3 +132,96 @@ async def test_sender_spacing_skips_within_gap(emails_on, db_session):
         await _pin_last_sent_at(db_session, usuario_id=u.id, email_type="activation_no_start", sent_at=now)
         r2 = await send_activation_nudge(db_session, user=u, stage="no_start", app_url="https://k.app", now=now + timedelta(days=1))
     assert r1 is not None and r2 is None  # el segundo cae dentro del gap de 3 días
+
+
+# ---------------- SCHEDULER TICK: _activation_for_now (precedencia A→B→C) ----------------
+# Nota de esquema: Sefira.pilar es nullable=False sin default/server_default
+# (ver backend/models.py y el fixture seed_sefirot en conftest.py) — hay que
+# setearlo explícitamente o el INSERT falla con NOT NULL constraint failed,
+# incluso sin foreign_keys=ON. RespuestaPregunta.pregunta_id es FK a
+# preguntas_sefirot.id pero este proyecto no activa PRAGMA foreign_keys, así
+# que un pregunta_id "colgante" (sin fila PreguntaSefira real) inserta sin error.
+
+_PILARES = {
+    "keter": "centro", "jojma": "derecha", "bina": "izquierda",
+    "jesed": "derecha", "gevura": "izquierda", "tiferet": "centro",
+    "netzaj": "derecha", "hod": "izquierda", "yesod": "centro", "maljut": "centro",
+}
+
+
+async def _seed_sefirot(db):
+    ids = ["keter", "jojma", "bina", "jesed", "gevura", "tiferet", "netzaj", "hod", "yesod", "maljut"]
+    for sid in ids:
+        db.add(Sefira(id=sid, nombre=sid.capitalize(), pilar=_PILARES[sid]))
+    await db.commit()
+    return ids
+
+
+async def _classify(db, *, usuario_id, sefira_id, when):
+    """Marca una sefirá como clasificada: RegistroDiario con puntuacion_ia."""
+    db.add(RegistroDiario(
+        usuario_id=usuario_id, sefira_id=sefira_id,
+        puntuacion_ia=7, reflexion_texto=None, fecha_registro=when,
+    ))
+    # una respuesta también, para contar "empezó"
+    db.add(RespuestaPregunta(
+        usuario_id=usuario_id, pregunta_id=f"p-{sefira_id}",
+        respuesta_texto="x", fecha_registro=when,
+    ))
+    await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_stage_a_no_start_fires_after_2_days(emails_on, db_session):
+    now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+    await _seed_sefirot(db_session)
+    await _seed_user(db_session, uid="s1", email="s1@x.com", signup=now - timedelta(days=2))
+    with respx.mock(base_url="https://api.resend.com") as mock:
+        route = mock.post("/emails").mock(return_value=Response(200, json={"id": "m"}))
+        from scheduler.jobs import _activation_for_now
+        await _activation_for_now(db_session, now)
+    log = (await db_session.execute(select(EmailLog).where(EmailLog.usuario_id == "s1"))).scalars().first()
+    assert log is not None and log.email_type == "activation_no_start" and len(route.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_stage_a_skips_before_2_days(emails_on, db_session):
+    now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+    await _seed_sefirot(db_session)
+    await _seed_user(db_session, uid="s2", email="s2@x.com", signup=now - timedelta(hours=12))
+    with respx.mock(base_url="https://api.resend.com", assert_all_called=False) as mock:
+        route = mock.post("/emails")
+        from scheduler.jobs import _activation_for_now
+        await _activation_for_now(db_session, now)
+    assert len(route.calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_stage_b_tree_incomplete_fires_when_idle(emails_on, db_session):
+    now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+    ids = await _seed_sefirot(db_session)
+    await _seed_user(db_session, uid="s3", email="s3@x.com", signup=now - timedelta(days=10))
+    # clasifica 4 de 10, última respuesta hace 3 días (idle)
+    for sid in ids[:4]:
+        await _classify(db_session, usuario_id="s3", sefira_id=sid, when=now - timedelta(days=3))
+    with respx.mock(base_url="https://api.resend.com") as mock:
+        route = mock.post("/emails").mock(return_value=Response(200, json={"id": "m"}))
+        from scheduler.jobs import _activation_for_now
+        await _activation_for_now(db_session, now)
+    log = (await db_session.execute(select(EmailLog).where(EmailLog.usuario_id == "s3"))).scalars().first()
+    assert log.email_type == "activation_tree_incomplete" and len(route.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_stage_c_no_activity_only_when_tree_complete(emails_on, db_session):
+    now = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+    ids = await _seed_sefirot(db_session)
+    await _seed_user(db_session, uid="s4", email="s4@x.com", signup=now - timedelta(days=20))
+    for sid in ids:  # las 10, última hace 3 días
+        await _classify(db_session, usuario_id="s4", sefira_id=sid, when=now - timedelta(days=3))
+    with respx.mock(base_url="https://api.resend.com") as mock:
+        route = mock.post("/emails").mock(return_value=Response(200, json={"id": "m"}))
+        from scheduler.jobs import _activation_for_now
+        await _activation_for_now(db_session, now)
+    log = (await db_session.execute(select(EmailLog).where(EmailLog.usuario_id == "s4"))).scalars().first()
+    assert log.email_type == "activation_no_activity" and len(route.calls) == 1
