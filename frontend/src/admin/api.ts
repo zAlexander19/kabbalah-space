@@ -49,6 +49,20 @@ export interface AdminStats {
   premium: { activos: number; trial: number; cancelados: number; por_plan: Record<string, number>; };
 }
 
+export interface SefiraContentAdmin {
+  id: string;
+  nombre: string;
+  esencia: string | null;
+  palabras_clave: string[];
+  que_observa: string | null;
+}
+
+export interface SefiraContentPatch {
+  esencia?: string;
+  palabras_clave?: string[];
+  que_observa?: string;
+}
+
 // ---------- Preguntas ----------
 export async function listPreguntas(sefiraId: string): Promise<PreguntaAdmin[]> {
   return json(await apiFetch(`/admin/preguntas/${sefiraId}`));
@@ -72,6 +86,16 @@ export async function reorderPreguntas(sefiraId: string, ids: string[]): Promise
     method: 'PUT', body: JSON.stringify({ ids }),
   });
   if (!res.ok) throw new Error(await parseError(res));
+}
+
+// ---------- Contenido de sefirot ----------
+export async function getSefirotContent(): Promise<SefiraContentAdmin[]> {
+  return json(await apiFetch('/admin/sefirot'));
+}
+export async function updateSefiraContent(id: string, patch: SefiraContentPatch): Promise<SefiraContentAdmin> {
+  return json(await apiFetch(`/admin/sefirot/${id}`, {
+    method: 'PATCH', body: JSON.stringify(patch),
+  }));
 }
 
 // ---------- Usuarios ----------

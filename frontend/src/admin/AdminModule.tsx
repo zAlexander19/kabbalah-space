@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { PreguntasPanel } from './components/PreguntasPanel';
 import { UsuariosPanel } from './components/UsuariosPanel';
 import { StatsPanel } from './components/StatsPanel';
+import { SefirotContentPanel } from './components/SefirotContentPanel';
 
-type Tab = 'stats' | 'preguntas' | 'usuarios';
+type Tab = 'stats' | 'preguntas' | 'contenido' | 'usuarios';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'stats', label: 'Estadísticas' },
   { key: 'preguntas', label: 'Preguntas' },
+  { key: 'contenido', label: 'Contenido' },
   { key: 'usuarios', label: 'Usuarios' },
 ];
 
@@ -39,6 +41,7 @@ export default function AdminModule({ sefirot, glowText }: { sefirot: any[]; glo
 
       {tab === 'stats' && <StatsPanel />}
       {tab === 'preguntas' && <PreguntasPanel sefirot={sefirot} />}
+      {tab === 'contenido' && <SefirotContentPanel />}
       {tab === 'usuarios' && <UsuariosPanel />}
     </div>
   );
