@@ -75,6 +75,7 @@ export interface EmailPreferences {
   monthly_summary: boolean;
   imbalance_alerts: boolean;
   reflection_reminders: boolean;
+  activation_nudges: boolean;
 }
 
 export type EmailPreferenceKey = keyof EmailPreferences;

@@ -60,6 +60,11 @@ const TOGGLES: { key: EmailPreferenceKey; label: string; description: string }[]
     label: 'Recordatorios de reflexión',
     description: 'Si pasaste 7 días sin entrar, una pregunta guía te espera.',
   },
+  {
+    key: 'activation_nudges',
+    label: 'Recordatorios de activación',
+    description: 'Mientras completás el árbol, te recordamos por dónde seguir.',
+  },
 ];
 
 
