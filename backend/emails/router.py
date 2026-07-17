@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import get_current_user
 from database import get_db
 from models import Usuario
-from billing.models import EmailPreferences
 
 
 logger = logging.getLogger(__name__)
@@ -138,19 +137,17 @@ async def resend_webhook(
             )
         )).scalar() or 0
         if bounce_count >= HARD_BOUNCE_THRESHOLD:
-            prefs = (await db.execute(
-                select(EmailPreferences).where(EmailPreferences.usuario_id == log.usuario_id)
-            )).scalars().first()
-            if prefs is not None:
-                prefs.weekly_summary = False
-                prefs.monthly_summary = False
-                prefs.imbalance_alerts = False
-                prefs.reflection_reminders = False
-                prefs.activation_nudges = False
-                await db.commit()
-                logger.warning(
-                    "paused all emails for usuario_id=%s after %d hard bounces",
-                    log.usuario_id, bounce_count,
-                )
+            from billing.preferences import get_or_create_email_preferences
+            prefs = await get_or_create_email_preferences(db, log.usuario_id)
+            prefs.weekly_summary = False
+            prefs.monthly_summary = False
+            prefs.imbalance_alerts = False
+            prefs.reflection_reminders = False
+            prefs.activation_nudges = False
+            await db.commit()
+            logger.warning(
+                "paused all emails for usuario_id=%s after %d hard bounces",
+                log.usuario_id, bounce_count,
+            )
 
     return {"status": "ok"}

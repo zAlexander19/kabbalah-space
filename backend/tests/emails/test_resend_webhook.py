@@ -154,3 +154,4 @@ async def test_webhook_three_hard_bounces_pauses_user(client, resend_secret_conf
     assert prefs_after.monthly_summary is False
     assert prefs_after.imbalance_alerts is False
     assert prefs_after.reflection_reminders is False
+    assert prefs_after.activation_nudges is False

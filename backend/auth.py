@@ -231,6 +231,8 @@ async def find_or_create_google_user(
     a new user. If the email exists under a different provider → raise
     EmailCollisionError.
     """
+    from billing.preferences import get_or_create_email_preferences
+
     user = (await db.execute(
         select(Usuario).where(
             Usuario.provider == "google",
@@ -238,6 +240,7 @@ async def find_or_create_google_user(
         )
     )).scalars().first()
     if user:
+        await get_or_create_email_preferences(db, user.id)
         return user
 
     email_match = (await db.execute(
@@ -255,6 +258,7 @@ async def find_or_create_google_user(
             email_match.password_hash = None
             await db.commit()
             await db.refresh(email_match)
+            await get_or_create_email_preferences(db, email_match.id)
             return email_match
         # Otro provider OAuth con el mismo email: no auto-linkeamos.
         raise EmailCollisionError(
@@ -271,6 +275,5 @@ async def find_or_create_google_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    from billing.preferences import get_or_create_email_preferences
     await get_or_create_email_preferences(db, user.id)
     return user
