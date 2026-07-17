@@ -546,6 +546,7 @@ class SefiraResumen(BaseModel):
     ultima_actividad: Optional[datetime] = None
     intensidad: float = 0.0
     actividades_total: int = 0
+    clasificada: bool = False
 
 
 class MesBucket(BaseModel):
@@ -823,6 +824,7 @@ async def espejo_resumen(
             ultima_actividad=ultima.fecha_registro if ultima else None,
             intensidad=intensidad,
             actividades_total=actividades_total,
+            clasificada=len(ia_scores) > 0,
         ))
     return out
 
