@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { SEFIROT_CONTENIDO } from '../sefirotContent';
+import { useSefirotContenido } from '../useSefirotContenido';
 
 type Props = { sefiraId: string };
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
 export default function SefiraInfoCard({ sefiraId }: Props) {
-  const contenido = SEFIROT_CONTENIDO[sefiraId];
+  const remoto = useSefirotContenido();
   const [open, setOpen] = useState(true);
+  const contenido = remoto[sefiraId] ?? SEFIROT_CONTENIDO[sefiraId];
   if (!contenido) return null;
 
   return (
