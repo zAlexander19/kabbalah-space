@@ -52,6 +52,7 @@ class EmailPreferences(Base):
     monthly_summary = Column(Boolean, nullable=False, server_default="true")
     imbalance_alerts = Column(Boolean, nullable=False, server_default="true")
     reflection_reminders = Column(Boolean, nullable=False, server_default="true")
+    activation_nudges = Column(Boolean, nullable=False, server_default="true")
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
