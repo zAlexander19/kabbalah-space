@@ -271,4 +271,6 @@ async def find_or_create_google_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    from billing.preferences import get_or_create_email_preferences
+    await get_or_create_email_preferences(db, user.id)
     return user

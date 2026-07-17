@@ -28,6 +28,7 @@ class EmailPreferencesOut(BaseModel):
     monthly_summary: bool
     imbalance_alerts: bool
     reflection_reminders: bool
+    activation_nudges: bool
 
     class Config:
         from_attributes = True
@@ -38,6 +39,7 @@ class EmailPreferencesPatch(BaseModel):
     monthly_summary: Optional[bool] = None
     imbalance_alerts: Optional[bool] = None
     reflection_reminders: Optional[bool] = None
+    activation_nudges: Optional[bool] = None
 
 
 @router.get("/email/preferences", response_model=EmailPreferencesOut)
@@ -45,11 +47,8 @@ async def get_email_preferences(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    prefs = (await db.execute(
-        select(EmailPreferences).where(EmailPreferences.usuario_id == current_user.id)
-    )).scalars().first()
-    if prefs is None:
-        raise HTTPException(status_code=404, detail="no_email_preferences")
+    from billing.preferences import get_or_create_email_preferences
+    prefs = await get_or_create_email_preferences(db, current_user.id)
     return prefs
 
 
@@ -59,11 +58,8 @@ async def update_email_preferences(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    prefs = (await db.execute(
-        select(EmailPreferences).where(EmailPreferences.usuario_id == current_user.id)
-    )).scalars().first()
-    if prefs is None:
-        raise HTTPException(status_code=404, detail="no_email_preferences")
+    from billing.preferences import get_or_create_email_preferences
+    prefs = await get_or_create_email_preferences(db, current_user.id)
 
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(prefs, field, value)
@@ -150,6 +146,7 @@ async def resend_webhook(
                 prefs.monthly_summary = False
                 prefs.imbalance_alerts = False
                 prefs.reflection_reminders = False
+                prefs.activation_nudges = False
                 await db.commit()
                 logger.warning(
                     "paused all emails for usuario_id=%s after %d hard bounces",
