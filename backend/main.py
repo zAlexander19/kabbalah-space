@@ -23,6 +23,7 @@ from config import INSECURE_JWT_DEFAULT, Settings, assert_production_secrets, ge
 from rate_limit import client_ip, limiter
 from database import engine, Base, get_db
 from models import Sefira, PreguntaSefira, RespuestaPregunta, RegistroDiario, Actividad, ActividadSefira, Usuario
+from sefirot_contenido_seed import SEFIROT_CONTENIDO_SEED
 import gcal_sync
 from gcal_client import GcalError
 
@@ -289,6 +290,31 @@ async def google_callback(
     return _redirect_to_frontend(s, f"#token={jwt_token}")
 
 
+async def seed_sefirot_contenido(db: AsyncSession) -> None:
+    """Backfill idempotente de contenido rico (esencia/palabras_clave/que_observa).
+
+    La migración `38a8a5cc73c2_sefirot_contenido_rico` semilla el contenido
+    vía UPDATE ... WHERE id = :sid, lo cual llena las filas EXISTENTES en
+    prod correctamente. Pero en una DB fresca esa migración corre antes de
+    que este startup cree las 10 filas de sefirot, así que ahí el UPDATE no
+    encuentra nada y esencia/que_observa/palabras_clave quedan NULL.
+
+    Esta función completa esas filas huérfanas: para cada sefirá cuya
+    `esencia` es NULL, la rellena desde SEFIROT_CONTENIDO_SEED. Nunca pisa
+    contenido ya presente (ediciones de admin o filas ya sembradas por la
+    migración) -- un campo vaciado a "" no es None, así que se deja intacto.
+    """
+    for sid, contenido in SEFIROT_CONTENIDO_SEED.items():
+        result = await db.execute(select(Sefira).where(Sefira.id == sid))
+        sefira = result.scalars().first()
+        if sefira is None or sefira.esencia is not None:
+            continue
+        sefira.esencia = contenido["esencia"]
+        sefira.que_observa = contenido["que_observa"]
+        sefira.palabras_clave = contenido["palabras_clave"]
+    await db.commit()
+
+
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -311,6 +337,11 @@ async def startup():
                 for s in sefirot_initials:
                     session.add(Sefira(**s))
                 await session.commit()
+
+            # Backfill idempotente de contenido rico (esencia/palabras_clave/
+            # que_observa) para sefirot recién creadas en una DB fresca --
+            # ver docstring de seed_sefirot_contenido.
+            await seed_sefirot_contenido(session)
 
             # Sembrar preguntas guía (idempotente). Requiere que las sefirot
             # existan (sembradas arriba). Mismo set que scripts/seed_preguntas.py.
