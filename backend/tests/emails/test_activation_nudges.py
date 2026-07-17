@@ -134,6 +134,52 @@ async def test_sender_spacing_skips_within_gap(emails_on, db_session):
     assert r1 is not None and r2 is None  # el segundo cae dentro del gap de 3 días
 
 
+@pytest.mark.asyncio
+async def test_failed_send_does_not_consume_attempt(emails_on, db_session):
+    """Un fallo transitorio de Resend no debe consumir el tope de 3 ni arrancar
+    el reloj de espaciado: el reintento (con la MISMA `now`, dentro de lo que
+    sería el gap de 3 días si el fallo hubiera contado) debe enviar igual."""
+    from emails.sender import send_activation_nudge
+    from emails.client import ResendError
+    from billing.preferences import get_or_create_email_preferences
+    now = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
+    u = await _seed_user(db_session, uid="a4", email="a4@x.com", signup=now - timedelta(days=10))
+    await get_or_create_email_preferences(db_session, u.id)
+
+    with respx.mock(base_url="https://api.resend.com") as mock:
+        mock.post("/emails").mock(return_value=Response(500, text="boom"))
+        with pytest.raises(ResendError):
+            await send_activation_nudge(db_session, user=u, stage="no_start", app_url="https://k.app", now=now)
+
+    failed_log = (await db_session.execute(
+        select(EmailLog)
+        .where(EmailLog.usuario_id == u.id, EmailLog.email_type == "activation_no_start")
+        .order_by(EmailLog.id.desc())
+    )).scalars().first()
+    assert failed_log is not None
+    assert failed_log.status == "failed"
+    assert failed_log.idempotency_key == "a4-activation_no_start-1"
+
+    # Reintento, todavía dentro de lo que habría sido el gap de 3 días si el
+    # fallo hubiera contado — debe enviar igual, porque el fallo no consumió
+    # el tope ni arrancó el reloj de espaciado.
+    with respx.mock(base_url="https://api.resend.com") as mock:
+        mock.post("/emails").mock(return_value=Response(200, json={"id": "m"}))
+        result = await send_activation_nudge(
+            db_session, user=u, stage="no_start", app_url="https://k.app",
+            now=now + timedelta(days=1),
+        )
+    assert result == "m"
+
+    sent_log = (await db_session.execute(
+        select(EmailLog)
+        .where(EmailLog.usuario_id == u.id, EmailLog.email_type == "activation_no_start", EmailLog.status == "sent")
+    )).scalars().first()
+    assert sent_log is not None
+    assert sent_log.idempotency_key == "a4-activation_no_start-2"
+    assert sent_log.idempotency_key != failed_log.idempotency_key
+
+
 # ---------------- SCHEDULER TICK: _activation_for_now (precedencia A→B→C) ----------------
 # Nota de esquema: Sefira.pilar es nullable=False sin default/server_default
 # (ver backend/models.py y el fixture seed_sefirot en conftest.py) — hay que

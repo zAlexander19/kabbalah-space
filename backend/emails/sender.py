@@ -388,27 +388,49 @@ async def send_activation_nudge(
 ) -> Optional[str]:
     """Nudge de activación. Gateado por preferencia `activation_nudges`.
     Tope de 3 envíos por etapa, espaciados >= ACTIVATION_RETRY_GAP_DAYS días.
-    Idempotencia por (usuario, etapa, intento)."""
+    Idempotencia por (usuario, etapa, intento).
+
+    El tope y el espaciado cuentan SOLO envíos exitosos (status='sent'): un
+    fallo transitorio de Resend no debe consumir uno de los 3 intentos ni
+    arrancar el reloj de espaciado. La idempotency key, en cambio, se deriva
+    del conteo de TODAS las filas (éxito + fallo + queued huérfano) para que
+    cada intento físico tenga una key única — si usáramos el conteo de
+    exitosos, un reintento después de un fallo reutilizaría la misma key que
+    la fila 'failed' ya insertada y el UNIQUE constraint bloquearía el
+    reintento en silencio."""
+    if stage not in ("no_start", "tree_incomplete", "no_activity"):
+        raise ValueError(f"unknown activation stage: {stage}")
+
     prefs = await get_or_create_email_preferences(db, user.id)
     if not prefs.activation_nudges:
         return None
 
     email_type = f"activation_{stage}"
 
-    # Conteo de intentos previos + último envío (para tope y espaciado).
-    prior_count = (await db.execute(
+    # Conteo total (todas las filas) → solo para la idempotency key.
+    total_count = (await db.execute(
         select(sql_func.count(EmailLog.id)).where(
             EmailLog.usuario_id == user.id,
             EmailLog.email_type == email_type,
         )
     )).scalar() or 0
-    if prior_count >= ACTIVATION_MAX_SENDS:
+
+    # Conteo + último envío de SOLO exitosos → tope y espaciado.
+    sent_count = (await db.execute(
+        select(sql_func.count(EmailLog.id)).where(
+            EmailLog.usuario_id == user.id,
+            EmailLog.email_type == email_type,
+            EmailLog.status == "sent",
+        )
+    )).scalar() or 0
+    if sent_count >= ACTIVATION_MAX_SENDS:
         return None
 
     last_sent = (await db.execute(
         select(sql_func.max(EmailLog.sent_at)).where(
             EmailLog.usuario_id == user.id,
             EmailLog.email_type == email_type,
+            EmailLog.status == "sent",
         )
     )).scalar()
     if last_sent is not None:
@@ -417,7 +439,7 @@ async def send_activation_nudge(
         if (now - last_sent) < timedelta(days=ACTIVATION_RETRY_GAP_DAYS):
             return None
 
-    idem = f"{user.id}-{email_type}-{prior_count + 1}"
+    idem = f"{user.id}-{email_type}-{total_count + 1}"
     log = await _start_log(db, usuario_id=user.id, email_type=email_type, idempotency_key=idem)
     if log is None:
         return None
