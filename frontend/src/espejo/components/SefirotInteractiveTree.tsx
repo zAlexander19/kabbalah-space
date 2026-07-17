@@ -15,6 +15,7 @@ type Props = {
   sefirot: SefiraNode[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  clasificadas?: Set<string>;
 };
 
 // Cascading entry: nodes appear top-to-bottom, ordered by Y. Nodes on the
@@ -24,7 +25,7 @@ const NODE_R = 32;
 const SVG_W = 400;
 const SVG_H = 880;
 
-export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }: Props) {
+export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect, clasificadas }: Props) {
   const reduced = useReducedMotion();
   const treeRootRef = useRef<HTMLDivElement>(null);
   const tiferetRef = useRef<HTMLElement>(null);
@@ -163,6 +164,7 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
           const color = SEFIRA_COLORS[node.id] ?? '#a3a3a3';
           const isSelected = selectedId === node.id;
           const isOther = selectedId !== null && !isSelected;
+          const sinClasificar = clasificadas !== undefined && !clasificadas.has(node.id);
           const delay = nodeDelay(node.y);
           return (
             <g
@@ -211,6 +213,20 @@ export default function SefirotInteractiveTree({ sefirot, selectedId, onSelect }
                   strokeWidth={isSelected ? 2 : 1}
                   style={{ transition: 'stroke 300ms, stroke-width 300ms' }}
                 />
+                {sinClasificar && !isSelected && (
+                  <motion.circle
+                    cx={0} cy={0}
+                    r={NODE_R + 5}
+                    fill="none"
+                    stroke="rgba(253, 230, 138, 0.55)"
+                    strokeWidth={1.4}
+                    strokeDasharray="3 5"
+                    initial={{ opacity: 0.25 }}
+                    animate={reduced ? { opacity: 0.4 } : { opacity: [0.2, 0.6, 0.2] }}
+                    transition={reduced ? { duration: 0.4 } : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                    style={{ transformOrigin: '0px 0px', pointerEvents: 'none' }}
+                  />
+                )}
                 {/* Selection ring */}
                 {isSelected && (
                   <motion.circle

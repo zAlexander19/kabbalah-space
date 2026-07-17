@@ -11,6 +11,7 @@ export type SefiraResumen = {
   ultima_actividad: string | null;
   intensidad: number;
   actividades_total: number;
+  clasificada: boolean;
 };
 
 export type PreguntaConEstado = {

@@ -5,6 +5,7 @@ import { useEspejoSummary } from './hooks/useEspejoSummary';
 import { useSefiraData } from './hooks/useSefiraData';
 import SefirotInteractiveTree, { type SefiraNode } from './components/SefirotInteractiveTree';
 import RotatingReflectionPreview from './components/RotatingReflectionPreview';
+import ProgresoArbol from './components/ProgresoArbol';
 import EmptyState from './components/EmptyState';
 import SefiraDetailPanel from './components/SefiraDetailPanel';
 import EspejoIntro from './components/EspejoIntro';
@@ -113,8 +114,14 @@ export default function EspejoModule({
       ultima_actividad: null,
       intensidad: 0,
       actividades_total: 0,
+      clasificada: false,
     };
   }, [summary, selectedId, selectedNode]);
+
+  const clasificadas = useMemo(
+    () => new Set(summary.filter((s) => s.clasificada).map((s) => s.sefira_id)),
+    [summary],
+  );
 
   function handleDataChanged() {
     void reloadSummary();
@@ -144,7 +151,10 @@ export default function EspejoModule({
   const LEFT_GUTTER = isMobile ? 0 : 180;
   return (
     <div className="w-full max-w-[1400px] flex flex-col items-stretch gap-4 relative">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-4">
+        {clasificadas.size > 0 ? (
+          <ProgresoArbol total={sefirot.length} completadas={clasificadas.size} />
+        ) : <span />}
         <button
           type="button"
           onClick={() => setLibreEditorOpen(true)}
@@ -170,6 +180,7 @@ export default function EspejoModule({
               sefirot={sefirot}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              clasificadas={clasificadas.size > 0 ? clasificadas : undefined}
             />
           </motion.div>
 
