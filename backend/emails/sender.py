@@ -13,16 +13,18 @@ Importing this module gives the cron jobs a clean API:
     await send_weekly_summary(db, user=..., week_start=..., week_end=..., app_url=...)
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy import func as sql_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings
 from models import Usuario
 from billing.models import EmailPreferences
+from billing.preferences import get_or_create_email_preferences
 from emails.client import send_email, ResendError
 from emails.insight import generate_insight
 from emails.models import EmailLog
@@ -32,6 +34,9 @@ from emails.templates.imbalance_alert import render_imbalance_alert
 from emails.templates.reflection_reminder import render_reflection_reminder
 from emails.templates.gcal_link_suggestion import render_gcal_link_suggestion
 from emails.templates.evolucion_nudge import render_evolucion_nudge
+from emails.templates.activation_no_start import render_activation_no_start
+from emails.templates.activation_tree_incomplete import render_activation_tree_incomplete
+from emails.templates.activation_no_activity import render_activation_no_activity
 
 
 logger = logging.getLogger(__name__)
@@ -352,6 +357,82 @@ async def send_evolucion_nudge(
             subject="Mira tu evolución del mes",
             html=html,
         )
+        await _finish_log_success(db, log, msg_id)
+        return msg_id
+    except ResendError as e:
+        await _finish_log_failure(db, log, str(e))
+        raise
+
+
+# ---------------- ACTIVACIÓN (embudo A→B→C, free + premium) ----------------
+
+ACTIVATION_FIRST_DELAY_DAYS = 2
+ACTIVATION_RETRY_GAP_DAYS = 3
+ACTIVATION_MAX_SENDS = 3
+
+_ACTIVATION_SUBJECTS = {
+    "no_start": "Tu Árbol de la Vida está esperando",
+    "tree_incomplete": "Te faltan dimensiones por completar",
+    "no_activity": "Dale vida a tus dimensiones",
+}
+
+
+async def send_activation_nudge(
+    db: AsyncSession,
+    *,
+    user: Usuario,
+    stage: str,
+    app_url: str,
+    now: datetime,
+    faltan: int = 0,
+) -> Optional[str]:
+    """Nudge de activación. Gateado por preferencia `activation_nudges`.
+    Tope de 3 envíos por etapa, espaciados >= ACTIVATION_RETRY_GAP_DAYS días.
+    Idempotencia por (usuario, etapa, intento)."""
+    prefs = await get_or_create_email_preferences(db, user.id)
+    if not prefs.activation_nudges:
+        return None
+
+    email_type = f"activation_{stage}"
+
+    # Conteo de intentos previos + último envío (para tope y espaciado).
+    prior_count = (await db.execute(
+        select(sql_func.count(EmailLog.id)).where(
+            EmailLog.usuario_id == user.id,
+            EmailLog.email_type == email_type,
+        )
+    )).scalar() or 0
+    if prior_count >= ACTIVATION_MAX_SENDS:
+        return None
+
+    last_sent = (await db.execute(
+        select(sql_func.max(EmailLog.sent_at)).where(
+            EmailLog.usuario_id == user.id,
+            EmailLog.email_type == email_type,
+        )
+    )).scalar()
+    if last_sent is not None:
+        if last_sent.tzinfo is None:
+            last_sent = last_sent.replace(tzinfo=timezone.utc)
+        if (now - last_sent) < timedelta(days=ACTIVATION_RETRY_GAP_DAYS):
+            return None
+
+    idem = f"{user.id}-{email_type}-{prior_count + 1}"
+    log = await _start_log(db, usuario_id=user.id, email_type=email_type, idempotency_key=idem)
+    if log is None:
+        return None
+
+    settings = get_settings()
+    preferences_url = f"{app_url}/cuenta"
+    if stage == "no_start":
+        html = render_activation_no_start(nombre=user.nombre, app_url=app_url, preferences_url=preferences_url)
+    elif stage == "tree_incomplete":
+        html = render_activation_tree_incomplete(nombre=user.nombre, faltan=faltan, app_url=app_url, preferences_url=preferences_url)
+    else:  # no_activity
+        html = render_activation_no_activity(nombre=user.nombre, app_url=app_url, preferences_url=preferences_url)
+
+    try:
+        msg_id = await send_email(settings, to=user.email, subject=_ACTIVATION_SUBJECTS[stage], html=html)
         await _finish_log_success(db, log, msg_id)
         return msg_id
     except ResendError as e:
