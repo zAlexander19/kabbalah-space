@@ -147,13 +147,8 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
           <p className="text-xs text-stone-500 italic text-center py-4">
             No hay preguntas guía para esta sefirá. Agregá algunas desde el Panel de Administrador.
           </p>
-        ) : hasUnblocked ? (
-          <QuestionCarousel sefiraId={resumen.sefira_id} preguntas={preguntas} onBatchSave={handleBatchSave} />
         ) : (
-          <AllAnsweredEmptyState
-            preguntas={preguntas}
-            onSeeAnswers={() => setModalOpen(true)}
-          />
+          <QuestionCarousel sefiraId={resumen.sefira_id} preguntas={preguntas} onBatchSave={handleBatchSave} />
         )}
       </Section>
 
@@ -187,37 +182,6 @@ export default function SefiraDetailPanel({ resumen, description, preguntas, reg
         onCancel={gated.cancel}
       />
     </motion.div>
-  );
-}
-
-function AllAnsweredEmptyState({ preguntas, onSeeAnswers }: {
-  preguntas: PreguntaConEstado[];
-  onSeeAnswers: () => void;
-}) {
-  // Soonest moment a question becomes available again
-  const soonest = preguntas
-    .map(p => p.dias_restantes)
-    .filter((d): d is number => d !== null && d > 0)
-    .sort((a, b) => a - b)[0];
-
-  return (
-    <div className="rounded-xl border border-stone-700/40 bg-stone-950/30 p-5 text-center space-y-3">
-      <p className="text-sm text-stone-300">
-        Ya respondiste todas las preguntas de esta sefirá.
-      </p>
-      {soonest !== undefined && (
-        <p className="text-xs text-stone-500">
-          La próxima vuelve a estar disponible en {soonest} {soonest === 1 ? 'día' : 'días'}.
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={onSeeAnswers}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/30 text-amber-100 text-xs tracking-wide transition-colors"
-      >
-        Ver mis respuestas
-      </button>
-    </div>
   );
 }
 

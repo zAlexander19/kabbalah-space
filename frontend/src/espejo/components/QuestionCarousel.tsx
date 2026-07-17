@@ -19,8 +19,9 @@ type Props = {
 };
 
 export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: Props) {
-  // Only unblocked questions enter the carousel.
-  const items = useMemo(() => preguntas.filter((p) => !p.bloqueada), [preguntas]);
+  // Todas las preguntas entran al carrusel (disponibles + respondidas/cooldown).
+  // Las bloqueadas se muestran en modo lectura.
+  const items = useMemo(() => preguntas, [preguntas]);
 
   // Persist the in-progress answers map per sefirá. `hydrated` (set on mount)
   // seeds the initial state so a refresh or a return visit resumes where we left off.
@@ -49,8 +50,15 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
   const initialIndex = useMemo(() => {
     if (items.length === 0) return 0;
     const restoredAnswers = hydrated && Object.keys(hydrated).length > 0 ? hydrated : {};
-    const firstUnanswered = items.findIndex((p) => !(restoredAnswers[p.pregunta_id]?.trim()));
-    return firstUnanswered === -1 ? items.length - 1 : firstUnanswered;
+    // Prefer the first available (non-blocked) question that doesn't yet have
+    // a non-empty answer. Blocked/cooldown questions are read-only, so they're
+    // not a useful landing spot.
+    const firstAvailableUnanswered = items.findIndex(
+      (p) => !p.bloqueada && !(restoredAnswers[p.pregunta_id]?.trim()),
+    );
+    if (firstAvailableUnanswered !== -1) return firstAvailableUnanswered;
+    const firstAvailable = items.findIndex((p) => !p.bloqueada);
+    return firstAvailable !== -1 ? firstAvailable : 0;
   }, [items, hydrated]);
   const [index, setIndex] = useState<number>(0);
 
@@ -79,18 +87,23 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
     setError(null);
   }, [itemKey]);
 
-  // Autofocus textarea on each step
+  // Derived "current" state — computed here, above the autofocus effect (which
+  // needs current?.bloqueada), so hook order stays stable across renders.
+  // Guarded with optional chaining since items can still be empty at this
+  // point (the early return sits after all hooks, below).
+  const current = items[Math.min(index, items.length - 1)];
+  const currentText = current ? (answers[current.pregunta_id] ?? '') : '';
+  const isLast = index >= items.length - 1;
+  const hasNewAnswers = Object.values(answers).some((t) => t.trim().length > 0);
+
+  // Autofocus textarea on each step (skip for read-only/blocked cards).
   useEffect(() => {
+    if (current?.bloqueada) return;
     const t = window.setTimeout(() => textareaRef.current?.focus(), 60);
     return () => window.clearTimeout(t);
-  }, [index]);
+  }, [index, current?.bloqueada]);
 
   if (items.length === 0) return null;
-
-  const current = items[Math.min(index, items.length - 1)];
-  const currentText = answers[current.pregunta_id] ?? '';
-  const isLast = index >= items.length - 1;
-  const canAdvance = currentText.trim().length > 0;
 
   function setText(v: string) {
     setAnswers((prev) => ({ ...prev, [current.pregunta_id]: v }));
@@ -101,7 +114,7 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
     if (index > 0) setIndex((i) => i - 1);
   }
   function goNext() {
-    if (canAdvance && !isLast) setIndex((i) => i + 1);
+    if (!isLast) setIndex((i) => i + 1);
   }
 
   async function handleSave() {
@@ -163,14 +176,29 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
             <p className="text-sm text-stone-200 leading-relaxed mb-3">
               {current.texto_pregunta}
             </p>
-            <textarea
-              ref={textareaRef}
-              value={currentText}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Escribí tu reflexión..."
-              disabled={saving}
-              className="flex-1 min-h-[100px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors disabled:opacity-60"
-            />
+            {current.bloqueada ? (
+              <div className="flex-1 min-h-[100px] rounded-lg border border-stone-700/40 bg-[#1b1f25]/60 px-3 py-2 space-y-2">
+                {current.ultima_respuesta ? (
+                  <p className="text-sm text-stone-300/80 leading-relaxed whitespace-pre-wrap">
+                    {current.ultima_respuesta}
+                  </p>
+                ) : (
+                  <p className="text-sm text-stone-500 italic">Sin respuesta registrada.</p>
+                )}
+                <span className="inline-block text-[10px] uppercase tracking-[0.14em] text-amber-200/70">
+                  Respondida{current.dias_restantes ? ` · vuelve en ${current.dias_restantes} ${current.dias_restantes === 1 ? 'día' : 'días'}` : ''}
+                </span>
+              </div>
+            ) : (
+              <textarea
+                ref={textareaRef}
+                value={currentText}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Escribí tu reflexión..."
+                disabled={saving}
+                className="flex-1 min-h-[100px] resize-y bg-[#1b1f25] border border-stone-700/50 focus:border-amber-300/60 focus:outline-none text-sm text-stone-100 rounded-lg px-3 py-2 transition-colors disabled:opacity-60"
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -202,33 +230,37 @@ export default function QuestionCarousel({ sefiraId, preguntas, onBatchSave }: P
           Anterior
         </button>
 
-        {isLast ? (
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!canAdvance || saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/30 text-amber-100 text-sm tracking-wide disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_0_14px_rgba(233,195,73,0.15)]"
-          >
-            <Save size={14} />
-            {saving ? 'Guardando…' : 'Guardar respuestas'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={!canAdvance || saving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900/70 hover:bg-stone-900 border border-stone-800/60 hover:border-amber-300/30 text-stone-200 hover:text-amber-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs tracking-wide"
-          >
-            Siguiente
-            <ChevronRight size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasNewAnswers && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-300/15 hover:bg-amber-300/25 border border-amber-300/30 text-amber-100 text-sm tracking-wide disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-[0_0_14px_rgba(233,195,73,0.15)]"
+            >
+              <Save size={14} />
+              {saving ? 'Guardando…' : 'Guardar respuestas'}
+            </button>
+          )}
+          {!isLast && (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900/70 hover:bg-stone-900 border border-stone-800/60 hover:border-amber-300/30 text-stone-200 hover:text-amber-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs tracking-wide"
+            >
+              Siguiente
+              <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Helper text below */}
       <p className="text-[10px] text-stone-500 leading-relaxed pt-1">
-        Respondé cada pregunta para avanzar. Al final del carrusel todas las respuestas
-        se guardan juntas y la sefirá entra en cooldown por 30 días.
+        Navegá libremente entre las preguntas con Anterior / Siguiente. Guardá cuando
+        quieras: las respuestas nuevas se guardan juntas y cada pregunta entra en
+        cooldown por 30 días.
       </p>
     </div>
   );
